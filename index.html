@@ -1908,7 +1908,15 @@ async function checkVerification(){
     if(user.emailVerified){
       const d=await db.collection('users').doc(user.uid).get();
       if(!d.exists){hideLoading();showAuthError('Perfil não encontrado.');return;}
-      currentUser=user;currentUserData=d.data();colegioId=currentUserData.colegioId;
+      const userData=d.data();
+      // Check if pending approval
+      if(userData.status==='pendente'){
+        hideLoading();
+        showPendingPanel(userData);
+        showToast('E-mail verificado! Agora aguarde a aprovação do admin.','ti-circle-check');
+        return;
+      }
+      currentUser=user;currentUserData=userData;colegioId=currentUserData.colegioId;
       await loadAllData();enterApp();showToast('E-mail verificado com sucesso!','ti-circle-check');
     }else{hideLoading();showAuthError('E-mail ainda não verificado. Verifique sua caixa de entrada e spam.');}
   }catch(e){hideLoading();showAuthError(sanitizeError(e));}
@@ -1969,14 +1977,14 @@ async function checkPendingStatus(){
 }
 
 async function notificarAdminNovoCadastro(userData,colegioIdReg){
-  // Load config from Firestore to get whatsappNotif
+  // Read from colegio root doc (accessible by all authenticated users)
   try{
-    const cfgSnap=await db.collection('colegios').doc(colegioIdReg).collection('data').doc('config').get();
-    if(!cfgSnap.exists)return;
-    const cfg=cfgSnap.data();
-    const adminTel=cfg.whatsappNotif||cfg.telefone||'';
-    if(!adminTel)return; // No number configured, skip
-    const escolaNome=cfg.nomeEscola||'EduGest';
+    const colegioSnap=await db.collection('colegios').doc(colegioIdReg).get();
+    if(!colegioSnap.exists)return;
+    const col=colegioSnap.data();
+    const adminTel=col.whatsappNotif||col.telefone||'';
+    if(!adminTel)return;
+    const escolaNome=col.nomeEscola||col.nome||'EduGest';
     let msg='🔔 *NOVO CADASTRO — '+escolaNome+'*\n\n';
     msg+='👤 *Nome:* '+(userData.nome||'—')+'\n';
     msg+='📧 *E-mail:* '+(userData.email||'—')+'\n';
@@ -1992,10 +2000,10 @@ async function notificarAdminNovoCadastro(userData,colegioIdReg){
 async function enviarNotifWhatsAppPendente(){
   if(!pendingUserData||!pendingUserData.colegioId){showAuthError('Dados do colégio não encontrados.');return;}
   try{
-    const cfgSnap=await db.collection('colegios').doc(pendingUserData.colegioId).collection('data').doc('config').get();
-    const cfg=cfgSnap.exists?cfgSnap.data():{};
-    const adminTel=cfg.whatsappNotif||cfg.telefone||'';
-    const escolaNome=cfg.nomeEscola||'EduGest';
+    const colegioSnap=await db.collection('colegios').doc(pendingUserData.colegioId).get();
+    const col=colegioSnap.exists?colegioSnap.data():{};
+    const adminTel=col.whatsappNotif||col.telefone||'';
+    const escolaNome=col.nomeEscola||col.nome||'EduGest';
     let msg='🔔 *NOVO CADASTRO — '+escolaNome+'*\n\n';
     msg+='👤 *Nome:* '+(pendingUserData.nome||'—')+'\n';
     msg+='📧 *E-mail:* '+(pendingUserData.email||'—')+'\n';
@@ -2626,7 +2634,7 @@ function navigate(page){
   if(page==='relatorios')document.getElementById('relatorioTipo').value='';
   if(page==='funil')renderFunil();
   if(page==='comunicados'){showCommSkeleton('comunicadosList',3);setTimeout(()=>renderComunicados(),80);}
-  if(page==='config')loadConfig();
+  if(page==='config'){loadConfig();applyPermissions();}
   if(page==='usuarios'){showTableSkeleton('tbUsuarios',5);setTimeout(()=>renderUsuarios(),80);}
   if(window.innerWidth<=768)toggleSidebar();
 }
@@ -2676,7 +2684,11 @@ async function salvarConfig(){
   if(emailEl.value&&!validaEmail(emailEl.value)){showFieldError(emailEl,'E-mail inválido');emailEl.focus();return;}
   const discStr=document.getElementById('cfgDisciplinas').value;
   DATA.config={nomeEscola:document.getElementById('cfgNomeEscola').value,cnpj:document.getElementById('cfgCnpj').value,telefone:document.getElementById('cfgTelefone').value,email:document.getElementById('cfgEmail').value,endereco:document.getElementById('cfgEndereco').value,anoLetivo:document.getElementById('cfgAnoLetivo').value,valorMensalidade:document.getElementById('cfgValorMensalidade').value,sessionTimeout:document.getElementById('cfgSessionTimeout').value,whatsappNotif:document.getElementById('cfgWhatsAppNotif').value,disciplinas:discStr?discStr.split(',').map(d=>d.trim()).filter(Boolean):DEFAULT_DISCIPLINAS};
-  await saveCollection('config');populateDisciplinaSelects();startSessionTimer();showToast('Configurações salvas!');
+  await saveCollection('config');populateDisciplinaSelects();startSessionTimer();
+  // Save whatsappNotif also in colegio root doc (public for pending users)
+  const waNum=document.getElementById('cfgWhatsAppNotif').value;
+  try{await db.collection('colegios').doc(colegioId).update({whatsappNotif:waNum,nomeEscola:DATA.config.nomeEscola||''});}catch(e){}
+  showToast('Configurações salvas!');
 }
 function loadConfig(){
   const c=DATA.config;
@@ -2925,7 +2937,11 @@ async function applyPermissions(){
   // Hide admin-only cards for non-admins
   const isAdmin=currentUserData&&currentUserData.role==='admin';
   document.querySelectorAll('[data-admin-only]').forEach(el=>{
-    el.style.display=isAdmin?'':'none';
+    if(isAdmin){
+      el.style.display=el.classList.contains('card')?'block':el.tagName==='DIV'?'block':'';
+    }else{
+      el.style.display='none';
+    }
   });
 }
 
