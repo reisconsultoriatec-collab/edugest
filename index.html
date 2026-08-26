@@ -414,13 +414,10 @@ tbody tr:hover{background:var(--hover-row)}
           <div style="text-align:center;padding:8px 0">
             <div style="width:64px;height:64px;border-radius:50%;background:var(--warning-bg);color:var(--warning);display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 14px"><i class="ti ti-clock-pause"></i></div>
             <h3 style="font-size:16px;color:var(--text);margin-bottom:6px">Aguardando aprovação</h3>
-            <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">Sua conta foi criada com sucesso! O administrador precisa aprovar seu acesso.</p>
-            <div id="pendingWhatsAppAsk" style="background:var(--bg);border-radius:10px;padding:16px;margin-bottom:16px">
-              <p style="font-size:13px;color:var(--text);margin-bottom:12px"><i class="ti ti-brand-whatsapp" style="color:#25D366"></i> Deseja notificar o administrador via WhatsApp?</p>
-              <div style="display:flex;gap:8px;justify-content:center">
-                <button class="btn btn-sm" style="background:#25D366;color:#fff;border:none;padding:8px 20px" onclick="notificarAdminWhatsApp()"><i class="ti ti-check"></i> Sim, notificar</button>
-                <button class="btn btn-sm btn-secondary" onclick="document.getElementById('pendingWhatsAppAsk').style.display='none'"><i class="ti ti-x"></i> Não, obrigado</button>
-              </div>
+            <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">Sua conta foi criada com sucesso! O administrador foi notificado e precisa aprovar seu acesso para que você possa utilizar o sistema.</p>
+            <div style="background:var(--bg);border-radius:10px;padding:14px;margin-bottom:16px;text-align:left">
+              <div style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:6px;margin-bottom:4px"><i class="ti ti-info-circle"></i> O que acontece agora?</div>
+              <p style="font-size:12px;color:var(--text-secondary);line-height:1.5">O administrador receberá uma notificação sobre seu cadastro. Assim que ele aprovar, você poderá acessar o sistema normalmente.</p>
             </div>
             <button class="btn btn-primary" style="width:100%;justify-content:center;padding:11px;margin-bottom:10px" onclick="checkPendingStatus()"><i class="ti ti-refresh"></i> Verificar status</button>
             <p style="font-size:12px;color:var(--text-muted);cursor:pointer;margin-top:8px" onclick="backToLogin()"><i class="ti ti-arrow-left"></i> Voltar ao login</p>
@@ -1055,6 +1052,13 @@ tbody tr:hover{background:var(--hover-row)}
               <option value="0">Desativado</option>
             </select>
             <span style="font-size:12px;color:var(--text-muted)"><i class="ti ti-info-circle"></i> Protege dados em caso de computador desatendido</span>
+          </div>
+        </div>
+        <div class="form-group" data-admin-only="true">
+          <label class="form-label"><i class="ti ti-brand-whatsapp" style="color:#25D366"></i> WhatsApp para notificações de novos cadastros</label>
+          <div style="display:flex;align-items:center;gap:10px">
+            <input type="text" class="form-input" id="cfgWhatsAppNotif" placeholder="(11) 99999-0000" oninput="maskTel(this)" maxlength="15" style="max-width:220px" autocomplete="off">
+            <span style="font-size:12px;color:var(--text-muted)"><i class="ti ti-info-circle"></i> Receberá aviso quando novos usuários se cadastrarem</span>
           </div>
         </div>
         <div style="margin-top:8px">
@@ -1868,6 +1872,8 @@ async function doRegister(){
       const b=db.batch(),base=db.collection('colegios').doc(tid).collection('data');DATA_COLLECTIONS.forEach(c=>b.set(base.doc(c),{items:[]}));DATA_MAPS.forEach(m=>b.set(base.doc(m),{entries:{}}));b.set(base.doc('activity'),{items:[]});b.set(base.doc('config'),{disciplinas:DEFAULT_DISCIPLINAS,nomeEscola:nomeNovo});await b.commit();}
     currentUser=cred.user;currentUserData={nome,email,role,colegioId:tid};colegioId=tid;isRegistering=false;
     await cred.user.sendEmailVerification();hideLoading();showVerifyPanel(email);logSecurity('register',email,'Novo cadastro — '+role);
+    // Notify admin via WhatsApp if number is configured
+    if(codEx)notificarAdminNovoCadastro({nome,email,role},tid);
   }catch(e){isRegistering=false;hideLoading();showAuthError(sanitizeError(e));}
 }
 async function resetPassword(){
@@ -1935,7 +1941,6 @@ function showPendingPanel(userData){
   document.getElementById('authResponsavel').style.display='none';
   document.getElementById('authVerify').style.display='none';
   document.getElementById('authPending').style.display='block';
-  document.getElementById('pendingWhatsAppAsk').style.display='block';
   document.querySelector('.auth-tabs').style.display='none';
   hideAuthError();
 }
@@ -1962,22 +1967,25 @@ async function checkPendingStatus(){
   }catch(e){hideLoading();showAuthError(sanitizeError(e));}
 }
 
-function notificarAdminWhatsApp(){
-  if(!pendingUserData)return;
-  const cfg=DATA.config||{};
-  const escolaNome=cfg.nomeEscola||'EduGest';
-  const adminTel=cfg.telefone||'';
-  let msg='🔔 *NOVO CADASTRO — '+escolaNome+'*\n\n';
-  msg+='👤 *Nome:* '+pendingUserData.nome+'\n';
-  msg+='📧 *E-mail:* '+pendingUserData.email+'\n';
-  msg+='🔑 *Perfil:* '+pendingUserData.role+'\n';
-  msg+='📅 *Data:* '+new Date().toLocaleDateString('pt-BR')+'\n\n';
-  msg+='⏳ Aguardando aprovação.\n';
-  msg+='Acesse a aba *Usuários* no EduGest para aprovar ou rejeitar.\n\n';
-  msg+='_'+escolaNome+' — Sistema de Gestão_';
-  openWhatsApp(adminTel,msg);
-  document.getElementById('pendingWhatsAppAsk').style.display='none';
-  showToast('WhatsApp aberto — envie a mensagem ao administrador','ti-brand-whatsapp');
+async function notificarAdminNovoCadastro(userData,colegioIdReg){
+  // Load config from Firestore to get whatsappNotif
+  try{
+    const cfgSnap=await db.collection('colegios').doc(colegioIdReg).collection('data').doc('config').get();
+    if(!cfgSnap.exists)return;
+    const cfg=cfgSnap.data();
+    const adminTel=cfg.whatsappNotif||cfg.telefone||'';
+    if(!adminTel)return; // No number configured, skip
+    const escolaNome=cfg.nomeEscola||'EduGest';
+    let msg='🔔 *NOVO CADASTRO — '+escolaNome+'*\n\n';
+    msg+='👤 *Nome:* '+(userData.nome||'—')+'\n';
+    msg+='📧 *E-mail:* '+(userData.email||'—')+'\n';
+    msg+='🔑 *Perfil:* '+(userData.role||'—')+'\n';
+    msg+='📅 *Data:* '+new Date().toLocaleDateString('pt-BR')+'\n\n';
+    msg+='⏳ Aguardando sua aprovação.\n';
+    msg+='Acesse a aba *Usuários* no EduGest para aprovar ou rejeitar.\n\n';
+    msg+='_'+escolaNome+' — Sistema de Gestão_';
+    openWhatsApp(adminTel,msg);
+  }catch(e){}
 }
 
 // ========== APPROVE/REJECT USERS (Admin) ==========
@@ -2642,7 +2650,7 @@ async function salvarConfig(){
   if(cnpjVal&&cnpjVal.length===14&&!validaCNPJ(cnpjEl.value)){showFieldError(cnpjEl,'CNPJ inválido');cnpjEl.focus();return;}
   if(emailEl.value&&!validaEmail(emailEl.value)){showFieldError(emailEl,'E-mail inválido');emailEl.focus();return;}
   const discStr=document.getElementById('cfgDisciplinas').value;
-  DATA.config={nomeEscola:document.getElementById('cfgNomeEscola').value,cnpj:document.getElementById('cfgCnpj').value,telefone:document.getElementById('cfgTelefone').value,email:document.getElementById('cfgEmail').value,endereco:document.getElementById('cfgEndereco').value,anoLetivo:document.getElementById('cfgAnoLetivo').value,valorMensalidade:document.getElementById('cfgValorMensalidade').value,sessionTimeout:document.getElementById('cfgSessionTimeout').value,disciplinas:discStr?discStr.split(',').map(d=>d.trim()).filter(Boolean):DEFAULT_DISCIPLINAS};
+  DATA.config={nomeEscola:document.getElementById('cfgNomeEscola').value,cnpj:document.getElementById('cfgCnpj').value,telefone:document.getElementById('cfgTelefone').value,email:document.getElementById('cfgEmail').value,endereco:document.getElementById('cfgEndereco').value,anoLetivo:document.getElementById('cfgAnoLetivo').value,valorMensalidade:document.getElementById('cfgValorMensalidade').value,sessionTimeout:document.getElementById('cfgSessionTimeout').value,whatsappNotif:document.getElementById('cfgWhatsAppNotif').value,disciplinas:discStr?discStr.split(',').map(d=>d.trim()).filter(Boolean):DEFAULT_DISCIPLINAS};
   await saveCollection('config');populateDisciplinaSelects();startSessionTimer();showToast('Configurações salvas!');
 }
 function loadConfig(){
@@ -2651,6 +2659,7 @@ function loadConfig(){
   Object.entries(fields).forEach(([elId,key])=>{const el=document.getElementById(elId);if(el&&c[key])el.value=c[key];});
   const discEl=document.getElementById('cfgDisciplinas');if(discEl)discEl.value=(c.disciplinas||DEFAULT_DISCIPLINAS).join(', ');
   const toEl=document.getElementById('cfgSessionTimeout');if(toEl)toEl.value=c.sessionTimeout||'15';
+  const waEl=document.getElementById('cfgWhatsAppNotif');if(waEl)waEl.value=c.whatsappNotif||'';
 }
 
 // ========== BACKUP / RESTORE ==========
@@ -3748,6 +3757,7 @@ async function doRegisterResponsavel(){
     currentUser=cred.user;currentUserData={nome,email,role:'responsavel',colegioId:foundColegioId,alunoId:foundAluno.id,alunoNome:foundAluno.nome};
     colegioId=foundColegioId;isRegistering=false;
     await cred.user.sendEmailVerification();hideLoading();showVerifyPanel(email);
+    notificarAdminNovoCadastro({nome,email,role:'responsavel'},foundColegioId);
   }catch(e){isRegistering=false;hideLoading();showAuthError(sanitizeError(e));}
 }
 
