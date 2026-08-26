@@ -414,11 +414,12 @@ tbody tr:hover{background:var(--hover-row)}
           <div style="text-align:center;padding:8px 0">
             <div style="width:64px;height:64px;border-radius:50%;background:var(--warning-bg);color:var(--warning);display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 14px"><i class="ti ti-clock-pause"></i></div>
             <h3 style="font-size:16px;color:var(--text);margin-bottom:6px">Aguardando aprovação</h3>
-            <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">Sua conta foi criada com sucesso! O administrador foi notificado e precisa aprovar seu acesso para que você possa utilizar o sistema.</p>
+            <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">Sua conta foi criada com sucesso! O administrador precisa aprovar seu acesso para que você possa utilizar o sistema.</p>
             <div style="background:var(--bg);border-radius:10px;padding:14px;margin-bottom:16px;text-align:left">
               <div style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:6px;margin-bottom:4px"><i class="ti ti-info-circle"></i> O que acontece agora?</div>
-              <p style="font-size:12px;color:var(--text-secondary);line-height:1.5">O administrador receberá uma notificação sobre seu cadastro. Assim que ele aprovar, você poderá acessar o sistema normalmente.</p>
+              <p style="font-size:12px;color:var(--text-secondary);line-height:1.5">Clique no botão abaixo para enviar uma notificação ao administrador via WhatsApp. Assim que ele aprovar, você poderá acessar o sistema.</p>
             </div>
+            <button class="btn" id="btnNotifWhatsApp" style="background:#25D366;color:#fff;border:none;width:100%;justify-content:center;padding:11px;margin-bottom:10px" onclick="enviarNotifWhatsAppPendente()"><i class="ti ti-brand-whatsapp"></i> Notificar administrador via WhatsApp</button>
             <button class="btn btn-primary" style="width:100%;justify-content:center;padding:11px;margin-bottom:10px" onclick="checkPendingStatus()"><i class="ti ti-refresh"></i> Verificar status</button>
             <p style="font-size:12px;color:var(--text-muted);cursor:pointer;margin-top:8px" onclick="backToLogin()"><i class="ti ti-arrow-left"></i> Voltar ao login</p>
           </div>
@@ -1986,6 +1987,30 @@ async function notificarAdminNovoCadastro(userData,colegioIdReg){
     msg+='_'+escolaNome+' — Sistema de Gestão_';
     openWhatsApp(adminTel,msg);
   }catch(e){}
+}
+
+async function enviarNotifWhatsAppPendente(){
+  if(!pendingUserData||!pendingUserData.colegioId){showAuthError('Dados do colégio não encontrados.');return;}
+  try{
+    const cfgSnap=await db.collection('colegios').doc(pendingUserData.colegioId).collection('data').doc('config').get();
+    const cfg=cfgSnap.exists?cfgSnap.data():{};
+    const adminTel=cfg.whatsappNotif||cfg.telefone||'';
+    const escolaNome=cfg.nomeEscola||'EduGest';
+    let msg='🔔 *NOVO CADASTRO — '+escolaNome+'*\n\n';
+    msg+='👤 *Nome:* '+(pendingUserData.nome||'—')+'\n';
+    msg+='📧 *E-mail:* '+(pendingUserData.email||'—')+'\n';
+    msg+='🔑 *Perfil:* '+(pendingUserData.role||'—')+'\n';
+    msg+='📅 *Data:* '+new Date().toLocaleDateString('pt-BR')+'\n\n';
+    msg+='⏳ Aguardando sua aprovação.\n';
+    msg+='Acesse a aba *Usuários* no EduGest para aprovar ou rejeitar.\n\n';
+    msg+='_'+escolaNome+' — Sistema de Gestão_';
+    if(!adminTel){
+      alert('O administrador ainda não cadastrou um número de WhatsApp para notificações.\n\nA mensagem será aberta no WhatsApp para você enviar manualmente.');
+    }
+    openWhatsApp(adminTel,msg);
+    const btn=document.getElementById('btnNotifWhatsApp');
+    if(btn){btn.innerHTML='<i class="ti ti-check"></i> Notificação enviada';btn.disabled=true;btn.style.opacity='.6';}
+  }catch(e){showAuthError(sanitizeError(e));}
 }
 
 // ========== APPROVE/REJECT USERS (Admin) ==========
