@@ -67,6 +67,12 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 .topbar-search i{color:var(--text-muted);font-size:16px}
 .topbar-search span{flex:1;font-size:13px;color:var(--text-muted);white-space:nowrap;overflow:hidden}
 .topbar-search kbd{font-size:10px;padding:2px 7px;border-radius:5px;border:1px solid var(--border);color:var(--text-muted);font-family:monospace;background:var(--card);flex-shrink:0}
+
+/* PASSWORD TOGGLE */
+.pw-wrap{position:relative}
+.pw-wrap .form-input{padding-right:38px}
+.pw-toggle{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;padding:2px;display:flex;align-items:center;transition:color .15s}
+.pw-toggle:hover{color:var(--amber)}
 .topbar-title{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:600;color:var(--text)}
 .menu-toggle{display:none;background:none;border:none;font-size:22px;color:var(--text);cursor:pointer}
 .topbar-right{display:flex;align-items:center;gap:10px}
@@ -365,14 +371,14 @@ tbody tr:hover{background:var(--hover-row)}
         </div>
         <div id="authLogin">
           <div class="form-group" style="text-align:left"><label class="form-label">E-mail</label><input type="email" class="form-input" id="loginEmail" placeholder="seu@email.com" autocomplete="username"></div>
-          <div class="form-group" style="text-align:left"><label class="form-label">Senha</label><input type="password" class="form-input" id="loginPassword" placeholder="••••••••" autocomplete="current-password"></div>
+          <div class="form-group" style="text-align:left"><label class="form-label">Senha</label><div class="pw-wrap"><input type="password" class="form-input" id="loginPassword" placeholder="••••••••" autocomplete="current-password"><button type="button" class="pw-toggle" onclick="togglePw(this)" tabindex="-1"><i class="ti ti-eye"></i></button></div></div>
           <button class="btn btn-primary" style="width:100%;justify-content:center;padding:11px" onclick="doLogin()"><i class="ti ti-login"></i> Entrar</button>
           <p style="font-size:12px;color:var(--text-muted);margin-top:12px;cursor:pointer" onclick="resetPassword()">Esqueceu a senha?</p>
         </div>
         <div id="authRegister" style="display:none">
           <div class="form-group" style="text-align:left"><label class="form-label">Nome completo</label><input type="text" class="form-input" id="regNome" maxlength="100" placeholder="Seu nome"></div>
           <div class="form-group" style="text-align:left"><label class="form-label">E-mail</label><input type="email" class="form-input" id="regEmail" placeholder="seu@email.com" autocomplete="off"></div>
-          <div class="form-group" style="text-align:left"><label class="form-label">Senha (mín. 6 caracteres)</label><input type="password" class="form-input" id="regPassword" placeholder="••••••••" autocomplete="new-password"></div>
+          <div class="form-group" style="text-align:left"><label class="form-label">Senha (mín. 6 caracteres)</label><div class="pw-wrap"><input type="password" class="form-input" id="regPassword" placeholder="••••••••" autocomplete="new-password"><button type="button" class="pw-toggle" onclick="togglePw(this)" tabindex="-1"><i class="ti ti-eye"></i></button></div></div>
           <div class="auth-divider">Vincular a um colégio</div>
           <div class="form-group" style="text-align:left"><label class="form-label">Código do colégio (se já existir)</label><input type="text" class="form-input" id="regColegioCode" maxlength="30" placeholder="Deixe vazio para criar novo" autocomplete="off"></div>
           <div><div class="form-group" style="text-align:left"><label class="form-label">Nome do novo colégio</label><input type="text" class="form-input" id="regColegioNome" maxlength="120" placeholder="Ex: Colégio Nova Geração"></div></div>
@@ -385,7 +391,7 @@ tbody tr:hover{background:var(--hover-row)}
           </div>
           <div class="form-group" style="text-align:left"><label class="form-label">Seu nome</label><input type="text" class="form-input" id="respNome" maxlength="100" placeholder="Nome do responsável"></div>
           <div class="form-group" style="text-align:left"><label class="form-label">E-mail</label><input type="email" class="form-input" id="respEmail" placeholder="seu@email.com" autocomplete="off"></div>
-          <div class="form-group" style="text-align:left"><label class="form-label">Senha (mín. 6 caracteres)</label><input type="password" class="form-input" id="respPassword" placeholder="••••••••" autocomplete="new-password"></div>
+          <div class="form-group" style="text-align:left"><label class="form-label">Senha (mín. 6 caracteres)</label><div class="pw-wrap"><input type="password" class="form-input" id="respPassword" placeholder="••••••••" autocomplete="new-password"><button type="button" class="pw-toggle" onclick="togglePw(this)" tabindex="-1"><i class="ti ti-eye"></i></button></div></div>
           <div class="form-group" style="text-align:left"><label class="form-label">Código de acesso do aluno *</label><input type="text" class="form-input" id="respCodigo" maxlength="10" placeholder="Ex: PAIAB12CD" autocomplete="off" style="font-size:16px;letter-spacing:1px;text-transform:uppercase"></div>
           <button class="btn btn-primary" style="width:100%;justify-content:center;padding:11px" onclick="doRegisterResponsavel()"><i class="ti ti-user-heart"></i> Criar conta de responsável</button>
         </div>
@@ -1529,7 +1535,7 @@ tbody tr:hover{background:var(--hover-row)}
       <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">Esta ação é irreversível. Para continuar, confirme sua senha:</p>
       <div class="form-group" style="text-align:left">
         <label class="form-label">Senha atual</label>
-        <input type="password" class="form-input" id="reauthPassword" placeholder="••••••••" autocomplete="current-password">
+        <div class="pw-wrap"><input type="password" class="form-input" id="reauthPassword" placeholder="••••••••" autocomplete="current-password"><button type="button" class="pw-toggle" onclick="togglePw(this)" tabindex="-1"><i class="ti ti-eye"></i></button></div>
       </div>
       <p id="reauthError" style="color:var(--danger);font-size:12px;display:none;margin-bottom:10px"></p>
     </div>
@@ -1964,6 +1970,19 @@ function showFieldError(el,msg){
 }
 function clearFieldError(el){el.style.borderColor='';const e=el.parentNode.querySelector('.field-error');if(e)e.remove();}
 function clearAllFieldErrors(){document.querySelectorAll('.field-error').forEach(e=>e.remove());document.querySelectorAll('.form-input,.form-select').forEach(e=>e.style.borderColor='');}
+
+// ========== PASSWORD TOGGLE ==========
+function togglePw(btn){
+  const input=btn.parentElement.querySelector('input');
+  const icon=btn.querySelector('i');
+  if(input.type==='password'){
+    input.type='text';
+    icon.className='ti ti-eye-off';
+  }else{
+    input.type='password';
+    icon.className='ti ti-eye';
+  }
+}
 
 // ========== DOUBLE-SUBMIT PROTECTION ==========
 const _guards=new Set();
