@@ -301,6 +301,7 @@ tbody tr:hover{background:var(--hover-row)}
         <div class="nav-item" data-page="fluxo" onclick="navigate('fluxo')"><i class="ti ti-chart-arrows-vertical"></i> Fluxo de Caixa</div>
         <div class="nav-item" data-page="bolsas" onclick="navigate('bolsas')"><i class="ti ti-discount-2"></i> Descontos e Bolsas</div>
         <div class="nav-item" data-page="relatorios" onclick="navigate('relatorios')"><i class="ti ti-report-analytics"></i> Relatórios</div>
+        <div class="nav-item" data-page="conciliacao" onclick="navigate('conciliacao')"><i class="ti ti-arrows-exchange"></i> Conciliação Bancária</div>
       </div>
     </div>
     <div class="nav-section">
@@ -931,6 +932,115 @@ tbody tr:hover{background:var(--hover-row)}
     </div>
   </div>
 
+  <!-- CONCILIAÇÃO BANCÁRIA -->
+  <div class="page" id="page-conciliacao">
+    <div class="content">
+      <div class="kpi-grid">
+        <div class="kpi-card"><div class="kpi-icon" style="background:var(--info-bg);color:var(--info)"><i class="ti ti-file-import"></i></div><div class="kpi-info"><div class="kpi-label">Lançamentos Importados</div><div class="kpi-value" id="kpiConcImportados">0</div></div></div>
+        <div class="kpi-card"><div class="kpi-icon" style="background:var(--success-bg);color:var(--success)"><i class="ti ti-check"></i></div><div class="kpi-info"><div class="kpi-label">Conciliados</div><div class="kpi-value" id="kpiConcConciliados">0</div></div></div>
+        <div class="kpi-card"><div class="kpi-icon" style="background:var(--warning-bg);color:var(--warning)"><i class="ti ti-clock"></i></div><div class="kpi-info"><div class="kpi-label">Pendentes</div><div class="kpi-value" id="kpiConcPendentes">0</div></div></div>
+        <div class="kpi-card"><div class="kpi-icon" style="background:var(--purple-bg);color:var(--purple)"><i class="ti ti-wallet"></i></div><div class="kpi-info"><div class="kpi-label">Saldo Extrato</div><div class="kpi-value" id="kpiConcSaldo">R$ 0,00</div></div></div>
+      </div>
+
+      <!-- Importação -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><i class="ti ti-file-import"></i> Importar Extrato Bancário</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <select class="form-select" style="width:180px" id="concContaBanco">
+              <option value="">Selecione a conta</option>
+            </select>
+            <button class="btn btn-primary" onclick="openModal('modalContaBanco')"><i class="ti ti-plus"></i> Nova Conta</button>
+          </div>
+        </div>
+        <div id="concImportArea" style="border:2px dashed var(--border);border-radius:12px;padding:32px;text-align:center;transition:all .2s;cursor:pointer" onclick="document.getElementById('concFileInput').click()" ondragover="event.preventDefault();this.style.borderColor='var(--amber)';this.style.background='var(--warning-bg)'" ondragleave="this.style.borderColor='var(--border)';this.style.background=''" ondrop="event.preventDefault();this.style.borderColor='var(--border)';this.style.background='';handleConcFile(event.dataTransfer.files[0])">
+          <input type="file" id="concFileInput" accept=".ofx,.csv,.txt" style="display:none" onchange="handleConcFile(this.files[0])">
+          <i class="ti ti-cloud-upload" style="font-size:48px;color:var(--text-muted)"></i>
+          <p style="font-size:14px;color:var(--text);margin-top:12px;font-weight:500">Arraste o arquivo ou clique para selecionar</p>
+          <p style="font-size:12px;color:var(--text-muted);margin-top:4px">Formatos aceitos: OFX, CSV (separado por <code>;</code>)</p>
+          <p style="font-size:11px;color:var(--text-muted);margin-top:4px">CSV esperado: Data;Descrição;Valor (positivo = crédito, negativo = débito)</p>
+        </div>
+        <div id="concImportPreview" style="display:none;margin-top:16px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <div style="font-size:13px;color:var(--text-secondary)"><i class="ti ti-file-check"></i> <span id="concFileName"></span> — <span id="concPreviewCount">0</span> lançamentos encontrados</div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-ghost" onclick="cancelConcImport()"><i class="ti ti-x"></i> Cancelar</button>
+              <button class="btn btn-primary" onclick="confirmarImportacao()"><i class="ti ti-check"></i> Confirmar Importação</button>
+            </div>
+          </div>
+          <div class="table-container" style="max-height:250px;overflow-y:auto">
+            <table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th style="text-align:right">Valor</th></tr></thead>
+            <tbody id="tbConcPreview"></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabs: Conciliar / Conciliados / Relatórios -->
+      <div class="card">
+        <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:16px">
+          <button class="btn btn-ghost concTab active" onclick="switchConcTab(this,'pendentes')" style="border-radius:8px 8px 0 0;border-bottom:2px solid var(--amber);margin-bottom:-2px"><i class="ti ti-clock"></i> Pendentes</button>
+          <button class="btn btn-ghost concTab" onclick="switchConcTab(this,'conciliados')" style="border-radius:8px 8px 0 0;margin-bottom:-2px"><i class="ti ti-check"></i> Conciliados</button>
+          <button class="btn btn-ghost concTab" onclick="switchConcTab(this,'relConc')" style="border-radius:8px 8px 0 0;margin-bottom:-2px"><i class="ti ti-report-analytics"></i> Relatórios</button>
+        </div>
+
+        <!-- Tab Pendentes -->
+        <div id="concTabPendentes">
+          <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+            <div class="search-box" style="flex:1;min-width:200px"><i class="ti ti-search"></i><input type="text" id="searchConc" placeholder="Buscar lançamento..." oninput="renderConcPendentes()"></div>
+            <select class="form-select" style="width:140px" id="filterConcTipo" onchange="renderConcPendentes()">
+              <option value="">Todos</option>
+              <option value="credito">Créditos</option>
+              <option value="debito">Débitos</option>
+            </select>
+            <button class="btn btn-amber" onclick="conciliarAuto()" title="Tenta vincular automaticamente com mensalidades/contas"><i class="ti ti-wand"></i> Conciliar Auto</button>
+          </div>
+          <div class="table-container">
+            <table><thead><tr><th><input type="checkbox" id="checkAllConc" onchange="toggleAllConc(this.checked)" style="accent-color:var(--amber)"></th><th>Data</th><th>Descrição</th><th>Tipo</th><th style="text-align:right">Valor</th><th>Vincular</th><th>Ações</th></tr></thead>
+            <tbody id="tbConcPendentes"><tr><td colspan="7"><div class="empty-state"><i class="ti ti-arrows-exchange"></i><p>Nenhum lançamento pendente</p><p style="font-size:12px;color:var(--text-muted)">Importe um extrato acima</p></div></td></tr></tbody></table>
+          </div>
+          <div id="concBatchBar" style="display:none;margin-top:12px;padding:12px 16px;background:var(--info-bg);border-radius:8px;display:none;align-items:center;gap:12px">
+            <span style="font-size:13px;color:var(--info);font-weight:500"><span id="concBatchCount">0</span> selecionado(s)</span>
+            <button class="btn btn-primary btn-sm" onclick="conciliarLoteSelecionados()"><i class="ti ti-checks"></i> Conciliar Selecionados</button>
+            <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="excluirLoteSelecionados()"><i class="ti ti-trash"></i> Excluir Selecionados</button>
+          </div>
+        </div>
+
+        <!-- Tab Conciliados -->
+        <div id="concTabConciliados" style="display:none">
+          <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+            <div class="search-box" style="flex:1;min-width:200px"><i class="ti ti-search"></i><input type="text" id="searchConcDone" placeholder="Buscar conciliado..." oninput="renderConcConciliados()"></div>
+            <input type="month" class="form-input" style="width:160px" id="filterConcMes" onchange="renderConcConciliados()">
+          </div>
+          <div class="table-container">
+            <table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th style="text-align:right">Valor</th><th>Vinculado a</th><th>Conciliado em</th><th>Ações</th></tr></thead>
+            <tbody id="tbConcDone"><tr><td colspan="7"><div class="empty-state"><i class="ti ti-check"></i><p>Nenhum lançamento conciliado</p></div></td></tr></tbody></table>
+          </div>
+        </div>
+
+        <!-- Tab Relatórios -->
+        <div id="concTabRelConc" style="display:none">
+          <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+            <select class="form-select" style="width:220px" id="relConcTipo" onchange="gerarRelatorioConciliacao()">
+              <option value="">Selecione o relatório</option>
+              <option value="resumo">Resumo do Período</option>
+              <option value="movimentacao">Movimentação Detalhada</option>
+              <option value="categorias">Por Categorias</option>
+              <option value="comparativo">Comparativo Meses</option>
+              <option value="nao_conciliados">Não Conciliados</option>
+            </select>
+            <input type="month" class="form-input" style="width:160px" id="relConcDe" placeholder="De">
+            <input type="month" class="form-input" style="width:160px" id="relConcAte" placeholder="Até">
+            <button class="btn btn-primary" onclick="gerarRelatorioConciliacao()"><i class="ti ti-report-analytics"></i> Gerar</button>
+            <button class="btn btn-ghost" onclick="exportarRelatorioConcCSV()" title="Exportar CSV"><i class="ti ti-download"></i> CSV</button>
+          </div>
+          <div id="relConcContent">
+            <div class="empty-state"><i class="ti ti-report-analytics" style="font-size:48px"></i><p>Selecione um relatório acima</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- FUNIL DE MATRÍCULAS -->
   <div class="page" id="page-funil">
     <div class="content">
@@ -1461,6 +1571,76 @@ tbody tr:hover{background:var(--hover-row)}
   </div>
 </div>
 
+<!-- Modal Nova Conta Bancária -->
+<div class="modal-overlay" id="modalContaBanco">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header"><div class="modal-title">Nova Conta Bancária</div><button class="modal-close" onclick="closeModal('modalContaBanco')"><i class="ti ti-x"></i></button></div>
+    <div class="modal-body">
+      <input type="hidden" id="contaBancoId">
+      <div class="form-group"><label class="form-label">Nome da Conta *</label><input type="text" class="form-input" id="contaBancoNome" maxlength="100" placeholder="Ex: Conta Corrente Itaú"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Banco</label><input type="text" class="form-input" id="contaBancoBanco" maxlength="60" placeholder="Ex: Itaú"></div>
+        <div class="form-group"><label class="form-label">Agência</label><input type="text" class="form-input" id="contaBancoAgencia" maxlength="20" placeholder="0001"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Conta</label><input type="text" class="form-input" id="contaBancoConta" maxlength="20" placeholder="12345-6"></div>
+        <div class="form-group"><label class="form-label">Tipo</label>
+          <select class="form-select" id="contaBancoTipo"><option value="corrente">Conta Corrente</option><option value="poupanca">Poupança</option><option value="pagamento">Conta Pagamento</option></select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('modalContaBanco')">Cancelar</button><button class="btn btn-primary" onclick="withGuard('saveContaBanco',()=>salvarContaBanco(),this)"><i class="ti ti-device-floppy"></i> Salvar</button></div>
+  </div>
+</div>
+
+<!-- Modal Vincular Lançamento -->
+<div class="modal-overlay" id="modalVincular">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-header"><div class="modal-title">Vincular Lançamento</div><button class="modal-close" onclick="closeModal('modalVincular')"><i class="ti ti-x"></i></button></div>
+    <div class="modal-body">
+      <input type="hidden" id="vincConcId">
+      <div style="background:var(--bg);border-radius:8px;padding:12px;margin-bottom:16px;font-size:13px">
+        <div style="display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Lançamento:</span><strong id="vincConcDesc">—</strong></div>
+        <div style="display:flex;justify-content:space-between;margin-top:4px"><span style="color:var(--text-secondary)">Valor:</span><strong id="vincConcValor" style="color:var(--amber)">R$ 0,00</strong></div>
+        <div style="display:flex;justify-content:space-between;margin-top:4px"><span style="color:var(--text-secondary)">Data:</span><span id="vincConcData">—</span></div>
+      </div>
+      <div class="form-group"><label class="form-label">Vincular com</label>
+        <select class="form-select" id="vincTipo" onchange="carregarOpcoesVinculo()">
+          <option value="">Selecione o tipo</option>
+          <option value="mensalidade">Mensalidade</option>
+          <option value="conta">Conta a Pagar</option>
+          <option value="manual">Categoria Manual</option>
+        </select>
+      </div>
+      <div id="vincOpcoesContainer" style="display:none">
+        <div class="form-group"><label class="form-label">Selecionar</label>
+          <select class="form-select" id="vincOpcao"></select>
+        </div>
+      </div>
+      <div id="vincManualContainer" style="display:none">
+        <div class="form-group"><label class="form-label">Categoria</label>
+          <select class="form-select" id="vincCategoria">
+            <option value="taxa_matricula">Taxa de Matrícula</option>
+            <option value="material">Material Didático</option>
+            <option value="uniforme">Uniforme</option>
+            <option value="evento">Evento / Excursão</option>
+            <option value="manutencao">Manutenção</option>
+            <option value="aluguel">Aluguel</option>
+            <option value="salarios">Salários</option>
+            <option value="utilidades">Água/Luz/Internet</option>
+            <option value="impostos">Impostos/Taxas</option>
+            <option value="tarifa_bancaria">Tarifa Bancária</option>
+            <option value="transferencia">Transferência entre Contas</option>
+            <option value="outros">Outros</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Observação</label><input type="text" class="form-input" id="vincObs" maxlength="200" placeholder="Detalhe opcional"></div>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('modalVincular')">Cancelar</button><button class="btn btn-primary" onclick="withGuard('vincConc',()=>confirmarVinculo(),this)"><i class="ti ti-link"></i> Vincular e Conciliar</button></div>
+  </div>
+</div>
+
 <!-- Modal Evento Calendário -->
 <div class="modal-overlay" id="modalEvento">
   <div class="modal" style="max-width:480px">
@@ -1629,8 +1809,8 @@ const db = firebase.firestore();
 
 // ========== STATE ==========
 let currentUser = null, currentUserData = null, colegioId = null, isRegistering = false;
-let DATA = {alunos:[],professores:[],turmas:[],diarios:{},notas:{},mensalidades:[],leads:[],comunicados:[],contas:[],bolsas:[],calendario:[],grades:{},config:{},activity:[]};
-const DATA_COLLECTIONS = ['alunos','professores','turmas','mensalidades','leads','comunicados','contas','bolsas','calendario'];
+let DATA = {alunos:[],professores:[],turmas:[],diarios:{},notas:{},mensalidades:[],leads:[],comunicados:[],contas:[],bolsas:[],calendario:[],grades:{},config:{},activity:[],conciliacao:[],contasBanco:[]};
+const DATA_COLLECTIONS = ['alunos','professores','turmas','mensalidades','leads','comunicados','contas','bolsas','calendario','conciliacao','contasBanco'];
 const DATA_MAPS = ['diarios','notas','grades'];
 const DEFAULT_DISCIPLINAS = ['Português','Matemática','História','Geografia','Ciências','Inglês','Ed. Física','Artes'];
 
@@ -2256,6 +2436,7 @@ const CMD_MODULES=[
   {id:'fluxo',label:'Fluxo de Caixa',icon:'ti-chart-arrows-vertical',group:'Navegação'},
   {id:'bolsas',label:'Descontos e Bolsas',icon:'ti-discount-2',group:'Navegação'},
   {id:'relatorios',label:'Relatórios Financeiros',icon:'ti-report-analytics',group:'Navegação'},
+  {id:'conciliacao',label:'Conciliação Bancária',icon:'ti-arrows-exchange',group:'Navegação'},
   {id:'funil',label:'Funil de Matrículas',icon:'ti-filter',group:'Navegação'},
   {id:'comunicados',label:'Comunicados',icon:'ti-message-circle',group:'Navegação'},
   {id:'config',label:'Configurações',icon:'ti-settings',group:'Navegação'},
@@ -2599,7 +2780,7 @@ function showCommSkeleton(containerId,count){
 }
 
 // ========== NAVIGATION (padrão CondoGest) ==========
-const PAGE_TITLES={dashboard:'Dashboard',alunos:'Alunos',professores:'Professores',turmas:'Turmas e Séries',diario:'Diário de Classe',notas:'Notas e Médias',boletim:'Boletim Escolar',calendario:'Calendário Escolar',grade:'Grade Horária',documentos:'Documentos',mensalidades:'Mensalidades',contas:'Contas a Pagar',fluxo:'Fluxo de Caixa',bolsas:'Descontos e Bolsas',relatorios:'Relatórios Financeiros',funil:'Funil de Matrículas',comunicados:'Comunicados',config:'Configurações',usuarios:'Usuários'};
+const PAGE_TITLES={dashboard:'Dashboard',alunos:'Alunos',professores:'Professores',turmas:'Turmas e Séries',diario:'Diário de Classe',notas:'Notas e Médias',boletim:'Boletim Escolar',calendario:'Calendário Escolar',grade:'Grade Horária',documentos:'Documentos',mensalidades:'Mensalidades',contas:'Contas a Pagar',fluxo:'Fluxo de Caixa',bolsas:'Descontos e Bolsas',relatorios:'Relatórios Financeiros',conciliacao:'Conciliação Bancária',funil:'Funil de Matrículas',comunicados:'Comunicados',config:'Configurações',usuarios:'Usuários'};
 function navigate(page){
   document.querySelectorAll('.page:not(#page-auth)').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
@@ -2632,6 +2813,7 @@ function navigate(page){
   if(page==='fluxo')renderFluxo();
   if(page==='bolsas'){showTableSkeleton('tbBolsas',7);setTimeout(()=>renderBolsas(),80);}
   if(page==='relatorios')document.getElementById('relatorioTipo').value='';
+  if(page==='conciliacao'){populateContasBancoSelect();renderConcKPIs();renderConcPendentes();renderConcConciliados();}
   if(page==='funil')renderFunil();
   if(page==='comunicados'){showCommSkeleton('comunicadosList',3);setTimeout(()=>renderComunicados(),80);}
   if(page==='config'){loadConfig();applyPermissions();}
@@ -2770,7 +2952,7 @@ async function limparTodosDados(){
   if(!confirm('ATENÇÃO: Isso apagará TODOS os dados do sistema.\n\nEsta ação é IRREVERSÍVEL.\n\nDeseja continuar?'))return;
   requireReauth(async function(){
     showLoading('Limpando dados...');
-    DATA={alunos:[],professores:[],turmas:[],diarios:{},notas:{},grades:{},mensalidades:[],leads:[],comunicados:[],contas:[],bolsas:[],calendario:[],config:{disciplinas:DEFAULT_DISCIPLINAS},activity:[],security_log:[]};
+    DATA={alunos:[],professores:[],turmas:[],diarios:{},notas:{},grades:{},mensalidades:[],leads:[],comunicados:[],contas:[],bolsas:[],calendario:[],config:{disciplinas:DEFAULT_DISCIPLINAS},activity:[],security_log:[],conciliacao:[],contasBanco:[]};
     await saveData();loadConfig();hideLoading();navigate('dashboard');
     logSecurity('login_ok',currentUser?.email,'Todos os dados foram apagados');
     showToast('Todos os dados foram apagados','ti-trash');
@@ -2884,6 +3066,7 @@ const ALL_MODULES=[
   {id:'fluxo',label:'Fluxo de Caixa',icon:'ti-chart-arrows-vertical',group:'Financeiro'},
   {id:'bolsas',label:'Descontos e Bolsas',icon:'ti-discount-2',group:'Financeiro'},
   {id:'relatorios',label:'Relatórios',icon:'ti-report-analytics',group:'Financeiro'},
+  {id:'conciliacao',label:'Conciliação Bancária',icon:'ti-arrows-exchange',group:'Financeiro'},
   {id:'funil',label:'Funil de Matrículas',icon:'ti-filter',group:'Captação'},
   {id:'comunicados',label:'Comunicados',icon:'ti-message-circle',group:'Comunicação'},
 ];
@@ -3503,6 +3686,416 @@ function gerarRelatorio(){
   cont.innerHTML=html;
 }
 
+// ========== CONCILIAÇÃO BANCÁRIA ==========
+let concImportBuffer=[];
+const CONC_CATEGORIAS={taxa_matricula:'Taxa de Matrícula',material:'Material Didático',uniforme:'Uniforme',evento:'Evento/Excursão',manutencao:'Manutenção',aluguel:'Aluguel',salarios:'Salários',utilidades:'Água/Luz/Internet',impostos:'Impostos/Taxas',tarifa_bancaria:'Tarifa Bancária',transferencia:'Transferência entre Contas',mensalidade:'Mensalidade',conta_pagar:'Conta a Pagar',outros:'Outros'};
+
+function populateContasBancoSelect(){
+  const sel=document.getElementById('concContaBanco');
+  sel.innerHTML='<option value="">Selecione a conta</option>'+DATA.contasBanco.map(c=>`<option value="${c.id}">${esc(c.nome)} ${c.banco?'('+esc(c.banco)+')':''}</option>`).join('');
+}
+
+async function salvarContaBanco(){
+  const id=document.getElementById('contaBancoId').value;
+  const conta={id:id||genId(),nome:document.getElementById('contaBancoNome').value.trim(),banco:document.getElementById('contaBancoBanco').value.trim(),agencia:document.getElementById('contaBancoAgencia').value.trim(),conta:document.getElementById('contaBancoConta').value.trim(),tipo:document.getElementById('contaBancoTipo').value};
+  if(!conta.nome){alert('Informe o nome da conta');return;}
+  if(id){const idx=DATA.contasBanco.findIndex(c=>c.id===id);DATA.contasBanco[idx]=conta;}else DATA.contasBanco.push(conta);
+  await saveCollection('contasBanco');logActivity(`Conta bancária ${id?'atualizada':'criada'}: ${conta.nome}`);
+  closeModal('modalContaBanco');['contaBancoId','contaBancoNome','contaBancoBanco','contaBancoAgencia','contaBancoConta'].forEach(x=>document.getElementById(x).value='');
+  populateContasBancoSelect();showToast('Conta bancária salva!');
+}
+
+// === PARSING OFX ===
+function parseOFX(text){
+  const items=[];const txns=text.split('<STMTTRN>').slice(1);
+  txns.forEach(txn=>{
+    const get=(tag)=>{const m=txn.match(new RegExp('<'+tag+'>([^<\\r\\n]+)'));return m?m[1].trim():'';};
+    const tipo=get('TRNTYPE');const dt=get('DTPOSTED');const val=parseFloat(get('TRNAMT').replace(',','.'));const desc=get('MEMO')||get('NAME')||'Sem descrição';
+    if(!dt||isNaN(val))return;
+    const data=dt.length>=8?`${dt.substring(0,4)}-${dt.substring(4,6)}-${dt.substring(6,8)}`:'';
+    items.push({data,descricao:desc.substring(0,200),valor:Math.abs(val),tipo:val>=0?'credito':'debito',valorOriginal:val});
+  });
+  return items;
+}
+
+// === PARSING CSV ===
+function parseCSV(text){
+  const items=[];const lines=text.split(/\r?\n/).filter(l=>l.trim());
+  // Skip header if first line contains non-numeric data in date column
+  let start=0;
+  const first=lines[0]?.split(';');
+  if(first&&first.length>=3&&isNaN(Date.parse(first[0]?.replace(/(\d{2})\/(\d{2})\/(\d{4})/,'$3-$2-$1'))))start=1;
+  for(let i=start;i<lines.length;i++){
+    const cols=lines[i].split(';');if(cols.length<3)continue;
+    let dataStr=cols[0].trim();const desc=cols[1]?.trim()||'Sem descrição';let val=parseFloat((cols[2]||'0').replace(/\./g,'').replace(',','.'));
+    if(isNaN(val))continue;
+    // Date format dd/mm/yyyy → yyyy-mm-dd
+    const dm=dataStr.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+    if(dm)dataStr=`${dm[3]}-${dm[2]}-${dm[1]}`;
+    items.push({data:dataStr,descricao:desc.substring(0,200),valor:Math.abs(val),tipo:val>=0?'credito':'debito',valorOriginal:val});
+  }
+  return items;
+}
+
+function handleConcFile(file){
+  if(!file)return;
+  const contaId=document.getElementById('concContaBanco').value;
+  if(!contaId){showToast('Selecione uma conta bancária primeiro','ti-alert-triangle');return;}
+  const ext=file.name.split('.').pop().toLowerCase();
+  const reader=new FileReader();
+  reader.onload=function(e){
+    const text=e.target.result;
+    let items=[];
+    if(ext==='ofx')items=parseOFX(text);
+    else if(ext==='csv'||ext==='txt')items=parseCSV(text);
+    else{showToast('Formato não suportado. Use OFX ou CSV.','ti-alert-triangle');return;}
+    if(!items.length){showToast('Nenhum lançamento encontrado no arquivo','ti-alert-triangle');return;}
+    // Check for duplicates
+    const existingKeys=new Set(DATA.conciliacao.map(c=>c.data+'|'+c.descricao+'|'+c.valor+'|'+c.tipo));
+    items=items.filter(it=>!existingKeys.has(it.data+'|'+it.descricao+'|'+it.valor+'|'+it.tipo));
+    if(!items.length){showToast('Todos os lançamentos já foram importados anteriormente','ti-info-circle');return;}
+    concImportBuffer=items.map(it=>({...it,contaBancoId:contaId}));
+    document.getElementById('concFileName').textContent=esc(file.name);
+    document.getElementById('concPreviewCount').textContent=items.length;
+    const tb=document.getElementById('tbConcPreview');
+    tb.innerHTML=items.map(it=>`<tr><td>${formatDate(it.data)}</td><td style="font-size:12px">${esc(it.descricao)}</td><td><span class="status-badge" style="background:${it.tipo==='credito'?'var(--success-bg)':'var(--danger-bg)'};color:${it.tipo==='credito'?'var(--success)':'var(--danger)'}"><i class="ti ti-arrow-${it.tipo==='credito'?'up':'down'}"></i> ${it.tipo==='credito'?'Crédito':'Débito'}</span></td><td style="text-align:right;font-weight:600;color:${it.tipo==='credito'?'var(--success)':'var(--danger)'}">R$ ${it.valor.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td></tr>`).join('');
+    document.getElementById('concImportArea').style.display='none';
+    document.getElementById('concImportPreview').style.display='block';
+  };
+  reader.readAsText(file,'UTF-8');
+}
+
+function cancelConcImport(){
+  concImportBuffer=[];
+  document.getElementById('concImportArea').style.display='';
+  document.getElementById('concImportPreview').style.display='none';
+  document.getElementById('concFileInput').value='';
+}
+
+async function confirmarImportacao(){
+  if(!concImportBuffer.length)return;
+  const count=concImportBuffer.length;
+  concImportBuffer.forEach(it=>{
+    DATA.conciliacao.push({id:genId(),data:it.data,descricao:it.descricao,valor:it.valor,tipo:it.tipo,contaBancoId:it.contaBancoId,status:'pendente',vinculo:null,categoria:null,obs:null,conciliadoEm:null,importadoEm:new Date().toISOString()});
+  });
+  await saveCollection('conciliacao');
+  logActivity(`${count} lançamentos bancários importados`);
+  cancelConcImport();renderConcKPIs();renderConcPendentes();
+  showToast(`${count} lançamentos importados!`,'ti-check');
+}
+
+// === KPIs ===
+function renderConcKPIs(){
+  const all=DATA.conciliacao;
+  const importados=all.length;
+  const conciliados=all.filter(c=>c.status==='conciliado').length;
+  const pendentes=all.filter(c=>c.status==='pendente').length;
+  const saldo=all.reduce((s,c)=>s+(c.tipo==='credito'?c.valor:-c.valor),0);
+  document.getElementById('kpiConcImportados').textContent=importados;
+  document.getElementById('kpiConcConciliados').textContent=conciliados;
+  document.getElementById('kpiConcPendentes').textContent=pendentes;
+  const sEl=document.getElementById('kpiConcSaldo');
+  sEl.textContent='R$ '+saldo.toLocaleString('pt-BR',{minimumFractionDigits:2});
+  sEl.style.color=saldo>=0?'var(--success)':'var(--danger)';
+}
+
+// === TABS ===
+function switchConcTab(btn,tab){
+  document.querySelectorAll('.concTab').forEach(b=>{b.classList.remove('active');b.style.borderBottom='2px solid transparent';});
+  btn.classList.add('active');btn.style.borderBottom='2px solid var(--amber)';
+  ['Pendentes','Conciliados','RelConc'].forEach(t=>{
+    const el=document.getElementById('concTab'+t);
+    if(el)el.style.display=t.toLowerCase()===tab.toLowerCase()?'block':'none';
+  });
+  if(tab==='pendentes')renderConcPendentes();
+  if(tab==='conciliados')renderConcConciliados();
+}
+
+// === RENDER PENDENTES ===
+function renderConcPendentes(){
+  const search=(document.getElementById('searchConc')?.value||'').toLowerCase();
+  const tipoF=document.getElementById('filterConcTipo')?.value||'';
+  let list=DATA.conciliacao.filter(c=>c.status==='pendente');
+  if(search)list=list.filter(c=>c.descricao.toLowerCase().includes(search)||c.data.includes(search));
+  if(tipoF)list=list.filter(c=>c.tipo===tipoF);
+  list.sort((a,b)=>b.data.localeCompare(a.data));
+  const tb=document.getElementById('tbConcPendentes');
+  if(!list.length){tb.innerHTML='<tr><td colspan="7"><div class="empty-state"><i class="ti ti-arrows-exchange"></i><p>Nenhum lançamento pendente</p><p style="font-size:12px;color:var(--text-muted)">Importe um extrato acima</p></div></td></tr>';updateConcBatchBar();return;}
+  tb.innerHTML=list.map(c=>{
+    const contaNome=DATA.contasBanco.find(cb=>cb.id===c.contaBancoId)?.nome||'';
+    return`<tr>
+    <td><input type="checkbox" class="concCheck" value="${c.id}" onchange="updateConcBatchBar()" style="accent-color:var(--amber)"></td>
+    <td>${formatDate(c.data)}</td>
+    <td style="font-size:12px">${esc(c.descricao)}<br><span style="font-size:10px;color:var(--text-muted)">${esc(contaNome)}</span></td>
+    <td><span class="status-badge" style="background:${c.tipo==='credito'?'var(--success-bg)':'var(--danger-bg)'};color:${c.tipo==='credito'?'var(--success)':'var(--danger)'}"><i class="ti ti-arrow-${c.tipo==='credito'?'up':'down'}"></i> ${c.tipo==='credito'?'Crédito':'Débito'}</span></td>
+    <td style="text-align:right;font-weight:600;color:${c.tipo==='credito'?'var(--success)':'var(--danger)'}">R$ ${c.valor.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
+    <td><button class="btn btn-ghost btn-sm" onclick="abrirVinculo('${c.id}')"><i class="ti ti-link"></i> Vincular</button></td>
+    <td><button class="btn-icon" title="Excluir" onclick="excluirLancamento('${c.id}')"><i class="ti ti-trash"></i></button></td>
+  </tr>`;}).join('');
+  updateConcBatchBar();
+}
+
+function toggleAllConc(checked){
+  document.querySelectorAll('.concCheck').forEach(c=>c.checked=checked);updateConcBatchBar();
+}
+function updateConcBatchBar(){
+  const checked=document.querySelectorAll('.concCheck:checked');
+  const bar=document.getElementById('concBatchBar');
+  if(checked.length>0){bar.style.display='flex';document.getElementById('concBatchCount').textContent=checked.length;}
+  else{bar.style.display='none';}
+}
+
+async function excluirLancamento(id){
+  if(!confirm('Excluir este lançamento?'))return;
+  DATA.conciliacao=DATA.conciliacao.filter(c=>c.id!==id);
+  await saveCollection('conciliacao');renderConcKPIs();renderConcPendentes();showToast('Lançamento excluído','ti-trash');
+}
+async function excluirLoteSelecionados(){
+  const ids=[...document.querySelectorAll('.concCheck:checked')].map(c=>c.value);
+  if(!ids.length)return;if(!confirm(`Excluir ${ids.length} lançamento(s)?`))return;
+  DATA.conciliacao=DATA.conciliacao.filter(c=>!ids.includes(c.id));
+  await saveCollection('conciliacao');renderConcKPIs();renderConcPendentes();showToast(`${ids.length} lançamentos excluídos`,'ti-trash');
+}
+
+// === VINCULAR ===
+function abrirVinculo(id){
+  const c=DATA.conciliacao.find(x=>x.id===id);if(!c)return;
+  document.getElementById('vincConcId').value=c.id;
+  document.getElementById('vincConcDesc').textContent=c.descricao;
+  document.getElementById('vincConcValor').textContent='R$ '+c.valor.toLocaleString('pt-BR',{minimumFractionDigits:2});
+  document.getElementById('vincConcValor').style.color=c.tipo==='credito'?'var(--success)':'var(--danger)';
+  document.getElementById('vincConcData').textContent=formatDate(c.data);
+  document.getElementById('vincTipo').value='';
+  document.getElementById('vincOpcoesContainer').style.display='none';
+  document.getElementById('vincManualContainer').style.display='none';
+  openModal('modalVincular');
+}
+
+function carregarOpcoesVinculo(){
+  const tipo=document.getElementById('vincTipo').value;
+  const concId=document.getElementById('vincConcId').value;
+  const conc=DATA.conciliacao.find(c=>c.id===concId);
+  document.getElementById('vincOpcoesContainer').style.display=tipo==='mensalidade'||tipo==='conta'?'block':'none';
+  document.getElementById('vincManualContainer').style.display=tipo==='manual'?'block':'none';
+  const sel=document.getElementById('vincOpcao');
+  if(tipo==='mensalidade'){
+    const pend=DATA.mensalidades.filter(m=>m.status!=='pago');
+    sel.innerHTML='<option value="">Selecione</option>'+pend.map(m=>{
+      const al=DATA.alunos.find(a=>a.id===m.alunoId);
+      return`<option value="${m.id}">${esc(al?.nome||'—')} — ${esc(m.referencia)} — R$ ${m.valor.toFixed(2)}</option>`;
+    }).join('');
+  }else if(tipo==='conta'){
+    const pend=DATA.contas.filter(c=>c.status!=='pago');
+    sel.innerHTML='<option value="">Selecione</option>'+pend.map(c=>`<option value="${c.id}">${esc(c.descricao)} — R$ ${c.valor.toFixed(2)}</option>`).join('');
+  }
+}
+
+async function confirmarVinculo(){
+  const concId=document.getElementById('vincConcId').value;
+  const tipo=document.getElementById('vincTipo').value;
+  if(!tipo){alert('Selecione o tipo de vínculo');return;}
+  const conc=DATA.conciliacao.find(c=>c.id===concId);if(!conc)return;
+  if(tipo==='mensalidade'){
+    const mId=document.getElementById('vincOpcao').value;if(!mId){alert('Selecione a mensalidade');return;}
+    const m=DATA.mensalidades.find(x=>x.id===mId);if(m){m.status='pago';m.dataPgto=conc.data;}
+    await saveCollection('mensalidades');
+    conc.vinculo={tipo:'mensalidade',id:mId};conc.categoria='mensalidade';
+  }else if(tipo==='conta'){
+    const cId=document.getElementById('vincOpcao').value;if(!cId){alert('Selecione a conta');return;}
+    const ct=DATA.contas.find(x=>x.id===cId);if(ct){ct.status='pago';ct.dataPgto=conc.data;}
+    await saveCollection('contas');
+    conc.vinculo={tipo:'conta',id:cId};conc.categoria='conta_pagar';
+  }else if(tipo==='manual'){
+    conc.vinculo={tipo:'manual'};conc.categoria=document.getElementById('vincCategoria').value;
+    conc.obs=document.getElementById('vincObs').value.trim();
+  }
+  conc.status='conciliado';conc.conciliadoEm=new Date().toISOString();
+  await saveCollection('conciliacao');
+  logActivity(`Conciliação: ${conc.descricao} (R$ ${conc.valor.toFixed(2)})`);
+  closeModal('modalVincular');renderConcKPIs();renderConcPendentes();renderConcConciliados();
+  showToast('Lançamento conciliado!','ti-check');
+}
+
+// === CONCILIAR AUTO ===
+async function conciliarAuto(){
+  let count=0;
+  const pendentes=DATA.conciliacao.filter(c=>c.status==='pendente');
+  for(const conc of pendentes){
+    // Try matching credits with mensalidades by value
+    if(conc.tipo==='credito'){
+      const m=DATA.mensalidades.find(m=>m.status!=='pago'&&Math.abs(m.valor-conc.valor)<0.01);
+      if(m){m.status='pago';m.dataPgto=conc.data;conc.vinculo={tipo:'mensalidade',id:m.id};conc.categoria='mensalidade';conc.status='conciliado';conc.conciliadoEm=new Date().toISOString();count++;continue;}
+    }
+    // Try matching debits with contas by value
+    if(conc.tipo==='debito'){
+      const ct=DATA.contas.find(c=>c.status!=='pago'&&Math.abs(c.valor-conc.valor)<0.01);
+      if(ct){ct.status='pago';ct.dataPgto=conc.data;conc.vinculo={tipo:'conta',id:ct.id};conc.categoria='conta_pagar';conc.status='conciliado';conc.conciliadoEm=new Date().toISOString();count++;continue;}
+    }
+    // Auto-categorize common descriptions
+    const desc=conc.descricao.toLowerCase();
+    if(desc.includes('tarifa')||desc.includes('tar ')||desc.includes('taxa manut')){
+      conc.vinculo={tipo:'manual'};conc.categoria='tarifa_bancaria';conc.status='conciliado';conc.conciliadoEm=new Date().toISOString();count++;
+    }else if(desc.includes('transferencia')||desc.includes('transf ')||desc.includes('ted ')||desc.includes('pix ')){
+      conc.vinculo={tipo:'manual'};conc.categoria='transferencia';conc.status='conciliado';conc.conciliadoEm=new Date().toISOString();count++;
+    }
+  }
+  if(count){
+    await saveCollection('conciliacao');await saveCollection('mensalidades');await saveCollection('contas');
+    logActivity(`Conciliação automática: ${count} lançamentos`);
+  }
+  renderConcKPIs();renderConcPendentes();renderConcConciliados();
+  showToast(count?`${count} lançamento(s) conciliado(s) automaticamente!`:'Nenhum lançamento pôde ser conciliado automaticamente','ti-wand');
+}
+
+async function conciliarLoteSelecionados(){
+  const ids=[...document.querySelectorAll('.concCheck:checked')].map(c=>c.value);
+  if(!ids.length)return;
+  let count=0;
+  for(const id of ids){
+    const conc=DATA.conciliacao.find(c=>c.id===id);if(!conc||conc.status!=='pendente')continue;
+    // Try auto-match
+    if(conc.tipo==='credito'){
+      const m=DATA.mensalidades.find(m=>m.status!=='pago'&&Math.abs(m.valor-conc.valor)<0.01);
+      if(m){m.status='pago';m.dataPgto=conc.data;conc.vinculo={tipo:'mensalidade',id:m.id};conc.categoria='mensalidade';conc.status='conciliado';conc.conciliadoEm=new Date().toISOString();count++;continue;}
+    }
+    if(conc.tipo==='debito'){
+      const ct=DATA.contas.find(c=>c.status!=='pago'&&Math.abs(c.valor-conc.valor)<0.01);
+      if(ct){ct.status='pago';ct.dataPgto=conc.data;conc.vinculo={tipo:'conta',id:ct.id};conc.categoria='conta_pagar';conc.status='conciliado';conc.conciliadoEm=new Date().toISOString();count++;continue;}
+    }
+    // Mark as "outros" if no match
+    conc.vinculo={tipo:'manual'};conc.categoria='outros';conc.status='conciliado';conc.conciliadoEm=new Date().toISOString();count++;
+  }
+  if(count){await saveCollection('conciliacao');await saveCollection('mensalidades');await saveCollection('contas');logActivity(`Conciliação em lote: ${count}`);}
+  renderConcKPIs();renderConcPendentes();renderConcConciliados();
+  showToast(`${count} conciliado(s) em lote`,'ti-checks');
+}
+
+// === RENDER CONCILIADOS ===
+function renderConcConciliados(){
+  const search=(document.getElementById('searchConcDone')?.value||'').toLowerCase();
+  const mesF=document.getElementById('filterConcMes')?.value||'';
+  let list=DATA.conciliacao.filter(c=>c.status==='conciliado');
+  if(search)list=list.filter(c=>c.descricao.toLowerCase().includes(search));
+  if(mesF)list=list.filter(c=>c.data.startsWith(mesF));
+  list.sort((a,b)=>b.data.localeCompare(a.data));
+  const tb=document.getElementById('tbConcDone');
+  if(!list.length){tb.innerHTML='<tr><td colspan="7"><div class="empty-state"><i class="ti ti-check"></i><p>Nenhum lançamento conciliado</p></div></td></tr>';return;}
+  tb.innerHTML=list.map(c=>{
+    let vincDesc='—';
+    if(c.vinculo?.tipo==='mensalidade'){const m=DATA.mensalidades.find(x=>x.id===c.vinculo.id);const al=DATA.alunos.find(a=>a.id===m?.alunoId);vincDesc=`<i class="ti ti-receipt"></i> ${esc(al?.nome||'—')} (${esc(m?.referencia||'')})`;}
+    else if(c.vinculo?.tipo==='conta'){const ct=DATA.contas.find(x=>x.id===c.vinculo.id);vincDesc=`<i class="ti ti-file-invoice"></i> ${esc(ct?.descricao||'—')}`;}
+    else{vincDesc=`<i class="ti ti-tag"></i> ${CONC_CATEGORIAS[c.categoria]||c.categoria||'—'}`+(c.obs?` <span style="color:var(--text-muted);font-size:11px">(${esc(c.obs)})</span>`:'');}
+    return`<tr>
+    <td>${formatDate(c.data)}</td>
+    <td style="font-size:12px">${esc(c.descricao)}</td>
+    <td><span class="status-badge" style="background:${c.tipo==='credito'?'var(--success-bg)':'var(--danger-bg)'};color:${c.tipo==='credito'?'var(--success)':'var(--danger)'}"><i class="ti ti-arrow-${c.tipo==='credito'?'up':'down'}"></i> ${c.tipo==='credito'?'Crédito':'Débito'}</span></td>
+    <td style="text-align:right;font-weight:600;color:${c.tipo==='credito'?'var(--success)':'var(--danger)'}">R$ ${c.valor.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
+    <td style="font-size:12px">${vincDesc}</td>
+    <td style="font-size:11px;color:var(--text-muted)">${c.conciliadoEm?new Date(c.conciliadoEm).toLocaleDateString('pt-BR'):''}</td>
+    <td><button class="btn-icon" title="Desfazer conciliação" onclick="desfazerConciliacao('${c.id}')"><i class="ti ti-arrow-back-up"></i></button></td>
+  </tr>`;}).join('');
+}
+
+async function desfazerConciliacao(id){
+  if(!confirm('Desfazer a conciliação deste lançamento?'))return;
+  const c=DATA.conciliacao.find(x=>x.id===id);if(!c)return;
+  // Undo linked payment
+  if(c.vinculo?.tipo==='mensalidade'){const m=DATA.mensalidades.find(x=>x.id===c.vinculo.id);if(m){m.status='pendente';m.dataPgto=null;}await saveCollection('mensalidades');}
+  if(c.vinculo?.tipo==='conta'){const ct=DATA.contas.find(x=>x.id===c.vinculo.id);if(ct){ct.status='pendente';ct.dataPgto=null;}await saveCollection('contas');}
+  c.status='pendente';c.vinculo=null;c.categoria=null;c.obs=null;c.conciliadoEm=null;
+  await saveCollection('conciliacao');logActivity(`Conciliação desfeita: ${c.descricao}`);
+  renderConcKPIs();renderConcPendentes();renderConcConciliados();showToast('Conciliação desfeita','ti-arrow-back-up');
+}
+
+// === RELATÓRIOS DA CONCILIAÇÃO ===
+function getConcPeriodo(){
+  const de=document.getElementById('relConcDe').value;const ate=document.getElementById('relConcAte').value;
+  return DATA.conciliacao.filter(c=>{
+    if(de&&c.data<de+'-01')return false;
+    if(ate){const fim=ate+'-31';if(c.data>fim)return false;}
+    return true;
+  });
+}
+
+function gerarRelatorioConciliacao(){
+  const tipo=document.getElementById('relConcTipo').value;
+  const cont=document.getElementById('relConcContent');
+  if(!tipo){cont.innerHTML='<div class="empty-state"><i class="ti ti-report-analytics" style="font-size:48px"></i><p>Selecione um relatório</p></div>';return;}
+  const list=getConcPeriodo();let html='';
+
+  if(tipo==='resumo'){
+    const creditos=list.filter(c=>c.tipo==='credito');const debitos=list.filter(c=>c.tipo==='debito');
+    const totalCred=creditos.reduce((s,c)=>s+c.valor,0);const totalDeb=debitos.reduce((s,c)=>s+c.valor,0);
+    const conciliados=list.filter(c=>c.status==='conciliado').length;const pendentes=list.filter(c=>c.status==='pendente').length;
+    html=`<h3 style="font-size:15px;margin-bottom:16px">Resumo do Período</h3>
+    <div class="kpi-grid" style="margin-bottom:20px">
+      <div class="kpi-card"><div class="kpi-icon" style="background:var(--success-bg);color:var(--success)"><i class="ti ti-arrow-up"></i></div><div class="kpi-info"><div class="kpi-label">Total Créditos</div><div class="kpi-value" style="font-size:18px;color:var(--success)">R$ ${totalCred.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div><div style="font-size:11px;color:var(--text-muted)">${creditos.length} lançamento(s)</div></div></div>
+      <div class="kpi-card"><div class="kpi-icon" style="background:var(--danger-bg);color:var(--danger)"><i class="ti ti-arrow-down"></i></div><div class="kpi-info"><div class="kpi-label">Total Débitos</div><div class="kpi-value" style="font-size:18px;color:var(--danger)">R$ ${totalDeb.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div><div style="font-size:11px;color:var(--text-muted)">${debitos.length} lançamento(s)</div></div></div>
+      <div class="kpi-card"><div class="kpi-icon" style="background:var(--info-bg);color:var(--info)"><i class="ti ti-wallet"></i></div><div class="kpi-info"><div class="kpi-label">Saldo</div><div class="kpi-value" style="font-size:18px;color:${(totalCred-totalDeb)>=0?'var(--success)':'var(--danger)'}">R$ ${(totalCred-totalDeb).toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div></div>
+      <div class="kpi-card"><div class="kpi-icon" style="background:var(--purple-bg);color:var(--purple)"><i class="ti ti-percentage"></i></div><div class="kpi-info"><div class="kpi-label">Taxa de Conciliação</div><div class="kpi-value" style="font-size:18px">${list.length?Math.round(conciliados/list.length*100):0}%</div><div style="font-size:11px;color:var(--text-muted)">${conciliados} de ${list.length}</div></div></div>
+    </div>`;
+  }else if(tipo==='movimentacao'){
+    html='<h3 style="font-size:15px;margin-bottom:16px">Movimentação Detalhada</h3>';
+    const sorted=[...list].sort((a,b)=>a.data.localeCompare(b.data));
+    html+='<table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th style="text-align:right">Valor</th><th>Status</th><th>Categoria</th></tr></thead><tbody>';
+    let saldoAcc=0;
+    sorted.forEach(c=>{
+      saldoAcc+=c.tipo==='credito'?c.valor:-c.valor;
+      html+=`<tr><td>${formatDate(c.data)}</td><td style="font-size:12px">${esc(c.descricao)}</td><td style="color:${c.tipo==='credito'?'var(--success)':'var(--danger)'}">${c.tipo==='credito'?'Crédito':'Débito'}</td><td style="text-align:right;font-weight:600;color:${c.tipo==='credito'?'var(--success)':'var(--danger)'}">R$ ${c.valor.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td><td><span class="status-badge" style="background:${c.status==='conciliado'?'var(--success-bg)':'var(--warning-bg)'};color:${c.status==='conciliado'?'var(--success)':'var(--warning)'};">${c.status==='conciliado'?'Conciliado':'Pendente'}</span></td><td style="font-size:12px">${CONC_CATEGORIAS[c.categoria]||'—'}</td></tr>`;
+    });
+    html+='</tbody></table>';
+  }else if(tipo==='categorias'){
+    html='<h3 style="font-size:15px;margin-bottom:16px">Movimentação por Categorias</h3>';
+    const cats={};list.filter(c=>c.status==='conciliado').forEach(c=>{
+      const cat=c.categoria||'outros';if(!cats[cat])cats[cat]={credito:0,debito:0,count:0};
+      cats[cat][c.tipo]+=c.valor;cats[cat].count++;
+    });
+    html+='<table><thead><tr><th>Categoria</th><th>Quantidade</th><th style="text-align:right">Créditos</th><th style="text-align:right">Débitos</th><th style="text-align:right">Saldo</th></tr></thead><tbody>';
+    Object.entries(cats).sort((a,b)=>(b[1].credito+b[1].debito)-(a[1].credito+a[1].debito)).forEach(([cat,v])=>{
+      const saldo=v.credito-v.debito;
+      html+=`<tr><td style="font-weight:500">${CONC_CATEGORIAS[cat]||cat}</td><td>${v.count}</td><td style="text-align:right;color:var(--success)">R$ ${v.credito.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td><td style="text-align:right;color:var(--danger)">R$ ${v.debito.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td><td style="text-align:right;font-weight:600;color:${saldo>=0?'var(--success)':'var(--danger)'}">R$ ${saldo.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td></tr>`;
+    });
+    html+='</tbody></table>';
+  }else if(tipo==='comparativo'){
+    html='<h3 style="font-size:15px;margin-bottom:16px">Comparativo Mensal</h3>';
+    const meses={};list.forEach(c=>{const m=c.data.substring(0,7);if(!meses[m])meses[m]={credito:0,debito:0};meses[m][c.tipo]+=c.valor;});
+    html+='<table><thead><tr><th>Mês</th><th style="text-align:right">Créditos</th><th style="text-align:right">Débitos</th><th style="text-align:right">Saldo</th></tr></thead><tbody>';
+    Object.keys(meses).sort().forEach(m=>{
+      const v=meses[m];const saldo=v.credito-v.debito;const[y,mo]=m.split('-');
+      const mLabel=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(mo)-1]+'/'+y;
+      html+=`<tr><td style="font-weight:500">${mLabel}</td><td style="text-align:right;color:var(--success)">R$ ${v.credito.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td><td style="text-align:right;color:var(--danger)">R$ ${v.debito.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td><td style="text-align:right;font-weight:600;color:${saldo>=0?'var(--success)':'var(--danger)'}">R$ ${saldo.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td></tr>`;
+    });
+    html+='</tbody></table>';
+  }else if(tipo==='nao_conciliados'){
+    const pend=list.filter(c=>c.status==='pendente');
+    html=`<h3 style="font-size:15px;margin-bottom:16px">Lançamentos Não Conciliados (${pend.length})</h3>`;
+    if(!pend.length){html+='<div class="empty-state"><i class="ti ti-check" style="font-size:48px;color:var(--success)"></i><p>Todos os lançamentos estão conciliados!</p></div>';}
+    else{
+      const totalPend=pend.reduce((s,c)=>s+(c.tipo==='credito'?c.valor:-c.valor),0);
+      html+=`<div style="margin-bottom:12px;padding:10px 14px;background:var(--warning-bg);border-radius:8px;font-size:13px;color:var(--warning)"><i class="ti ti-alert-triangle"></i> Saldo não conciliado: <strong>R$ ${totalPend.toLocaleString('pt-BR',{minimumFractionDigits:2})}</strong></div>`;
+      html+='<table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th style="text-align:right">Valor</th><th>Dias Pendente</th></tr></thead><tbody>';
+      pend.sort((a,b)=>a.data.localeCompare(b.data)).forEach(c=>{
+        const dias=Math.floor((Date.now()-new Date(c.data).getTime())/(86400000));
+        html+=`<tr><td>${formatDate(c.data)}</td><td style="font-size:12px">${esc(c.descricao)}</td><td style="color:${c.tipo==='credito'?'var(--success)':'var(--danger)'}">${c.tipo==='credito'?'Crédito':'Débito'}</td><td style="text-align:right;font-weight:600;color:${c.tipo==='credito'?'var(--success)':'var(--danger)'}">R$ ${c.valor.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td><td>${dias}d</td></tr>`;
+      });
+      html+='</tbody></table>';
+    }
+  }
+  cont.innerHTML=html;
+}
+
+// === EXPORT CSV ===
+function exportarRelatorioConcCSV(){
+  const list=getConcPeriodo();if(!list.length){showToast('Nenhum dado para exportar','ti-alert-triangle');return;}
+  let csv='Data;Descrição;Tipo;Valor;Status;Categoria;Conciliado Em\n';
+  list.sort((a,b)=>a.data.localeCompare(b.data)).forEach(c=>{
+    csv+=`${formatDate(c.data)};${c.descricao.replace(/;/g,',')};${c.tipo==='credito'?'Crédito':'Débito'};${(c.tipo==='credito'?'':'-')+c.valor.toFixed(2).replace('.',',')};${c.status==='conciliado'?'Conciliado':'Pendente'};${CONC_CATEGORIAS[c.categoria]||'—'};${c.conciliadoEm?new Date(c.conciliadoEm).toLocaleDateString('pt-BR'):''}\n`;
+  });
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`conciliacao_${new Date().toISOString().split('T')[0]}.csv`;a.click();
+  showToast('Relatório exportado em CSV','ti-download');
+}
+
 // ========== MULTI-COLÉGIO ==========
 async function loadUserColegios(){
   if(!currentUser)return[];
@@ -3565,7 +4158,7 @@ async function criarNovoColegio(){
 // ========== VINCULAR USUÁRIO AO COLÉGIO ==========
 const ROLE_PRESETS = {
   professor: ['dashboard','alunos','turmas','diario','notas','boletim','comunicados'],
-  financeiro: ['dashboard','mensalidades','contas','fluxo','bolsas','relatorios'],
+  financeiro: ['dashboard','mensalidades','contas','fluxo','bolsas','relatorios','conciliacao'],
   admin: ALL_MODULES.map(m=>m.id)
 };
 
