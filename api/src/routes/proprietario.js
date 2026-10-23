@@ -4,6 +4,7 @@
  *
  *  GET  /colegios                 todos os colégios do sistema, com números
  *  POST /colegios                 cadastra um colégio novo
+ *  PUT  /colegios/:id             dados cadastrais (nome, CNPJ, contatos, endereço)
  *  PUT  /colegios/:id/situacao    { ativo } desativa / reativa um colégio
  *
  *  O proprietário é definido no .env (PROPRIETARIO_EMAILS) — veja
@@ -15,13 +16,13 @@ const { query, queryUm, transacao } = require('../db');
 const { HttpErro, assincrono } = require('../middleware/erros');
 const v = require('../utils/validar');
 const { atividade, seguranca } = require('../utils/auditoria');
-const { criarColegio } = require('../services/colegios');
+const { criarColegio, lerDadosColegio, salvarDadosColegio } = require('../services/colegios');
 
 /* ---------------- Lista ---------------- */
 router.get('/colegios', assincrono(async (req, res) => {
   const [colegios, admins, meus] = await Promise.all([
     query(
-      `SELECT c.id, c.nome, c.cnpj, c.telefone, c.email, c.codigo_convite, c.ativo, c.criado_em,
+      `SELECT c.id, c.nome, c.cnpj, c.telefone, c.email, c.endereco, c.whatsapp_notif, c.codigo_convite, c.ativo, c.criado_em,
               (SELECT COUNT(*) FROM alunos a WHERE a.colegio_id = c.id AND a.status = 'ativo') AS alunos,
               (SELECT COUNT(*) FROM usuario_colegio uc
                 WHERE uc.colegio_id = c.id AND uc.status = 'ativo' AND uc.perfil <> 'responsavel') AS equipe,
@@ -54,6 +55,8 @@ router.get('/colegios', assincrono(async (req, res) => {
     cnpj: c.cnpj,
     telefone: c.telefone,
     email: c.email,
+    endereco: c.endereco,
+    whatsappNotif: c.whatsapp_notif,
     codigoConvite: c.codigo_convite,
     ativo: !!c.ativo,
     criadoEm: c.criado_em,
@@ -94,6 +97,26 @@ router.post('/colegios', assincrono(async (req, res) => {
     detalhes: `Proprietário do sistema cadastrou o colégio ${nome}`
   });
   res.status(201).json({ id: colegioId, nome, codigoConvite: c.codigo_convite });
+}));
+
+/* ---------------- Editar dados cadastrais ----------------
+ * Só os dados do cadastro. Os parâmetros (ano letivo, mensalidade, PIX...)
+ * continuam com o administrador do colégio, em Sistema › Configurações. */
+router.put('/colegios/:id', assincrono(async (req, res) => {
+  const id = v.inteiro(req.params.id, 'Colégio', { min: 1, obrigatorio: true });
+  const c = await queryUm('SELECT id, nome FROM colegios WHERE id = ?', [id]);
+  if (!c) throw new HttpErro(404, 'Colégio não encontrado', 'nao_encontrado');
+
+  const dados = lerDadosColegio(req.body);
+  await salvarDadosColegio(query, id, dados);
+
+  const renomeado = dados.nome !== c.nome ? ` (antes: ${c.nome})` : '';
+  await atividade(id, req.usuario.id, 'Dados do colégio atualizados pela Reis Tecnologia');
+  await seguranca(req, {
+    tipo: 'admin', colegioId: id, usuarioId: req.usuario.id, email: req.usuario.email,
+    detalhes: `Proprietário do sistema alterou os dados do colégio ${dados.nome}${renomeado}`
+  });
+  res.json({ id, nome: dados.nome });
 }));
 
 /* ---------------- Desativar / reativar ---------------- */

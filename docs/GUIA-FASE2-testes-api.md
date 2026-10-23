@@ -12,7 +12,7 @@ Reis Tecnologia · API versão 1.1.0
 | `POST /api/conta/falha-login` | público | Registra senha errada no log do colégio |
 | `POST /api/conta/evento` | logado | Registra login, logout e timeout |
 | `PUT /api/me/colegio-atual` · `/nome` · `/tour` | logado | Trocar colégio, nome, concluir tour |
-| `GET/POST /api/proprietario/colegios` · `PUT /:id/situacao` | proprietário (`PROPRIETARIO_EMAILS`) | Gestão de Colégios: listar, cadastrar, desativar/reativar |
+| `GET/POST /api/proprietario/colegios` · `PUT /:id` · `PUT /:id/situacao` | proprietário (`PROPRIETARIO_EMAILS`) | Gestão de Colégios: listar, cadastrar, editar dados, desativar/reativar |
 | `GET /api/colegios/atual` | vínculo ativo | Dados, configuração e disciplinas |
 | `PUT /api/colegios/atual` · `/atual/config` | admin | Editar dados e configuração |
 | `POST /api/colegios/atual/convite/regenerar` | admin | Trocar o código de convite |

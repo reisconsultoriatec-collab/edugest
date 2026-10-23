@@ -2,6 +2,7 @@
 /* Criação de colégio com tudo que ele precisa para começar a funcionar. */
 const { codigoConvite } = require('../utils/codigos');
 const { hojeSP } = require('../utils/datas');
+const v = require('../utils/validar');
 
 const DISCIPLINAS_PADRAO = ['Português', 'Matemática', 'História', 'Geografia', 'Ciências', 'Inglês', 'Ed. Física', 'Artes'];
 
@@ -46,4 +47,29 @@ async function criarColegio(conn, { nome, usuarioId, cnpj = null, telefone = nul
   return colegioId;
 }
 
-module.exports = { criarColegio, DISCIPLINAS_PADRAO };
+/**
+ * Dados cadastrais do colégio (mesma regra para o admin do colégio em
+ * PUT /colegios/atual e para o proprietário em PUT /proprietario/colegios/:id).
+ * @returns {{nome, cnpj, telefone, email, endereco, whatsapp_notif}}
+ */
+function lerDadosColegio(body) {
+  return {
+    nome: v.texto(body.nome, 'Nome do colégio', { max: 120, min: 3, obrigatorio: true }),
+    cnpj: v.cnpj(body.cnpj),
+    telefone: v.telefone(body.telefone),
+    email: v.email(body.email),
+    endereco: v.texto(body.endereco, 'Endereço', { max: 200 }),
+    whatsapp_notif: v.telefone(body.whatsappNotif, 'WhatsApp para notificações')
+  };
+}
+
+/** Grava os dados lidos por lerDadosColegio. */
+async function salvarDadosColegio(query, colegioId, d) {
+  await query(
+    `UPDATE colegios SET nome = ?, cnpj = ?, telefone = ?, email = ?, endereco = ?, whatsapp_notif = ?
+      WHERE id = ?`,
+    [d.nome, d.cnpj, d.telefone, d.email, d.endereco, d.whatsapp_notif, colegioId]
+  );
+}
+
+module.exports = { criarColegio, lerDadosColegio, salvarDadosColegio, DISCIPLINAS_PADRAO };

@@ -1,7 +1,7 @@
 /* =====================================================================
  *  EduGest — Gestão de Colégios   [somente o proprietário do sistema]
- *  Todos os colégios do sistema · cadastrar · convite para o diretor ·
- *  desativar / reativar · entrar no colégio.
+ *  Todos os colégios do sistema · cadastrar · editar dados cadastrais ·
+ *  convite para o diretor · desativar / reativar · entrar no colégio.
  *
  *  Os parâmetros de cada colégio continuam com o administrador do próprio
  *  colégio (Sistema › Configurações).
@@ -71,6 +71,7 @@
       <td><span class="selo ${c.ativo ? 'selo-ok' : 'selo-erro'}">${c.ativo ? 'Ativo' : 'Desativado'}</span></td>
       <td class="acoes">
         ${podeEntrar ? '<button class="btn-icone" data-action="entrar" title="Entrar neste colégio"><i class="ti ti-login-2"></i></button>' : ''}
+        <button class="btn-icone" data-action="editar" title="Editar dados do colégio"><i class="ti ti-pencil"></i></button>
         ${c.ativo ? '<button class="btn-icone" data-action="convite" title="Convite para o diretor (código do colégio)"><i class="ti ti-send"></i></button>' : ''}
         ${c.ativo
           ? '<button class="btn-icone perigo" data-action="desativar" title="Desativar colégio"><i class="ti ti-power"></i></button>'
@@ -138,18 +139,51 @@
     });
   }
 
+  /** Campos do cadastro do colégio (completo = edição, com e-mail e WhatsApp de avisos). */
+  function camposColegio(c, completo) {
+    c = c || {};
+    const val = (x) => `value="${EG.esc(x || '')}"`;
+    return `<div class="campo"><label>Nome do colégio *</label><input class="input" name="nome" maxlength="120" ${val(c.nome)}></div>
+        <div class="linha-2">
+          <div class="campo"><label>CNPJ</label><input class="input" name="cnpj" data-mascara="cnpj" maxlength="18" autocomplete="off" ${val(c.cnpj)}></div>
+          <div class="campo"><label>Telefone</label><input class="input" name="telefone" data-mascara="telefone" maxlength="15" ${val(c.telefone)}></div>
+        </div>
+        ${completo ? `<div class="campo"><label>E-mail</label><input class="input" type="email" name="email" maxlength="160" ${val(c.email)}></div>` : ''}
+        <div class="campo"><label>Endereço</label><input class="input" name="endereco" maxlength="200" ${val(c.endereco)}></div>
+        ${completo ? `<div class="campo"><label>WhatsApp para avisos de novos cadastros</label>
+          <input class="input" name="whatsappNotif" data-mascara="telefone" maxlength="15" ${val(c.whatsappNotif)} style="max-width:240px">
+          <small>Quem se cadastrar pelo código do colégio poderá avisar este número para pedir aprovação.</small></div>` : ''}`;
+  }
+
+  /* ---------- Editar dados cadastrais ---------- */
+  function modalEditar(c) {
+    const m = EG.modal({
+      titulo: `Editar — ${c.nome}`,
+      corpo: `<div class="msg-info" style="margin-bottom:14px"><i class="ti ti-info-circle"></i> Dados do cadastro do colégio. Os parâmetros
+          (ano letivo, mensalidade, notas, PIX...) continuam com o administrador do colégio, em <strong>Sistema › Configurações</strong>.</div>
+        ${camposColegio(c, true)}`,
+      botoes: [
+        { texto: 'Cancelar', acao: () => m.fechar() },
+        { texto: 'Salvar', classe: 'btn-primario', icone: 'ti-device-floppy', acao: async () => {
+          const d = EG.lerForm(m.el);
+          if (!d.nome || d.nome.trim().length < 3) throw EG.erro('Informe o nome do colégio.');
+          await EG.api('PUT', `/proprietario/colegios/${c.id}`, d);
+          m.fechar();
+          // Recarrega a sessão: o nome novo aparece no seletor e na lista
+          await EG.carregarSessao(EG.estado.colegioId);
+          EG.toast('Dados do colégio salvos');
+        } }
+      ]
+    });
+  }
+
   /* ---------- Cadastrar ---------- */
   function modalNovo(el) {
     const m = EG.modal({
       titulo: 'Cadastrar novo colégio',
       corpo: `<p class="card-desc" style="margin:0 0 14px">Cada colégio tem dados totalmente separados. Você fica como administrador
           do colégio novo para liberar o acesso do diretor.</p>
-        <div class="campo"><label>Nome do colégio *</label><input class="input" name="nome" maxlength="120"></div>
-        <div class="linha-2">
-          <div class="campo"><label>CNPJ</label><input class="input" name="cnpj" data-mascara="cnpj" maxlength="18" autocomplete="off"></div>
-          <div class="campo"><label>Telefone</label><input class="input" name="telefone" data-mascara="telefone" maxlength="15"></div>
-        </div>
-        <div class="campo"><label>Endereço</label><input class="input" name="endereco" maxlength="200"></div>`,
+        ${camposColegio(null, false)}`,
       botoes: [
         { texto: 'Cancelar', acao: () => m.fechar() },
         { texto: 'Cadastrar colégio', classe: 'btn-primario', icone: 'ti-building-plus', acao: async () => {
@@ -200,6 +234,7 @@
         EG.guarda(b, async () => {
           try {
             if (acao === 'entrar') await EG.trocarColegio(c.id);
+            else if (acao === 'editar') modalEditar(c);
             else if (acao === 'convite') modalConvite(c, false);
             else if (acao === 'desativar') await mudarSituacao(c, false);
             else if (acao === 'reativar') await mudarSituacao(c, true);

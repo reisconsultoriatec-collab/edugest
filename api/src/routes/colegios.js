@@ -24,6 +24,7 @@ const { HttpErro, assincrono } = require('../middleware/erros');
 const v = require('../utils/validar');
 const { atividade, seguranca } = require('../utils/auditoria');
 const { codigoConvite } = require('../utils/codigos');
+const { lerDadosColegio, salvarDadosColegio } = require('../services/colegios');
 const { hojeSP } = require('../utils/datas');
 const { TIPOS_CHAVE, normalizarChave } = require('../utils/pix');
 
@@ -101,19 +102,7 @@ router.get('/atual', exigirColegio, assincrono(async (req, res) => {
 
 /* ---------------- Editar dados ---------------- */
 router.put('/atual', soAdmin, assincrono(async (req, res) => {
-  const dados = {
-    nome: v.texto(req.body.nome, 'Nome do colégio', { max: 120, min: 3, obrigatorio: true }),
-    cnpj: v.cnpj(req.body.cnpj),
-    telefone: v.telefone(req.body.telefone),
-    email: v.email(req.body.email),
-    endereco: v.texto(req.body.endereco, 'Endereço', { max: 200 }),
-    whatsapp_notif: v.telefone(req.body.whatsappNotif, 'WhatsApp para notificações')
-  };
-  await query(
-    `UPDATE colegios SET nome = ?, cnpj = ?, telefone = ?, email = ?, endereco = ?, whatsapp_notif = ?
-      WHERE id = ?`,
-    [dados.nome, dados.cnpj, dados.telefone, dados.email, dados.endereco, dados.whatsapp_notif, req.colegioId]
-  );
+  await salvarDadosColegio(query, req.colegioId, lerDadosColegio(req.body));
   await atividade(req.colegioId, req.usuario.id, 'Dados do colégio atualizados');
   res.json({ ok: true });
 }));
