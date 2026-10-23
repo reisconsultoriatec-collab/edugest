@@ -352,6 +352,17 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 .candidato.ativo { background: var(--aviso-bg); }
 .candidato input { accent-color: var(--amber); }
 
+/* ---------- Portal do responsável ---------- */
+.portal-filhos { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.portal-aluno { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.portal-aluno .select { max-width: 260px; }
+.portal-alerta { display: flex; gap: 12px; align-items: center; padding: 12px 14px; border-radius: 10px; margin-bottom: 10px; font-size: 14px; flex-wrap: wrap; }
+.portal-alerta:last-child { margin-bottom: 0; }
+.portal-alerta i { font-size: 20px; }
+.portal-alerta span { flex: 1; min-width: 200px; }
+.portal-alerta.erro { background: var(--erro-bg); color: var(--erro-tx); }
+.portal-alerta.aviso { background: var(--aviso-bg); color: var(--aviso-tx); }
+
 @media print {
   :root, [data-theme="dark"] { --bg: #fff; --card: #fff; --text: #111; --text-2: #333; --muted: #555; --border: #bbb;
     --ok-bg: #fff; --erro-bg: #fff; --info-bg: #fff; --aviso-bg: #fff; --hover: transparent; }

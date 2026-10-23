@@ -88,6 +88,9 @@ app.use('/api/documentos', equipe, require('./src/routes/documentos'));
 app.use('/api/relatorios', equipe, require('./src/routes/relatorios'));
 app.use('/api/conciliacao', equipe, require('./src/routes/conciliacao'));
 
+// Portal do responsável — só os filhos vinculados ao usuário
+app.use('/api/portal', autenticar, carregarUsuario, exigirColegio, exigirPerfil('responsavel'), require('./src/routes/portal'));
+
 // Sem login: PDFs por link assinado e com validade (enviados por WhatsApp)
 app.use('/api/publico', require('./src/routes/publico'));
 

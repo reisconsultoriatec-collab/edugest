@@ -30,7 +30,12 @@
     ] },
     { secao: 'Captação', itens: [{ id: 'funil', rotulo: 'Funil de Matrículas', icone: 'ti-filter' }] },
     { secao: 'Comunicação', itens: [{ id: 'comunicados', rotulo: 'Comunicados', icone: 'ti-message-circle' }] },
-    { secao: 'Responsável', itens: [{ id: 'portal', rotulo: 'Portal do Responsável', icone: 'ti-home-heart' }] },
+    { secao: 'Portal do Responsável', fixo: true, itens: [
+      { id: 'portal', modulo: 'portal', rotulo: 'Início', icone: 'ti-home-heart', pronto: true },
+      { id: 'portal-boletim', modulo: 'portal', rotulo: 'Boletim', icone: 'ti-report', pronto: true },
+      { id: 'portal-frequencia', modulo: 'portal', rotulo: 'Frequência', icone: 'ti-calendar-check', pronto: true },
+      { id: 'portal-financeiro', modulo: 'portal', rotulo: 'Financeiro', icone: 'ti-receipt', pronto: true }
+    ] },
     { secao: 'Sistema', itens: [
       { id: 'config', rotulo: 'Configurações', icone: 'ti-settings', pronto: true },
       { id: 'usuarios', rotulo: 'Usuários', icone: 'ti-users-group', pronto: true },
@@ -43,7 +48,7 @@
     const e = EG.estado;
     if (item.soAdmin) return e.perfil === 'admin';
     // Tudo depende dos módulos liberados, inclusive o Dashboard
-    return e.modulos.includes(item.id);
+    return e.modulos.includes(item.modulo || item.id);
   }
 
   /* ---------- Entrar no app ---------- */

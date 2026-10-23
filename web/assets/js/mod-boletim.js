@@ -111,6 +111,9 @@
     boletim = sel.turmaId && sel.alunoId ? await EG.api('GET', `/boletim/${sel.alunoId}?turmaId=${sel.turmaId}`) : null;
   }
 
+  // Mesmo layout no portal do responsável
+  EG.htmlBoletim = htmlBoletim;
+
   EG.registrarModulo('boletim', {
     async render(el) {
       op = await EG.opcoesPedagogicas();
