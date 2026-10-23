@@ -259,6 +259,33 @@ td small, .sub { color: var(--muted); font-size: 11px; }
   .boletim-dados, .boletim-rodape { grid-template-columns: 1fr 1fr; }
 }
 
+/* ---------- Fluxo de caixa: gráfico ---------- */
+/* Paleta validada (CVD/contraste) contra o fundo do card em cada tema */
+:root, [data-theme="light"] { --serie-entradas: #2a78d6; --serie-saidas: #eb6834; }
+[data-theme="dark"] { --serie-entradas: #3987e5; --serie-saidas: #d95926; }
+.grafico { position: relative; min-width: 560px; }
+.grafico svg { width: 100%; height: auto; display: block; }
+.g-grade { stroke: var(--border); stroke-width: 1; }
+.g-base { stroke: var(--muted); stroke-width: 1; }
+.g-eixo { fill: var(--muted); font-size: 11px; font-family: 'Inter', sans-serif; font-variant-numeric: tabular-nums; }
+.g-atual { fill: var(--text); font-weight: 700; }
+.g-entradas { fill: var(--serie-entradas); background: var(--serie-entradas); }
+.g-saidas { fill: var(--serie-saidas); background: var(--serie-saidas); }
+.g-faixa { fill: transparent; cursor: pointer; }
+.g-faixa.ativa { fill: var(--hover); }
+.g-legenda { display: flex; gap: 18px; flex-wrap: wrap; font-size: 12px; color: var(--text-2); margin-bottom: 8px; }
+.g-legenda span { display: inline-flex; align-items: center; gap: 6px; }
+.g-chave { display: inline-block; width: 10px; height: 10px; border-radius: 3px; }
+.g-dica { position: absolute; top: 6px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--sombra);
+  padding: 10px 12px; font-size: 12px; color: var(--text); pointer-events: none; min-width: 190px; display: grid; gap: 4px; }
+.g-dica div { display: flex; align-items: center; gap: 6px; }
+.g-dica b { margin-left: auto; font-variant-numeric: tabular-nums; }
+.g-dica-saldo { border-top: 1px solid var(--border); padding-top: 4px; }
+.tabela-fluxo td, .tabela-fluxo th { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tabela-fluxo td:first-child, .tabela-fluxo th:first-child { text-align: left; }
+.tabela-fluxo tfoot td { border-top: 2px solid var(--border); }
+.linha-atual { background: var(--hover); }
+
 /* ---------- Impressão (boletim) ---------- */
 @media print {
   :root, [data-theme="dark"] { --bg: #fff; --card: #fff; --text: #111; --text-2: #333; --muted: #555; --border: #bbb;

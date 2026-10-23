@@ -229,7 +229,7 @@ router.get('/atual/resumo', soEquipe, exigirModulo('dashboard'), assincrono(asyn
        (SELECT COUNT(*) FROM professores WHERE colegio_id = ? AND status = 'ativo') AS professores,
        (SELECT COUNT(*) FROM turmas WHERE colegio_id = ? AND ativo = 1 AND ano_letivo = ?) AS turmas,
        (SELECT COUNT(DISTINCT aluno_id) FROM mensalidades
-         WHERE colegio_id = ? AND status = 'pendente' AND vencimento < ?) AS inadimplentes`,
+         WHERE colegio_id = ? AND status = 'pendente' AND valor > 0 AND vencimento < ?) AS inadimplentes`,
     [req.colegioId, req.colegioId, req.colegioId, req.colegioId, ano, req.colegioId, hojeSP()]
   );
   res.json({

@@ -11,6 +11,13 @@
       ]);
       const nome = (e.me.usuario.nome || '').split(' ')[0];
       if (r.pendentes) EG.atualizarPendentes(r.pendentes.total);
+      // "Inadimplentes" abre as mensalidades vencidas de todos os meses
+      // (este clique roda antes da navegação, que fica no document)
+      el.onclick = (ev) => {
+        if (ev.target.closest('[data-preset="inadimplentes"]')) {
+          EG.filtroInicialMensalidades = { referencia: '', turmaId: '', busca: '', status: 'vencida' };
+        }
+      };
 
       el.innerHTML = `
         ${avisoPendentes(r.pendentes)}
@@ -29,7 +36,7 @@
             r.alunosSemTurma ? `${r.alunosSemTurma} sem turma` : 'todos com turma', 'alunos')}
           ${kpi('ti-user-check', 'var(--roxo-bg)', 'var(--roxo)', 'Professores ativos', r.professores, 'corpo docente', 'professores')}
           ${kpi('ti-layout-grid', 'var(--ok-bg)', 'var(--ok)', 'Turmas ativas', r.turmas, `ano letivo ${r.anoLetivo}`, 'turmas')}
-          ${kpi('ti-alert-triangle', 'var(--erro-bg)', 'var(--erro)', 'Inadimplentes', r.inadimplentes, 'com mensalidade vencida', 'mensalidades')}
+          ${kpi('ti-alert-triangle', 'var(--erro-bg)', 'var(--erro)', 'Inadimplentes', r.inadimplentes, 'com mensalidade vencida', 'mensalidades', 'inadimplentes')}
         </div>
 
         <div class="card">
@@ -59,8 +66,9 @@
     </div>`;
   }
 
-  function kpi(icone, fundo, cor, rotulo, valor, obs, modulo) {
-    const link = modulo && EG.pode(modulo) ? ` data-action="ir" data-pagina="${modulo}" style="cursor:pointer"` : '';
+  function kpi(icone, fundo, cor, rotulo, valor, obs, modulo, preset) {
+    const link = modulo && EG.pode(modulo)
+      ? ` data-action="ir" data-pagina="${modulo}"${preset ? ` data-preset="${preset}"` : ''} style="cursor:pointer"` : '';
     return `<div class="kpi"${link}><div class="kpi-icone" style="background:${fundo};color:${cor}"><i class="ti ${icone}"></i></div>
       <div><div class="kpi-rotulo">${rotulo}</div><div class="kpi-valor">${EG.esc(valor)}</div><div class="kpi-obs">${EG.esc(obs)}</div></div></div>`;
   }

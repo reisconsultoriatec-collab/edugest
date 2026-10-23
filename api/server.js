@@ -76,6 +76,13 @@ app.use('/api/diario', equipe, require('./src/routes/diario'));
 app.use('/api/notas', equipe, require('./src/routes/notas'));
 app.use('/api/boletim', equipe, require('./src/routes/boletim'));
 
+// Financeiro — cada rota confere o módulo
+app.use('/api/mensalidades', equipe, require('./src/routes/mensalidades'));
+app.use('/api/bolsas', equipe, require('./src/routes/bolsas'));
+app.use('/api/contas', equipe, require('./src/routes/contas'));
+app.use('/api/fluxo', equipe, require('./src/routes/fluxo'));
+app.use('/api/financeiro', equipe, require('./src/routes/financeiro'));
+
 app.use(naoEncontrado);
 app.use(tratarErros);
 

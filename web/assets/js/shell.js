@@ -21,10 +21,10 @@
       { id: 'documentos', rotulo: 'Documentos', icone: 'ti-file-certificate' }
     ] },
     { secao: 'Financeiro', itens: [
-      { id: 'mensalidades', rotulo: 'Mensalidades', icone: 'ti-receipt' },
-      { id: 'contas', rotulo: 'Contas a Pagar', icone: 'ti-file-invoice' },
-      { id: 'fluxo', rotulo: 'Fluxo de Caixa', icone: 'ti-chart-arrows-vertical' },
-      { id: 'bolsas', rotulo: 'Descontos e Bolsas', icone: 'ti-discount-2' },
+      { id: 'mensalidades', rotulo: 'Mensalidades', icone: 'ti-receipt', pronto: true },
+      { id: 'contas', rotulo: 'Contas a Pagar', icone: 'ti-file-invoice', pronto: true },
+      { id: 'fluxo', rotulo: 'Fluxo de Caixa', icone: 'ti-chart-arrows-vertical', pronto: true },
+      { id: 'bolsas', rotulo: 'Descontos e Bolsas', icone: 'ti-discount-2', pronto: true },
       { id: 'relatorios', rotulo: 'Relatórios', icone: 'ti-report-analytics' },
       { id: 'conciliacao', rotulo: 'Conciliação Bancária', icone: 'ti-arrows-exchange' }
     ] },

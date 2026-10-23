@@ -287,6 +287,25 @@ window.EG = window.EG || {};
     return obj;
   };
 
+  /* ---------- Financeiro ---------- */
+  EG.MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  EG.MESES_CURTOS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+  /** 'AAAA-MM' do mês atual em São Paulo. */
+  EG.mesAtualSP = () => EG.hojeSP().slice(0, 7);
+  /** 'AAAA-MM' → 'Out/2026' */
+  EG.nomeRef = (ref) => (ref ? `${EG.MESES_CURTOS[Number(ref.slice(5, 7)) - 1]}/${ref.slice(0, 4)}` : '—');
+  /** Valor digitado ("1.234,56", "850", "850.5") → número; null se vazio; NaN se inválido. */
+  EG.lerDinheiro = (txt) => {
+    let s = String(txt ?? '').trim().replace(/[R$\s]/g, '');
+    if (!s) return null;
+    if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');
+    const n = Number(s);
+    return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : NaN;
+  };
+  /** Número → texto para campo de valor ("850,00"). */
+  EG.valorCampo = (n) => (n === null || n === undefined ? '' : Number(n).toFixed(2).replace('.', ','));
+  EG.FORMAS_PAGAMENTO = ['PIX', 'Boleto', 'Cartão de crédito', 'Cartão de débito', 'Dinheiro', 'Transferência', 'Outro'];
+
   /** Turmas e disciplinas permitidas no diário/notas/boletim. */
   EG.opcoesPedagogicas = () => EG.api('GET', '/pedagogico/opcoes');
 
