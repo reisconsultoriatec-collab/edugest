@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EduGest — Gestão Educacional</title>
+<meta name="description" content="EduGest — Gestão Educacional Multi-Colégio · Reis Tecnologia">
+<meta name="theme-color" content="#1A2744">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231A2744'/%3E%3Cpath d='M16 7 4 13l12 6 12-6z' fill='%23F59E0B'/%3E%3Cpath d='M9 16v5c0 2 3.5 4 7 4s7-2 7-4v-5l-7 3.5z' fill='%23F59E0B' opacity='.85'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="assets/app.css?v=1.0.1">
+</head>
+<body>
+
+<!-- Carregando -->
+<div id="carregando" class="carregando aberto">
+  <div class="spinner"></div>
+  <span id="carregandoMsg">Carregando...</span>
+</div>
+
+<!-- Telas de acesso (login, cadastro, pendente...) -->
+<main id="telaAuth" class="tela-auth" hidden></main>
+
+<!-- Aplicação -->
+<div id="app" class="app" hidden>
+  <div class="sidebar-fundo" data-action="menu-fechar"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-topo">
+      <div class="logo"><i class="ti ti-school"></i> EduGest</div>
+      <div class="logo-sub">Gestão Educacional</div>
+    </div>
+    <div class="sidebar-colegio">
+      <label class="rotulo-claro" for="seletorColegio">Colégio</label>
+      <select id="seletorColegio" class="select-escuro"></select>
+      <button class="btn-tracejado" data-action="novo-colegio"><i class="ti ti-plus"></i> Novo colégio</button>
+    </div>
+    <nav class="sidebar-nav" id="menu"></nav>
+    <div class="sidebar-rodape">Reis Tecnologia</div>
+  </aside>
+
+  <div class="principal">
+    <header class="topo">
+      <button class="btn-menu" data-action="menu-abrir" aria-label="Abrir menu"><i class="ti ti-menu-2"></i></button>
+      <h1 class="topo-titulo" id="titulo">Dashboard</h1>
+      <div class="topo-direita">
+        <button class="btn-redondo" data-action="tema" title="Tema claro/escuro"><i class="ti ti-moon" id="iconeTema"></i></button>
+        <div class="usuario-menu">
+          <button class="usuario-botao" data-action="menu-usuario">
+            <span class="avatar" id="avatar">?</span>
+            <span class="usuario-info"><strong id="usuarioNome">—</strong><small id="usuarioPerfil">—</small></span>
+            <i class="ti ti-chevron-down"></i>
+          </button>
+          <div class="usuario-dropdown" id="usuarioDropdown" hidden>
+            <button data-action="sair"><i class="ti ti-logout"></i> Sair</button>
+          </div>
+        </div>
+      </div>
+    </header>
+    <section class="conteudo" id="conteudo"></section>
+  </div>
+</div>
+
+<!-- Camadas de modal e toast -->
+<div id="modais"></div>
+<div id="toasts" class="toasts" aria-live="polite"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="assets/js/core.js?v=1.0.1"></script>
+<script src="assets/js/auth.js?v=1.0.1"></script>
+<script src="assets/js/shell.js?v=1.0.1"></script>
+<script src="assets/js/mod-dashboard.js?v=1.0.1"></script>
+<script src="assets/js/mod-config.js?v=1.0.1"></script>
+<script src="assets/js/mod-usuarios.js?v=1.0.1"></script>
+<script src="assets/js/mod-seguranca.js?v=1.0.1"></script>
+<script>EG.iniciar();</script>
+</body>
+</html>

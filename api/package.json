@@ -1,0 +1,23 @@
+{
+  "name": "edugest-api",
+  "version": "1.1.1",
+  "description": "API do EduGest — Gestão Educacional Multi-Colégio (Reis Tecnologia)",
+  "main": "server.js",
+  "private": true,
+  "author": "Reis Tecnologia",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.4.1",
+    "firebase-admin": "^12.7.0",
+    "helmet": "^8.0.0",
+    "mysql2": "^3.11.5"
+  }
+}
