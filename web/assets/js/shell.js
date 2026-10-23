@@ -26,7 +26,7 @@
       { id: 'fluxo', rotulo: 'Fluxo de Caixa', icone: 'ti-chart-arrows-vertical', pronto: true },
       { id: 'bolsas', rotulo: 'Descontos e Bolsas', icone: 'ti-discount-2', pronto: true },
       { id: 'relatorios', rotulo: 'Relatórios', icone: 'ti-report-analytics', pronto: true },
-      { id: 'conciliacao', rotulo: 'Conciliação Bancária', icone: 'ti-arrows-exchange' }
+      { id: 'conciliacao', rotulo: 'Conciliação Bancária', icone: 'ti-arrows-exchange', pronto: true }
     ] },
     { secao: 'Captação', itens: [{ id: 'funil', rotulo: 'Funil de Matrículas', icone: 'ti-filter' }] },
     { secao: 'Comunicação', itens: [{ id: 'comunicados', rotulo: 'Comunicados', icone: 'ti-message-circle' }] },

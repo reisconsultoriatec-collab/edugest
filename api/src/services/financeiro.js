@@ -13,6 +13,8 @@
 
 const FORMAS_PAGAMENTO = ['PIX', 'Boleto', 'Cartão de crédito', 'Cartão de débito', 'Dinheiro', 'Transferência', 'Outro'];
 const RECORRENCIAS = { nenhuma: 0, mensal: 1, trimestral: 3, anual: 12 };
+const CATEGORIAS_CONTAS = ['Aluguel', 'Água', 'Energia', 'Internet e telefone', 'Folha de pagamento', 'Encargos e impostos',
+  'Material didático', 'Material de limpeza', 'Manutenção', 'Alimentação', 'Transporte', 'Marketing', 'Serviços', 'Outros'];
 
 const centavos = (x) => Math.round(Number(x || 0) * 100);
 
@@ -96,6 +98,7 @@ const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'O
 const nomeReferencia = (ref) => `${MESES[Number(ref.slice(5, 7)) - 1]}/${ref.slice(0, 4)}`;
 
 module.exports = {
+  CATEGORIAS_CONTAS,
   FORMAS_PAGAMENTO, RECORRENCIAS, MESES,
   centavos, calcularValores, bolsaVigente, situacaoMensalidade, situacaoConta,
   somarMeses, diasEntre, recalcularPendentes, nomeReferencia

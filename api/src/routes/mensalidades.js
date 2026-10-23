@@ -21,6 +21,7 @@ const v = require('../utils/validar');
 const { atividade } = require('../utils/auditoria');
 const { hojeSP, dataValida } = require('../utils/datas');
 const f = require('../services/financeiro');
+const baixas = require('../services/baixas');
 
 router.use(exigirModulo('mensalidades'));
 
@@ -228,11 +229,7 @@ router.post('/:id/pagar', assincrono(async (req, res) => {
     if (Number(m.valor) === 0) throw new HttpErro(409, 'Mensalidade isenta (bolsa de 100%) — não há o que receber', 'status');
     const valorPago = req.body.valorPago === undefined || req.body.valorPago === null || req.body.valorPago === ''
       ? m.valor : v.decimal(req.body.valorPago, 'Valor recebido', { min: 0.01, max: 99999 });
-    await conn.query(
-      `UPDATE mensalidades SET status = 'pago', data_pagamento = ?, valor_pago = ?, forma_pagamento = ?, obs_pagamento = ?
-        WHERE id = ?`,
-      [data, valorPago, forma, obs, id]
-    );
+    await baixas.baixarMensalidade(conn, m, { data, valorPago, forma, obs });
     return { ...m, valorPago };
   });
   await atividade(req.colegioId, req.usuario.id,
@@ -245,16 +242,10 @@ router.post('/:id/estornar', assincrono(async (req, res) => {
   const r = await transacao(async (conn) => {
     const m = await buscarMensalidade(conn, req.colegioId, id);
     if (m.status !== 'pago') throw new HttpErro(409, 'Esta mensalidade não está paga', 'status');
-    const [[conc]] = await conn.query(
-      "SELECT COUNT(*) AS n FROM lancamentos_bancarios WHERE mensalidade_id = ? AND status = 'conciliado'", [id]
-    );
-    if (conc.n > 0) throw new HttpErro(409, 'Este pagamento está conciliado com o extrato bancário. Desfaça a conciliação antes de estornar.', 'conciliado');
-    await conn.query(
-      `UPDATE mensalidades SET status = 'pendente', data_pagamento = NULL, valor_pago = NULL, forma_pagamento = NULL, obs_pagamento = NULL
-        WHERE id = ?`,
-      [id]
-    );
-    await f.recalcularPendentes(conn, req.colegioId, m.aluno_id);
+    if (await baixas.conciliacoes(conn, 'mensalidade', id)) {
+      throw new HttpErro(409, 'Este pagamento está conciliado com o extrato bancário. Desfaça a conciliação antes de estornar.', 'conciliado');
+    }
+    await baixas.estornarMensalidade(conn, req.colegioId, m);
     return m;
   });
   await atividade(req.colegioId, req.usuario.id, `Pagamento estornado: ${r.aluno} · ${f.nomeReferencia(r.referencia)}`);

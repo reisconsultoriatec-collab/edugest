@@ -18,11 +18,11 @@ const v = require('../utils/validar');
 const { atividade } = require('../utils/auditoria');
 const { hojeSP, dataValida } = require('../utils/datas');
 const f = require('../services/financeiro');
+const baixas = require('../services/baixas');
 
 router.use(exigirModulo('contas'));
 
-const CATEGORIAS = ['Aluguel', 'Água', 'Energia', 'Internet e telefone', 'Folha de pagamento', 'Encargos e impostos',
-  'Material didático', 'Material de limpeza', 'Manutenção', 'Alimentação', 'Transporte', 'Marketing', 'Serviços', 'Outros'];
+const CATEGORIAS = f.CATEGORIAS_CONTAS;
 
 function lerData(valor, campo, { naoFutura = false } = {}) {
   const d = String(valor || '');
@@ -131,26 +131,8 @@ router.post('/:id/pagar', assincrono(async (req, res) => {
   const r = await transacao(async (conn) => {
     const c = await buscarConta(conn, req.colegioId, id);
     if (c.status !== 'pendente') throw new HttpErro(409, 'Esta conta não está pendente', 'status');
-    await conn.query("UPDATE contas_pagar SET status = 'pago', data_pagamento = ? WHERE id = ?", [data, id]);
-
     // Conta recorrente: já deixa a próxima lançada (se ainda não existir)
-    let proxima = null;
-    const meses = f.RECORRENCIAS[c.recorrencia] || 0;
-    if (meses) {
-      const venc = f.somarMeses(c.vencimento, meses);
-      const [[existe]] = await conn.query(
-        'SELECT id FROM contas_pagar WHERE colegio_id = ? AND descricao = ? AND vencimento = ? LIMIT 1',
-        [req.colegioId, c.descricao, venc]
-      );
-      if (!existe) {
-        await conn.query(
-          `INSERT INTO contas_pagar (colegio_id, descricao, categoria, fornecedor, valor, vencimento, recorrencia, obs)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [req.colegioId, c.descricao, c.categoria, c.fornecedor, c.valor, venc, c.recorrencia, c.obs]
-        );
-        proxima = { vencimento: venc };
-      }
-    }
+    const proxima = await baixas.pagarConta(conn, req.colegioId, c, data);
     return { ...c, proxima };
   });
   await atividade(req.colegioId, req.usuario.id, `Conta paga: ${r.descricao} · R$ ${Number(r.valor).toFixed(2).replace('.', ',')}`);
@@ -162,11 +144,10 @@ router.post('/:id/estornar', assincrono(async (req, res) => {
   const r = await transacao(async (conn) => {
     const c = await buscarConta(conn, req.colegioId, id);
     if (c.status !== 'pago') throw new HttpErro(409, 'Esta conta não está paga', 'status');
-    const [[conc]] = await conn.query(
-      "SELECT COUNT(*) AS n FROM lancamentos_bancarios WHERE conta_pagar_id = ? AND status = 'conciliado'", [id]
-    );
-    if (conc.n > 0) throw new HttpErro(409, 'Este pagamento está conciliado com o extrato bancário. Desfaça a conciliação antes de estornar.', 'conciliado');
-    await conn.query("UPDATE contas_pagar SET status = 'pendente', data_pagamento = NULL WHERE id = ?", [id]);
+    if (await baixas.conciliacoes(conn, 'conta', id)) {
+      throw new HttpErro(409, 'Este pagamento está conciliado com o extrato bancário. Desfaça a conciliação antes de estornar.', 'conciliado');
+    }
+    await baixas.estornarConta(conn, c);
     return c;
   });
   await atividade(req.colegioId, req.usuario.id, `Pagamento de conta estornado: ${r.descricao}`);
@@ -178,10 +159,9 @@ router.delete('/:id', assincrono(async (req, res) => {
   const id = v.id(req.params.id);
   const r = await transacao(async (conn) => {
     const c = await buscarConta(conn, req.colegioId, id);
-    const [[conc]] = await conn.query(
-      "SELECT COUNT(*) AS n FROM lancamentos_bancarios WHERE conta_pagar_id = ? AND status = 'conciliado'", [id]
-    );
-    if (conc.n > 0) throw new HttpErro(409, 'Esta conta está conciliada com o extrato bancário. Desfaça a conciliação antes de excluir.', 'conciliado');
+    if (await baixas.conciliacoes(conn, 'conta', id)) {
+      throw new HttpErro(409, 'Esta conta está conciliada com o extrato bancário. Desfaça a conciliação antes de excluir.', 'conciliado');
+    }
     await conn.query('DELETE FROM contas_pagar WHERE id = ?', [id]);
     return c;
   });

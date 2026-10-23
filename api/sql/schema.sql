@@ -395,10 +395,32 @@ CREATE TABLE IF NOT EXISTS contas_banco (
   CONSTRAINT fk_cbanco_colegio FOREIGN KEY (colegio_id) REFERENCES colegios (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- Cada arquivo de extrato importado (permite desfazer a importação)
+CREATE TABLE IF NOT EXISTS importacoes_extrato (
+  id               INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+  colegio_id       INT UNSIGNED  NOT NULL,
+  conta_banco_id   INT UNSIGNED  NOT NULL,
+  arquivo          VARCHAR(150)  NOT NULL,
+  formato          ENUM('ofx','csv') NOT NULL,
+  periodo_inicio   DATE          NULL,
+  periodo_fim      DATE          NULL,
+  saldo_final      DECIMAL(12,2) NULL COMMENT 'Saldo informado pelo banco no OFX',
+  saldo_data       DATE          NULL,
+  qtd_lancamentos  INT UNSIGNED  NOT NULL DEFAULT 0,
+  qtd_duplicados   INT UNSIGNED  NOT NULL DEFAULT 0,
+  importado_por    INT UNSIGNED  NULL,
+  importado_em     DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_imp_conta (colegio_id, conta_banco_id, importado_em),
+  CONSTRAINT fk_imp_colegio     FOREIGN KEY (colegio_id)     REFERENCES colegios (id)     ON DELETE CASCADE,
+  CONSTRAINT fk_imp_conta_banco FOREIGN KEY (conta_banco_id) REFERENCES contas_banco (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 CREATE TABLE IF NOT EXISTS lancamentos_bancarios (
   id                INT UNSIGNED  NOT NULL AUTO_INCREMENT,
   colegio_id        INT UNSIGNED  NOT NULL,
   conta_banco_id    INT UNSIGNED  NOT NULL,
+  importacao_id     INT UNSIGNED  NULL,
   chave_importacao  VARCHAR(255)  NOT NULL COMMENT 'FITID do OFX ou hash da linha do CSV',
   data              DATE          NOT NULL,
   descricao         VARCHAR(200)  NOT NULL,
@@ -408,6 +430,7 @@ CREATE TABLE IF NOT EXISTS lancamentos_bancarios (
   vinculo_tipo      ENUM('mensalidade','conta','manual') NULL,
   mensalidade_id    INT UNSIGNED  NULL,
   conta_pagar_id    INT UNSIGNED  NULL,
+  acao_baixa        ENUM('nenhuma','baixou','criou') NOT NULL DEFAULT 'nenhuma' COMMENT 'O que a conciliação fez (revertido ao desfazer)',
   categoria         VARCHAR(40)   NULL,
   obs               VARCHAR(200)  NULL,
   conciliado_por    INT UNSIGNED  NULL,
@@ -416,7 +439,9 @@ CREATE TABLE IF NOT EXISTS lancamentos_bancarios (
   PRIMARY KEY (id),
   UNIQUE KEY uk_lanc_chave (conta_banco_id, chave_importacao),
   KEY idx_lanc_colegio_status (colegio_id, status, data),
+  KEY idx_lanc_conta_data (conta_banco_id, status, data),
   CONSTRAINT fk_lanc_colegio     FOREIGN KEY (colegio_id)     REFERENCES colegios (id)     ON DELETE CASCADE,
+  CONSTRAINT fk_lanc_importacao  FOREIGN KEY (importacao_id)  REFERENCES importacoes_extrato (id) ON DELETE SET NULL,
   CONSTRAINT fk_lanc_conta_banco FOREIGN KEY (conta_banco_id) REFERENCES contas_banco (id) ON DELETE CASCADE,
   CONSTRAINT fk_lanc_mensalidade FOREIGN KEY (mensalidade_id) REFERENCES mensalidades (id) ON DELETE SET NULL,
   CONSTRAINT fk_lanc_conta_pagar FOREIGN KEY (conta_pagar_id) REFERENCES contas_pagar (id) ON DELETE SET NULL,

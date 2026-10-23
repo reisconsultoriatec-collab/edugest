@@ -56,6 +56,8 @@ app.use('/api', rateLimit({
   message: { erro: 'Muitas requisições. Aguarde alguns minutos.' }
 }));
 
+// Importação de extrato envia o arquivo no corpo (base64): limite maior só nessa rota
+app.use('/api/conciliacao/importar', express.json({ limit: '5mb' }));
 app.use(express.json({ limit: '2mb' }));
 
 // ---------- Rotas ----------
@@ -84,6 +86,7 @@ app.use('/api/fluxo', equipe, require('./src/routes/fluxo'));
 app.use('/api/financeiro', equipe, require('./src/routes/financeiro'));
 app.use('/api/documentos', equipe, require('./src/routes/documentos'));
 app.use('/api/relatorios', equipe, require('./src/routes/relatorios'));
+app.use('/api/conciliacao', equipe, require('./src/routes/conciliacao'));
 
 // Sem login: PDFs por link assinado e com validade (enviados por WhatsApp)
 app.use('/api/publico', require('./src/routes/publico'));

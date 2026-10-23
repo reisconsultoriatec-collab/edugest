@@ -324,6 +324,34 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 .relatorio-cab strong { font-size: 16px; }
 .relatorio-cab small { color: #555; }
 
+/* ---------- Conciliação bancária ---------- */
+.valor-credito { color: var(--ok); font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.valor-debito { color: var(--erro); font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.sugestao { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; font-size: 13px; }
+.sugestao .selo { margin-bottom: 2px; }
+.barra-lote { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 10px 12px; margin-bottom: 12px;
+  background: var(--info-bg); color: var(--info-tx); border-radius: 8px; position: sticky; top: 64px; z-index: 5; }
+.barra-lote[hidden] { display: none; }
+.barra-lote strong { margin-right: auto; font-size: 13px; }
+.btn.perigo { color: var(--erro); }
+.zona-arquivo { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 22px; border: 2px dashed var(--border);
+  border-radius: 12px; text-align: center; cursor: pointer; color: var(--text-2); transition: border-color .15s, background .15s; }
+.zona-arquivo i { font-size: 34px; color: var(--muted); }
+.zona-arquivo small { color: var(--muted); max-width: 520px; }
+.zona-arquivo.sobre { border-color: var(--amber); background: var(--aviso-bg); }
+.linha-apagada td { opacity: .5; }
+.segmentos { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; flex-wrap: wrap; }
+.segmentos button { padding: 7px 14px; background: var(--card); border: none; border-right: 1px solid var(--border); color: var(--text-2);
+  cursor: pointer; font: inherit; font-size: 13px; }
+.segmentos button:last-child { border-right: none; }
+.segmentos button.ativo { background: var(--amber); color: #fff; font-weight: 600; }
+.candidatos { max-height: 330px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; }
+.candidato { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--border); cursor: pointer; font-size: 13px; }
+.candidato:last-child { border-bottom: none; }
+.candidato:hover { background: var(--hover); }
+.candidato.ativo { background: var(--aviso-bg); }
+.candidato input { accent-color: var(--amber); }
+
 @media print {
   :root, [data-theme="dark"] { --bg: #fff; --card: #fff; --text: #111; --text-2: #333; --muted: #555; --border: #bbb;
     --ok-bg: #fff; --erro-bg: #fff; --info-bg: #fff; --aviso-bg: #fff; --hover: transparent; }
