@@ -71,6 +71,10 @@ const equipe = [autenticar, carregarUsuario, exigirColegio, exigirPerfil('admin'
 app.use('/api/turmas', equipe, require('./src/routes/turmas'));
 app.use('/api/alunos', equipe, require('./src/routes/alunos'));
 app.use('/api/professores', equipe, require('./src/routes/professores'));
+app.use('/api/pedagogico', equipe, require('./src/routes/pedagogico'));
+app.use('/api/diario', equipe, require('./src/routes/diario'));
+app.use('/api/notas', equipe, require('./src/routes/notas'));
+app.use('/api/boletim', equipe, require('./src/routes/boletim'));
 
 app.use(naoEncontrado);
 app.use(tratarErros);

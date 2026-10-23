@@ -13,9 +13,9 @@
       { id: 'alunos', rotulo: 'Alunos', icone: 'ti-users', pronto: true },
       { id: 'professores', rotulo: 'Professores', icone: 'ti-user-check', pronto: true },
       { id: 'turmas', rotulo: 'Turmas e Séries', icone: 'ti-layout-grid', pronto: true },
-      { id: 'diario', rotulo: 'Diário de Classe', icone: 'ti-notebook' },
-      { id: 'notas', rotulo: 'Notas e Médias', icone: 'ti-list-numbers' },
-      { id: 'boletim', rotulo: 'Boletim', icone: 'ti-report' },
+      { id: 'diario', rotulo: 'Diário de Classe', icone: 'ti-notebook', pronto: true },
+      { id: 'notas', rotulo: 'Notas e Médias', icone: 'ti-list-numbers', pronto: true },
+      { id: 'boletim', rotulo: 'Boletim', icone: 'ti-report', pronto: true },
       { id: 'calendario', rotulo: 'Calendário Escolar', icone: 'ti-calendar-event' },
       { id: 'grade', rotulo: 'Grade Horária', icone: 'ti-clock-hour-3' },
       { id: 'documentos', rotulo: 'Documentos', icone: 'ti-file-certificate' }

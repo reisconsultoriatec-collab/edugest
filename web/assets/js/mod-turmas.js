@@ -5,6 +5,7 @@
 (function (EG) {
   let turmas = [];
   let filtroAno = null;
+  let chave = null; // usuário + colégio dos filtros guardados
   let filtroPeriodo = '';
 
   async function carregar(el) {
@@ -51,13 +52,64 @@
         <div style="flex:1;height:6px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${cor}"></div></div>
         <span style="font-size:12px;font-weight:600;color:var(--text-2)">${t.alunos}/${t.capacidade}</span>
       </div>
+      <div class="sub" style="margin-top:8px"><i class="ti ti-user-check"></i> ${t.atribuicoes} de ${totalDisciplinas()} disciplina(s) com professor</div>
       <div style="display:flex;gap:6px;margin-top:12px;padding-top:10px;border-top:1px solid var(--border);flex-wrap:wrap">
         ${EG.pode('alunos') ? '<button class="btn btn-secundario btn-pequeno" data-action="ver-alunos"><i class="ti ti-users"></i> Alunos</button>' : ''}
-        ${podeEditar ? `<button class="btn btn-secundario btn-pequeno" data-action="editar"><i class="ti ti-edit"></i> Editar</button>
+        ${podeEditar ? `<button class="btn btn-secundario btn-pequeno" data-action="professores"><i class="ti ti-user-check"></i> Professores</button>
+          <button class="btn btn-secundario btn-pequeno" data-action="editar"><i class="ti ti-edit"></i> Editar</button>
           <button class="btn-icone" data-action="alternar" title="${t.ativo ? 'Desativar' : 'Reativar'}"><i class="ti ${t.ativo ? 'ti-archive' : 'ti-archive-off'}"></i></button>
           <button class="btn-icone perigo" data-action="excluir" title="Excluir"><i class="ti ti-trash"></i></button>` : ''}
       </div>
     </div>`;
+  }
+
+  const totalDisciplinas = () => (EG.estado.colegio.disciplinas || []).filter((d) => d.ativo).length;
+
+  /* ---------- Atribuição de aulas: professor de cada disciplina ---------- */
+  async function modalProfessores(t, el) {
+    const r = await EG.api('GET', `/turmas/${t.id}/atribuicoes`);
+    const opcoesProf = (disciplinaId, atual) => {
+      const leciona = r.professores.filter((p) => p.disciplinas.includes(disciplinaId));
+      const outros = r.professores.filter((p) => !p.disciplinas.includes(disciplinaId));
+      const op = (p) => `<option value="${p.id}" ${p.id === atual ? 'selected' : ''}>${EG.esc(p.nome)}</option>`;
+      return '<option value="">— sem professor —</option>'
+        + (leciona.length ? `<optgroup label="Lecionam esta disciplina">${leciona.map(op).join('')}</optgroup>` : '')
+        + (outros.length ? `<optgroup label="${leciona.length ? 'Outros professores' : 'Professores'}">${outros.map(op).join('')}</optgroup>` : '');
+    };
+    const m = EG.modal({
+      titulo: `Professores · ${t.nome}`,
+      largura: 620,
+      corpo: r.professores.length ? `
+        <p class="card-desc" style="margin:0 0 14px">Defina quem dá cada disciplina nesta turma. O professor verá esta turma no Diário e nas Notas apenas nas disciplinas atribuídas a ele.</p>
+        <div class="codigo-box" style="margin-bottom:14px">
+          <span class="sub" style="width:100%">Professor polivalente (Ed. Infantil / Fund. I): aplica o mesmo professor a todas as disciplinas</span>
+          <select class="select" data-polivalente style="flex:1;min-width:200px"><option value="">Escolha o professor</option>${r.professores.map((p) => `<option value="${p.id}">${EG.esc(p.nome)}</option>`).join('')}</select>
+          <button type="button" class="btn btn-secundario btn-pequeno" data-aplicar-todas><i class="ti ti-copy-check"></i> Aplicar a todas</button>
+        </div>
+        ${r.disciplinas.map((d) => `<div class="disciplina-linha" data-disciplina="${d.id}">
+          <span style="flex:1;font-weight:500">${EG.esc(d.nome)}</span>
+          <select class="select" style="flex:1.4">${opcoesProf(d.id, d.professorId)}</select>
+        </div>`).join('')}`
+        : '<div class="vazio"><i class="ti ti-user-off"></i>Nenhum professor ativo cadastrado.<br>Cadastre os professores em <strong>Professores</strong>.</div>',
+      botoes: [
+        { texto: 'Cancelar', acao: () => m.fechar() },
+        ...(r.professores.length ? [{ texto: 'Salvar', classe: 'btn-primario', icone: 'ti-device-floppy', acao: async () => {
+          const atribuicoes = EG.$$('[data-disciplina]', m.el).map((linha) => ({
+            disciplinaId: Number(linha.dataset.disciplina),
+            professorId: linha.querySelector('select').value ? Number(linha.querySelector('select').value) : null
+          }));
+          await EG.api('PUT', `/turmas/${t.id}/atribuicoes`, { atribuicoes });
+          m.fechar(); EG.toast('Professores da turma salvos'); carregar(el);
+        } }] : [])
+      ]
+    });
+    m.el.addEventListener('click', (ev) => {
+      if (!ev.target.closest('[data-aplicar-todas]')) return;
+      const id = m.el.querySelector('[data-polivalente]').value;
+      if (!id) { m.erro('Escolha o professor polivalente.'); return; }
+      m.erro('');
+      EG.$$('[data-disciplina] select', m.el).forEach((s) => { s.value = id; });
+    });
   }
 
   function modalTurma(t, el) {
@@ -98,6 +150,7 @@
     try {
       if (acao === 'nova') modalTurma(null, el);
       else if (acao === 'editar') modalTurma(t, el);
+      else if (acao === 'professores') await modalProfessores(t, el);
       else if (acao === 'periodo') { filtroPeriodo = b.dataset.periodo; await carregar(el); }
       else if (acao === 'ver-alunos') { EG.filtroInicialAlunos = { turmaId: t.id }; EG.navegar('alunos'); }
       else if (acao === 'alternar') {
@@ -113,6 +166,7 @@
   EG.registrarModulo('turmas', {
     async render(el) {
       filtroPeriodo = '';
+      if (chave !== EG.chaveSessao()) { chave = EG.chaveSessao(); filtroAno = null; }
       await carregar(el);
       el.onclick = (ev) => aoClicar(ev, el);
       el.onchange = (ev) => {

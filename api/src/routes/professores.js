@@ -30,7 +30,10 @@ const SELECT_LISTA = `
            WHERE pd.professor_id = p.id) AS disc_ids,
          (SELECT GROUP_CONCAT(d.nome ORDER BY d.ordem, d.nome SEPARATOR '|')
             FROM professor_disciplina pd JOIN disciplinas d ON d.id = pd.disciplina_id
-           WHERE pd.professor_id = p.id) AS disc_nomes
+           WHERE pd.professor_id = p.id) AS disc_nomes,
+         (SELECT GROUP_CONCAT(DISTINCT t.nome ORDER BY t.nome SEPARATOR '|')
+            FROM atribuicoes at JOIN turmas t ON t.id = at.turma_id
+           WHERE at.professor_id = p.id AND t.ativo = 1) AS turmas_nomes
     FROM professores p
     LEFT JOIN usuarios u ON u.id = p.usuario_id`;
 
@@ -46,7 +49,8 @@ function formatar(p) {
     usuario: p.usuario_id ? { nome: p.usuario_nome, email: p.usuario_email } : null,
     disciplinas: p.disc_ids
       ? String(p.disc_ids).split(',').map((id, i) => ({ id: Number(id), nome: String(p.disc_nomes).split('|')[i] }))
-      : []
+      : [],
+    turmas: p.turmas_nomes ? String(p.turmas_nomes).split('|') : []
   };
 }
 
@@ -173,14 +177,16 @@ router.delete('/:id', exigirModulo('professores'), assincrono(async (req, res) =
 
   const uso = await queryUm(
     `SELECT (SELECT COUNT(*) FROM grade_horaria WHERE professor_id = ?) AS grade,
-            (SELECT COUNT(*) FROM diarios WHERE professor_id = ?) AS diarios`,
-    [id, id]
+            (SELECT COUNT(*) FROM diarios WHERE professor_id = ?) AS diarios,
+            (SELECT COUNT(*) FROM atribuicoes WHERE professor_id = ?) AS atribuicoes`,
+    [id, id, id]
   );
   const deps = [];
+  if (uso.atribuicoes) deps.push(`${uso.atribuicoes} disciplina(s) atribuída(s) em turmas (ficarão sem professor)`);
   if (uso.grade) deps.push(`${uso.grade} horário(s) na grade (ficarão sem professor)`);
   if (uso.diarios) deps.push(`${uso.diarios} registro(s) de diário (ficarão sem professor)`);
   if (deps.length && req.query.forcar !== '1') {
-    throw new HttpErro(409, `${p.nome} tem ${deps.join(' e ')}. Se preferir manter o histórico, altere o status para Inativo.`, 'tem_vinculos');
+    throw new HttpErro(409, `${p.nome} tem ${deps.join(', ')}. Se preferir manter o histórico, altere o status para Inativo.`, 'tem_vinculos');
   }
   await query('DELETE FROM professores WHERE id = ? AND colegio_id = ?', [id, req.colegioId]);
   await atividade(req.colegioId, req.usuario.id, `Professor excluído: ${p.nome}`);

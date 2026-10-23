@@ -202,9 +202,16 @@ router.delete('/atual/disciplinas/:id', soAdmin, assincrono(async (req, res) => 
   const d = await queryUm('SELECT nome FROM disciplinas WHERE id = ? AND colegio_id = ?', [id, req.colegioId]);
   if (!d) throw new HttpErro(404, 'Disciplina não encontrada', 'nao_encontrado');
 
-  const uso = await queryUm('SELECT COUNT(*) AS n FROM notas WHERE disciplina_id = ? AND colegio_id = ?', [id, req.colegioId]);
-  if (uso.n > 0) {
-    throw new HttpErro(409, `A disciplina ${d.nome} tem ${uso.n} nota(s) lançada(s). Desative em vez de excluir.`, 'em_uso');
+  const uso = await queryUm(
+    `SELECT (SELECT COUNT(*) FROM notas WHERE disciplina_id = ? AND colegio_id = ?) AS notas,
+            (SELECT COUNT(*) FROM diarios WHERE disciplina_id = ? AND colegio_id = ?) AS diarios`,
+    [id, req.colegioId, id, req.colegioId]
+  );
+  if (uso.notas > 0 || uso.diarios > 0) {
+    const partes = [];
+    if (uso.notas) partes.push(`${uso.notas} nota(s) lançada(s)`);
+    if (uso.diarios) partes.push(`${uso.diarios} registro(s) no diário`);
+    throw new HttpErro(409, `A disciplina ${d.nome} tem ${partes.join(' e ')}. Desative em vez de excluir.`, 'em_uso');
   }
   await query('DELETE FROM disciplinas WHERE id = ? AND colegio_id = ?', [id, req.colegioId]);
   await atividade(req.colegioId, req.usuario.id, `Disciplina excluída: ${d.nome}`);

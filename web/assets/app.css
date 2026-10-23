@@ -220,6 +220,54 @@ td small, .sub { color: var(--muted); font-size: 11px; }
   .autorizado { grid-template-columns: 1fr 1fr; padding: 10px; border: 1px solid var(--border); border-radius: 8px; }
   .autorizado [data-campo="nome"] { grid-column: 1 / -1; }
 }
+/* ---------- Diário: chamada ---------- */
+.chamada { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.chamada-linha { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+.chamada-linha:last-child { border-bottom: none; }
+.chamada-linha:hover { background: var(--hover); }
+.chamada-linha .num { width: 22px; text-align: right; color: var(--muted); font-size: 12px; flex-shrink: 0; }
+.chamada-linha .nome { flex: 1; min-width: 0; }
+.chamada-linha .nome small { color: var(--muted); font-size: 11px; }
+.att { width: 38px; height: 34px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--text-2);
+  font-weight: 700; font-size: 13px; cursor: pointer; flex-shrink: 0; }
+.att:hover { border-color: var(--amber); }
+.att.P.on { background: var(--ok); border-color: var(--ok); color: #fff; }
+.att.F.on { background: var(--erro); border-color: var(--erro); color: #fff; }
+.att.J.on { background: var(--aviso); border-color: var(--aviso); color: #fff; }
+.textarea { resize: vertical; min-height: 70px; }
+
+/* ---------- Notas ---------- */
+.planilha-notas .input.nota { width: 72px; padding: 6px 8px; text-align: center; }
+.planilha-notas td { padding: 7px 10px; }
+
+/* ---------- Boletim ---------- */
+.boletim-cab { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding-bottom: 14px; margin-bottom: 14px; border-bottom: 2px solid var(--navy); }
+[data-theme="dark"] .boletim-cab { border-bottom-color: var(--amber); }
+.boletim-dados { display: grid; grid-template-columns: 2fr 1fr 1fr 1.5fr; gap: 12px; margin-bottom: 16px; }
+.boletim-dados .rotulo { margin-bottom: 2px; }
+.tabela-boletim th, .tabela-boletim td { text-align: center; }
+.tabela-boletim th:first-child, .tabela-boletim td:first-child { text-align: left; }
+.nota-baixa { color: var(--erro); font-weight: 600; }
+.boletim-rodape { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+.boletim-freq { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; }
+.boletim-freq.alerta { border-color: var(--erro); background: var(--erro-bg); }
+@media (max-width: 680px) {
+  .boletim-dados, .boletim-rodape { grid-template-columns: 1fr 1fr; }
+}
+
+/* ---------- Impressão (boletim) ---------- */
+@media print {
+  :root, [data-theme="dark"] { --bg: #fff; --card: #fff; --text: #111; --text-2: #333; --muted: #555; --border: #bbb;
+    --ok-bg: #fff; --erro-bg: #fff; --info-bg: #fff; --aviso-bg: #fff; --hover: transparent; }
+  body { background: #fff; }
+  .sidebar, .sidebar-fundo, .topo, .no-print, .toasts, #modais { display: none !important; }
+  .principal { margin: 0; }
+  .conteudo { padding: 0; max-width: none; }
+  .card.boletim { border: none; padding: 0; }
+  .selo { border: 1px solid #999; }
+  .tabela-wrap { overflow: visible; }
+}
+
 .em-breve { text-align: center; padding: 60px 20px; }
 .em-breve i { font-size: 56px; color: var(--amber); }
 .em-breve h2 { margin: 12px 0 6px; }

@@ -253,6 +253,67 @@ window.EG = window.EG || {};
   EG.opcoes = (lista, atual) => lista.map((o) =>
     `<option value="${EG.esc(o.value)}" ${String(o.value) === String(atual ?? '') ? 'selected' : ''}>${EG.esc(o.label)}</option>`).join('');
 
+  /* ---------- Pedagógico ---------- */
+  const fmtDiaSP = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' });
+  /** 'AAAA-MM-DD' de hoje no horário de São Paulo. */
+  EG.hojeSP = () => fmtDiaSP.format(new Date());
+  /** Bimestre provável pela data de hoje (fev–abr 1º, mai–jul 2º, ago–set 3º, out–dez 4º). */
+  EG.bimestreAtual = () => {
+    const m = Number(EG.hojeSP().slice(5, 7));
+    return m <= 4 ? 1 : m <= 7 ? 2 : m <= 9 ? 3 : 4;
+  };
+  /** Mesmas regras da API: média das notas lançadas, 1 casa. */
+  EG.arred1 = (x) => Math.round((x + Number.EPSILON) * 10) / 10;
+  EG.mediaNotas = (lista) => {
+    const vals = lista.filter((x) => x !== null && x !== undefined && x !== '').map(Number);
+    return vals.length ? EG.arred1(vals.reduce((s, x) => s + x, 0) / vals.length) : null;
+  };
+  EG.fmtNota = (n) => (n === null || n === undefined ? '—' : Number(n).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }));
+  /** Lê nota digitada ("7,5", "7.5", "") → número ou null; NaN se inválida. */
+  EG.lerNota = (txt) => {
+    const s = String(txt || '').trim().replace(',', '.');
+    if (!s) return null;
+    const n = Number(s);
+    return Number.isFinite(n) && n >= 0 && n <= 10 ? Math.round(n * 100) / 100 : NaN;
+  };
+
+  /**
+   * Identifica usuário + colégio atuais. Os módulos guardam filtros entre
+   * telas; quando a chave muda (outro login ou outro colégio), recomeçam.
+   */
+  EG.chaveSessao = () => `${EG.estado.colegioId}:${EG.estado.me && EG.estado.me.usuario ? EG.estado.me.usuario.id : ''}`;
+  EG.filtrosDaSessao = function (obj, padrao) {
+    if (obj._chave !== EG.chaveSessao()) Object.assign(obj, padrao, { _chave: EG.chaveSessao() });
+    return obj;
+  };
+
+  /** Turmas e disciplinas permitidas no diário/notas/boletim. */
+  EG.opcoesPedagogicas = () => EG.api('GET', '/pedagogico/opcoes');
+
+  /** Mensagem quando não há turma disponível (professor sem atribuição etc.). */
+  EG.semTurmas = function (op) {
+    if (op.restrito && !op.vinculado) {
+      return `<div class="card em-breve"><i class="ti ti-link-off"></i><h2>Login não vinculado</h2>
+        <p>Seu login ainda não está vinculado a um cadastro de professor. Peça ao administrador para fazer o vínculo em <strong>Professores</strong>.</p></div>`;
+    }
+    if (op.restrito) {
+      return `<div class="card em-breve"><i class="ti ti-school-off"></i><h2>Nenhuma turma atribuída</h2>
+        <p>Ainda não há aulas atribuídas a você. Peça ao administrador para indicar suas disciplinas em <strong>Turmas e Séries → Professores</strong>.</p></div>`;
+    }
+    return `<div class="card em-breve"><i class="ti ti-layout-grid"></i><h2>Nenhuma turma cadastrada</h2>
+      <p>Cadastre as turmas em <strong>Turmas e Séries</strong> para começar.</p></div>`;
+  };
+
+  /** <option> de turmas agrupadas por ano letivo. */
+  EG.opcoesTurmas = function (turmas, atual, { incluirInativas = false, vazio = 'Selecione a turma' } = {}) {
+    const lista = turmas.filter((t) => incluirInativas || t.ativo || t.id === Number(atual));
+    const grupos = {};
+    lista.forEach((t) => { (grupos[t.anoLetivo] = grupos[t.anoLetivo] || []).push(t); });
+    return `<option value="">${EG.esc(vazio)}</option>` + Object.keys(grupos).sort((a, b) => b - a).map((ano) =>
+      `<optgroup label="${ano}">${grupos[ano].map((t) =>
+        `<option value="${t.id}" ${String(t.id) === String(atual) ? 'selected' : ''}>${EG.esc(t.nome)}${t.ativo ? '' : ' (inativa)'}</option>`).join('')}</optgroup>`).join('');
+  };
+
   EG.SERIES = ['Berçário', 'Maternal I', 'Maternal II', 'Infantil I', 'Infantil II', 'Infantil III',
     '1º Ano', '2º Ano', '3º Ano', '4º Ano', '5º Ano', '6º Ano', '7º Ano', '8º Ano', '9º Ano',
     '1ª Série EM', '2ª Série EM', '3ª Série EM', 'EJA', 'Outra'];

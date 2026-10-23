@@ -229,6 +229,7 @@
 
   EG.registrarModulo('alunos', {
     async render(el) {
+      EG.filtrosDaSessao(filtro, { busca: '', status: 'ativo', turmaId: '' });
       // Vindo da tela de turmas: já abre filtrado
       if (EG.filtroInicialAlunos) {
         filtro.turmaId = String(EG.filtroInicialAlunos.turmaId);

@@ -24,17 +24,18 @@
           <span class="sub" style="margin-left:auto;align-self:center">${lista.length} professor(es)</span>
         </div>
         <div class="tabela-wrap"><table>
-          <thead><tr><th>Professor</th><th>Disciplinas</th><th>Carga</th><th>Contato</th><th>Login no sistema</th><th>Status</th><th></th></tr></thead>
+          <thead><tr><th>Professor</th><th>Disciplinas</th><th>Turmas</th><th>Carga</th><th>Contato</th><th>Login no sistema</th><th>Status</th><th></th></tr></thead>
           <tbody>${lista.map((p) => `<tr data-id="${p.id}">
             <td><strong>${EG.esc(p.nome)}</strong></td>
             <td>${p.disciplinas.map((d) => `<span class="selo selo-info" style="margin:1px">${EG.esc(d.nome)}</span>`).join('') || '<span class="sub">—</span>'}</td>
+            <td>${(p.turmas || []).map((t) => `<span class="selo selo-neutro" style="margin:1px">${EG.esc(t)}</span>`).join('') || '<span class="sub">nenhuma</span>'}</td>
             <td>${p.cargaHoraria ? EG.esc(p.cargaHoraria) + 'h/sem' : '<span class="sub">—</span>'}</td>
             <td>${EG.esc(p.telefone || '')}${p.email ? `<br><small>${EG.esc(p.email)}</small>` : ''}${!p.telefone && !p.email ? '<span class="sub">—</span>' : ''}</td>
             <td>${p.usuario ? `<i class="ti ti-link" style="color:var(--ok)"></i> ${EG.esc(p.usuario.email)}` : '<span class="sub">não vinculado</span>'}</td>
             <td><span class="selo ${p.status === 'ativo' ? 'selo-ok' : 'selo-neutro'}">${p.status === 'ativo' ? 'Ativo' : 'Inativo'}</span></td>
             <td class="acoes">${podeEditar ? `<button class="btn-icone" data-action="editar" title="Editar"><i class="ti ti-edit"></i></button>
               <button class="btn-icone perigo" data-action="excluir" title="Excluir"><i class="ti ti-trash"></i></button>` : ''}</td>
-          </tr>`).join('') || `<tr><td colspan="7"><div class="vazio"><i class="ti ti-user-check"></i>${professores.length ? 'Nenhum professor neste filtro' : 'Nenhum professor cadastrado'}</div></td></tr>`}</tbody>
+          </tr>`).join('') || `<tr><td colspan="8"><div class="vazio"><i class="ti ti-user-check"></i>${professores.length ? 'Nenhum professor neste filtro' : 'Nenhum professor cadastrado'}</div></td></tr>`}</tbody>
         </table></div>
       </div>`;
   }
