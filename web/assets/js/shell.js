@@ -1,6 +1,7 @@
 /* =====================================================================
  *  EduGest — estrutura do app: menu (grupos recolhíveis), seletor de
  *  colégio, rotas (#/id), timeout de sessão e saída.
+ *  Colégio novo: só o proprietário, em Sistema › Gestão de Colégios.
  * ===================================================================== */
 'use strict';
 (function (EG) {
@@ -39,13 +40,16 @@
     { secao: 'Sistema', itens: [
       { id: 'config', rotulo: 'Configurações', icone: 'ti-settings', pronto: true },
       { id: 'usuarios', rotulo: 'Usuários', icone: 'ti-users-group', pronto: true },
-      { id: 'seguranca', rotulo: 'Log de Segurança', icone: 'ti-shield-lock', pronto: true, soAdmin: true }
+      { id: 'seguranca', rotulo: 'Log de Segurança', icone: 'ti-shield-lock', pronto: true, soAdmin: true },
+      // Só o proprietário do sistema (PROPRIETARIO_EMAILS no .env da API)
+      { id: 'colegios', rotulo: 'Gestão de Colégios', icone: 'ti-building-community', pronto: true, soProprietario: true }
     ] }
   ];
   const TODOS = MENU.flatMap((s) => s.itens);
 
   function permitido(item) {
     const e = EG.estado;
+    if (item.soProprietario) return !!(e.me && (e.me.proprietario || e.me.proprietarioVerificar));
     if (item.soAdmin) return e.perfil === 'admin';
     // Tudo depende dos módulos liberados, inclusive o Dashboard
     return e.modulos.includes(item.modulo || item.id);
@@ -85,8 +89,6 @@
       const extra = c.status === 'ativo' ? '' : ` (${(EG.STATUS[c.status] || c.status).toLowerCase()})`;
       return `<option value="${c.id}" ${c.id === EG.estado.colegioId ? 'selected' : ''}>${EG.esc(c.nome + extra)}</option>`;
     }).join('');
-    // Responsável não cria colégio
-    EG.$('[data-action="novo-colegio"]').hidden = EG.estado.perfil === 'responsavel';
   }
 
   /* Menu: "Principal" fica sempre à mostra; os demais grupos abrem com um
@@ -216,13 +218,13 @@
     EG.$('.sidebar-fundo').classList.remove('aberto');
   }
 
-  /* ---------- Trocar / criar colégio ---------- */
-  EG.$('#seletorColegio').addEventListener('change', async (e) => {
-    const id = Number(e.target.value);
+  /* ---------- Trocar de colégio ---------- */
+  /** Passa a usar outro colégio (seletor da barra lateral e Gestão de Colégios). */
+  EG.trocarColegio = async function (id, pagina) {
     try {
       EG.carregando(true, 'Alternando colégio...');
       await EG.api('PUT', '/me/colegio-atual', { colegioId: id });
-      history.replaceState(null, '', '#/dashboard');
+      history.replaceState(null, '', '#/' + (pagina || 'dashboard'));
       await EG.carregarSessao(id);
       EG.toast('Colégio alternado');
     } catch (err) {
@@ -230,31 +232,8 @@
       EG.toast(err.message, 'erro');
       montarSeletor();
     }
-  });
-
-  function modalNovoColegio() {
-    const m = EG.modal({
-      titulo: 'Cadastrar novo colégio',
-      corpo: `<p class="card-desc" style="margin:0 0 14px">Cada colégio tem dados totalmente separados. Você será o administrador do novo colégio.</p>
-        <div class="campo"><label>Nome do colégio *</label><input class="input" name="nome" maxlength="120"></div>
-        <div class="linha-2">
-          <div class="campo"><label>CNPJ</label><input class="input" name="cnpj" data-mascara="cnpj" maxlength="18" autocomplete="off"></div>
-          <div class="campo"><label>Telefone</label><input class="input" name="telefone" data-mascara="telefone" maxlength="15"></div>
-        </div>
-        <div class="campo"><label>Endereço</label><input class="input" name="endereco" maxlength="200"></div>`,
-      botoes: [
-        { texto: 'Cancelar', acao: () => m.fechar() },
-        { texto: 'Criar colégio', classe: 'btn-primario', icone: 'ti-building-plus', acao: async () => {
-          const d = EG.lerForm(m.el);
-          const r = await EG.api('POST', '/colegios', d);
-          m.fechar();
-          history.replaceState(null, '', '#/config');
-          await EG.carregarSessao(r.id);
-          EG.toast(`Colégio "${r.nome}" criado!`);
-        } }
-      ]
-    });
-  }
+  };
+  EG.$('#seletorColegio').addEventListener('change', (e) => EG.trocarColegio(Number(e.target.value)));
 
   /* ---------- Timeout de sessão ---------- */
   const EVENTOS = ['mousedown', 'keydown', 'scroll', 'touchstart'];
@@ -326,6 +305,5 @@
     else if (acao === 'tema') EG.alternarTema();
     else if (acao === 'menu-usuario') dd.hidden = !dd.hidden;
     else if (acao === 'sair') sair('logout');
-    else if (acao === 'novo-colegio') modalNovoColegio();
   });
 })(window.EG);

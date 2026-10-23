@@ -2,8 +2,10 @@
 /* =====================================================================
  *  /api/conta — cadastro e eventos de login
  *
- *  POST /registrar              equipe: cria colégio novo (admin) ou entra
- *                               pelo código de convite (pendente)
+ *  POST /registrar              equipe: entra pelo código do colégio (pendente).
+ *                               Colégio novo só o proprietário do sistema cria.
+ *  POST /entrar-colegio         quem já tem cadastro e ficou sem colégio pede
+ *                               acesso com o código do colégio (pendente)
  *  POST /registrar-responsavel  responsável pelo código PAI do aluno (pendente)
  *  POST /falha-login            público: registra senha errada no log
  *  POST /evento                 login_ok | logout | timeout no log
@@ -21,6 +23,7 @@ const v = require('../utils/validar');
 const { seguranca } = require('../utils/auditoria');
 const { ipCliente } = require('../utils/ip');
 const { criarColegio } = require('../services/colegios');
+const { situacaoProprietario } = require('../utils/proprietario');
 
 const limite = (max, minutos = 15) => rateLimit({
   windowMs: minutos * 60 * 1000,
@@ -43,9 +46,23 @@ router.post('/registrar', limiteCadastro, autenticar, carregarUsuario, assincron
 
   const nome = v.texto(req.body.nome, 'Nome', { max: 100, min: 3, obrigatorio: true });
   const convite = v.texto(req.body.codigoConvite, 'Código do colégio', { max: 20 });
-  const colegioNome = v.texto(req.body.colegioNome, 'Nome do colégio', { max: 120, min: 3 });
+  const colegioNome = convite ? null : v.texto(req.body.colegioNome, 'Nome do colégio', { max: 120, min: 3 });
   if (!convite && !colegioNome) {
-    throw new HttpErro(400, 'Informe o código do colégio ou o nome do novo colégio', 'validacao');
+    throw new HttpErro(400, 'Informe o código do colégio. Peça o código ao administrador do seu colégio.', 'validacao');
+  }
+  // Colégio novo: exclusivo do proprietário do sistema
+  if (colegioNome) {
+    const s = situacaoProprietario(req.firebase);
+    if (s === 'verificar') {
+      throw new HttpErro(403, 'Confirme o seu e-mail (link enviado na criação da conta) e tente de novo para cadastrar o colégio.', 'email_nao_verificado');
+    }
+    if (s !== 'ativo') {
+      await seguranca(req, {
+        tipo: 'cadastro', email: req.firebase.email,
+        detalhes: 'Tentou cadastrar colégio novo sem ser o proprietário do sistema (bloqueado)'
+      });
+      throw new HttpErro(403, 'O cadastro de colégios novos é feito somente pela Reis Tecnologia. Peça o código ao administrador do seu colégio.', 'proprietario');
+    }
   }
 
   const r = await transacao(async (conn) => {
@@ -90,6 +107,50 @@ router.post('/registrar', limiteCadastro, autenticar, carregarUsuario, assincron
   });
 
   res.status(201).json(r);
+}));
+
+/* ---------------- Já cadastrado, sem colégio ----------------
+ * Ex.: o acesso foi removido/recusado ou o colégio foi desativado. Pede
+ * acesso a um colégio pelo código, como no cadastro (fica pendente). */
+router.post('/entrar-colegio', limiteCadastro, autenticar, carregarUsuario, assincrono(async (req, res) => {
+  if (!req.usuario) throw new HttpErro(403, 'Cadastro não encontrado no EduGest', 'sem_cadastro');
+  const convite = v.texto(req.body.codigoConvite, 'Código do colégio', { max: 20, obrigatorio: true }).toUpperCase();
+
+  const col = await queryUm(
+    'SELECT id, nome, whatsapp_notif, telefone FROM colegios WHERE codigo_convite = ? AND ativo = 1',
+    [convite]
+  );
+  if (!col) throw new HttpErro(404, 'Código do colégio não encontrado', 'convite_invalido');
+
+  const vinculo = await queryUm(
+    'SELECT perfil, status FROM usuario_colegio WHERE usuario_id = ? AND colegio_id = ?',
+    [req.usuario.id, col.id]
+  );
+  if (vinculo) {
+    const sit = vinculo.status === 'pendente' ? 'aguarda aprovação' : vinculo.status === 'bloqueado' ? 'está bloqueado' : 'já está ativo';
+    throw new HttpErro(409, `Você já tem cadastro neste colégio (${sit}).`, 'ja_vinculado');
+  }
+
+  await transacao(async (conn) => {
+    await conn.query(
+      `INSERT INTO usuario_colegio (usuario_id, colegio_id, perfil, status)
+       VALUES (?, ?, 'professor', 'pendente')`,
+      [req.usuario.id, col.id]
+    );
+    await conn.query('UPDATE usuarios SET colegio_atual_id = ? WHERE id = ?', [col.id, req.usuario.id]);
+  });
+
+  await seguranca(req, {
+    tipo: 'cadastro', colegioId: col.id, usuarioId: req.usuario.id, email: req.usuario.email,
+    detalhes: 'Pediu acesso pelo código do colégio — aguardando aprovação'
+  });
+
+  res.status(201).json({
+    colegio: { id: col.id, nome: col.nome },
+    perfil: 'professor',
+    status: 'pendente',
+    whatsappAdmin: col.whatsapp_notif || col.telefone || null
+  });
 }));
 
 /* ---------------- Responsável ---------------- */

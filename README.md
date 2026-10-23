@@ -24,3 +24,13 @@ Baixa a versão mais recente, copia API e front, instala dependências se o `pac
 - `api/firebase-service-account.json`
 
 Esses arquivos existem só no servidor e são preservados pelo script de atualização.
+
+## Proprietário do sistema
+
+Só o proprietário cadastra colégios novos (menu **Sistema › Gestão de Colégios**). Ele é definido no `.env` do servidor, nunca no banco:
+
+```
+PROPRIETARIO_EMAILS=seu-email@exemplo.com
+```
+
+O script de atualização pergunta esse e-mail na primeira vez. O e-mail precisa estar confirmado no login. Os parâmetros de cada colégio continuam com o administrador do próprio colégio (**Sistema › Configurações**).

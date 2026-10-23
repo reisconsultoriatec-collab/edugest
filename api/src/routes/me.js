@@ -3,6 +3,7 @@
  *  /api/me — dados do usuário logado
  *
  *  GET /api/me         → cadastro + colégios em que tem vínculo
+ *                        (+ proprietario / proprietarioVerificar)
  *  GET /api/me/acesso  → perfil e módulos no colégio do header X-Colegio-Id
  *  PUT /api/me/colegio-atual, /nome, /tour
  * ===================================================================== */
@@ -14,13 +15,21 @@ const v = require('../utils/validar');
 const { modulosEfetivos } = require('../utils/modulos');
 const { agoraSP } = require('../utils/datas');
 const { ipCliente } = require('../utils/ip');
+const { situacaoProprietario } = require('../utils/proprietario');
+
+/** proprietario: libera a Gestão de Colégios · proprietarioVerificar: é o dono, falta confirmar o e-mail */
+function flagsProprietario(req) {
+  const s = situacaoProprietario(req.firebase);
+  return { proprietario: s === 'ativo', proprietarioVerificar: s === 'verificar' };
+}
 
 router.get('/', assincrono(async (req, res) => {
   if (!req.usuario) {
     return res.json({
       cadastrado: false,
       email: req.firebase.email,
-      emailVerificado: req.firebase.emailVerificado
+      emailVerificado: req.firebase.emailVerificado,
+      ...flagsProprietario(req)
     });
   }
 
@@ -39,6 +48,7 @@ router.get('/', assincrono(async (req, res) => {
   return res.json({
     cadastrado: true,
     emailVerificado: req.firebase.emailVerificado,
+    ...flagsProprietario(req),
     usuario: {
       id: u.id,
       nome: u.nome,

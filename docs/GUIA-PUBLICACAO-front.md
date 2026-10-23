@@ -63,9 +63,9 @@ Com ela eu devolvo o arquivo pronto e os comandos para ativar.
 
 Depois do Nginx ativo, abra `https://edugest.reisconsultoriatec.com`:
 
-1. **Criar conta** → "Novo colégio" → você entra como administrador.
+1. Entre com a conta do proprietário (o e-mail de `PROPRIETARIO_EMAILS` no `.env`) → **Sistema › Gestão de Colégios** → **Novo colégio**. Você entra como administrador do colégio novo. A tela pública "Criar conta" não cadastra colégios.
 2. **Configurações**: preencha os dados, os parâmetros e copie o código do colégio.
-3. Numa janela anônima, crie outra conta com "Já existe" + o código → fica **aguardando aprovação**.
+3. Numa janela anônima, crie outra conta com o código do colégio → fica **aguardando aprovação**.
 4. Na sua conta, **Usuários** → aprove, escolha perfil e módulos.
 5. Entre com a segunda conta e veja que o menu mostra só os módulos liberados.
 6. **Log de Segurança**: logins, falhas, cadastros e aprovações registrados.

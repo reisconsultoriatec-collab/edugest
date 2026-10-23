@@ -2,7 +2,8 @@
 /* =====================================================================
  *  /api/colegios  (usuário logado e cadastrado)
  *
- *  POST   /                          cria um novo colégio (vira admin dele)
+ *  Colégio novo: só o proprietário do sistema, em /api/proprietario.
+ *
  *  GET    /atual                     dados, configuração e disciplinas
  *  PUT    /atual                     dados cadastrais            [admin]
  *  PUT    /atual/config              configuração                [admin]
@@ -17,13 +18,12 @@
  *  "atual" = colégio do header X-Colegio-Id (ou o último selecionado).
  * ===================================================================== */
 const router = require('express').Router();
-const { query, queryUm, transacao } = require('../db');
+const { query, queryUm } = require('../db');
 const { exigirColegio, exigirPerfil, exigirModulo } = require('../middleware/auth');
 const { HttpErro, assincrono } = require('../middleware/erros');
 const v = require('../utils/validar');
 const { atividade, seguranca } = require('../utils/auditoria');
 const { codigoConvite } = require('../utils/codigos');
-const { criarColegio } = require('../services/colegios');
 const { hojeSP } = require('../utils/datas');
 const { TIPOS_CHAVE, normalizarChave } = require('../utils/pix');
 
@@ -41,24 +41,6 @@ async function contarPendentes(colegioId) {
   return { total, responsaveis, equipe: total - responsaveis };
 }
 const soEquipe = [exigirColegio, exigirPerfil('admin', 'professor', 'financeiro')];
-
-/* ---------------- Criar colégio ---------------- */
-router.post('/', assincrono(async (req, res) => {
-  const nome = v.texto(req.body.nome, 'Nome do colégio', { max: 120, min: 3, obrigatorio: true });
-  const cnpj = v.cnpj(req.body.cnpj);
-  const telefone = v.telefone(req.body.telefone);
-  const endereco = v.texto(req.body.endereco, 'Endereço', { max: 200 });
-
-  const colegioId = await transacao((conn) =>
-    criarColegio(conn, { nome, usuarioId: req.usuario.id, cnpj, telefone, endereco }));
-
-  await atividade(colegioId, req.usuario.id, `Colégio criado: ${nome}`);
-  await seguranca(req, {
-    tipo: 'admin', colegioId, usuarioId: req.usuario.id, email: req.usuario.email,
-    detalhes: `Criou o colégio ${nome}`
-  });
-  res.status(201).json({ id: colegioId, nome, perfil: 'admin' });
-}));
 
 /* ---------------- Ler colégio atual ---------------- */
 router.get('/atual', exigirColegio, assincrono(async (req, res) => {

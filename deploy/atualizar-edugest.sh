@@ -11,6 +11,8 @@
 #  2. Copia a API para ~/edugest-api (preserva .env, chave do Firebase
 #     e node_modules) e roda npm install só se o package.json mudou
 #  3. Copia o front para /var/www/edugest
+#  3b. Pergunta (uma vez) o e-mail do proprietário do sistema e grava
+#      PROPRIETARIO_EMAILS no .env — só ele cadastra colégios novos
 #  4. Reinicia a API no PM2 e confere o /api/health
 # =====================================================================
 
@@ -80,6 +82,24 @@ main() {
 
   echo "==> Atualizando o front..."
   rsync -a --delete "$REPO/web/" "$WEB/"
+
+  # Proprietário do sistema: o único que cadastra colégios novos.
+  # Fica só no .env do servidor; pergunta uma única vez.
+  if ! grep -q '^PROPRIETARIO_EMAILS=.' "$API/.env"; then
+    echo "==> Proprietário do sistema (o único que cadastra colégios novos)"
+    local dono=""
+    read -rp "    Digite o e-mail com que você entra no EduGest: " dono || true
+    dono=$(printf '%s' "$dono" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
+    if [[ "$dono" == *@*.* ]]; then
+      sed -i '/^PROPRIETARIO_EMAILS=/d' "$API/.env"
+      if [ -n "$(tail -c1 "$API/.env")" ]; then echo >> "$API/.env"; fi
+      echo "PROPRIETARIO_EMAILS=$dono" >> "$API/.env"
+      echo "    ✓ Gravado no .env: PROPRIETARIO_EMAILS=$dono"
+    else
+      echo "!!  Nenhum e-mail válido informado. Ninguém conseguirá cadastrar colégios"
+      echo "    até você rodar o script de novo (ou preencher PROPRIETARIO_EMAILS em $API/.env)."
+    fi
+  fi
 
   echo "==> Reiniciando a API..."
   pm2 restart edugest-api --update-env > /dev/null

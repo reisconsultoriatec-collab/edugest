@@ -55,19 +55,34 @@
       <button class="auth-link" type="button" data-action="esqueci">Esqueci minha senha</button>
     </form>`;
 
-  const camposEquipe = (opcao) => `
-    <div class="opcoes-cadastro">
-      <button type="button" class="opcao ${opcao !== 'convite' ? 'ativa' : ''}" data-action="opcao-equipe" data-opcao="novo">
-        <strong><i class="ti ti-building-plus"></i> Novo colégio</strong>Cadastrar a minha escola</button>
-      <button type="button" class="opcao ${opcao === 'convite' ? 'ativa' : ''}" data-action="opcao-equipe" data-opcao="convite">
-        <strong><i class="ti ti-key"></i> Já existe</strong>Tenho o código do colégio</button>
-    </div>
-    <input type="hidden" name="opcao" value="${opcao === 'convite' ? 'convite' : 'novo'}">
-    <div class="campo" data-bloco="novo" ${opcao === 'convite' ? 'hidden' : ''}><label>Nome do colégio</label>
-      <input class="input" name="colegioNome" maxlength="120" placeholder="Ex.: Colégio Nova Geração"></div>
-    <div class="campo" data-bloco="convite" ${opcao === 'convite' ? '' : 'hidden'}><label>Código do colégio</label>
-      <input class="input" name="codigoConvite" maxlength="20" autocomplete="off" style="text-transform:uppercase;letter-spacing:1px">
-      <small>Peça o código ao administrador. Seu acesso será liberado após a aprovação.</small></div>`;
+  /* Equipe entra sempre pelo código do colégio. Colégio novo só o
+   * proprietário do sistema cadastra (Sistema › Gestão de Colégios). */
+  const camposEquipe = () => `
+    <div class="msg-info"><i class="ti ti-key"></i> Peça o <strong>código do colégio</strong> ao administrador da sua escola. Seu acesso é liberado depois da aprovação dele.</div>
+    <div class="campo"><label>Código do colégio</label>
+      <input class="input" name="codigoConvite" maxlength="20" autocomplete="off" style="text-transform:uppercase;letter-spacing:1px"></div>`;
+
+  const camposNovoColegio = () => `
+    <div class="msg-info"><i class="ti ti-building-plus"></i> Exclusivo do proprietário do sistema. Você será o administrador do colégio novo.</div>
+    <div class="campo"><label>Nome do colégio</label>
+      <input class="input" name="colegioNome" maxlength="120" placeholder="Ex.: Colégio Nova Geração"></div>`;
+
+  /** Abas Equipe / Responsável (+ Novo colégio, só para o proprietário). */
+  function tipoValido(tipo) {
+    const dono = !!(EG.estado.me && EG.estado.me.proprietario);
+    return tipo === 'responsavel' || (tipo === 'novo' && dono) ? tipo : 'equipe';
+  }
+  function abasTipo(tela, tipo) {
+    const tipos = [['equipe', 'Equipe do colégio'], ['responsavel', 'Sou responsável']];
+    if (EG.estado.me && EG.estado.me.proprietario) tipos.push(['novo', 'Novo colégio']);
+    return `<div class="abas">${tipos.map(([t, rot]) =>
+      `<button class="aba ${t === tipo ? 'ativa' : ''}" data-action="tipo" data-tela="${tela}" data-tipo="${t}">${rot}</button>`).join('')}</div>`;
+  }
+  /** Proprietário com e-mail ainda não confirmado: explica como liberar o cadastro de colégios. */
+  const avisoDono = () => (EG.estado.me && EG.estado.me.proprietarioVerificar
+    ? `<div class="msg-info" style="margin-bottom:12px"><i class="ti ti-mail-check"></i> Proprietário do sistema: confirme o seu e-mail pelo link enviado
+        e depois <strong>saia e entre de novo</strong> para liberar o cadastro de colégios.</div>` : '');
+  const camposDoTipo = (tipo) => (tipo === 'responsavel' ? camposResponsavel() : tipo === 'novo' ? camposNovoColegio() : camposEquipe());
 
   const camposResponsavel = () => `
     <div class="msg-info"><i class="ti ti-info-circle"></i> Peça na secretaria o <strong>código de acesso</strong> do aluno (começa com PAI).</div>
@@ -99,23 +114,20 @@
           <button class="aba ${qual === 'responsavel' ? 'ativa' : ''}" data-action="aba" data-aba="responsavel">Sou responsável</button>
         </div>
         ${qual === 'login' ? formLogin() : ''}
-        ${qual === 'cadastro' ? `<form data-form="cadastro" novalidate>${camposConta('c')}${camposEquipe('novo')}
+        ${qual === 'cadastro' ? `<form data-form="cadastro" novalidate>${camposConta('c')}${camposEquipe()}
           <button class="btn btn-primario btn-bloco" type="submit"><i class="ti ti-user-plus"></i> Criar conta</button></form>` : ''}
         ${qual === 'responsavel' ? `<form data-form="responsavel" novalidate>${camposConta('r')}${camposResponsavel()}
           <button class="btn btn-primario btn-bloco" type="submit"><i class="ti ti-user-heart"></i> Criar conta de responsável</button></form>` : ''}`);
     } else if (qual === 'completar') {
-      const nome = (EG.auth.currentUser && EG.auth.currentUser.displayName) || (extra.dados && extra.dados.nome) || '';
-      const tipo = extra.tipo || 'equipe';
+      const nome = (extra.dados && extra.dados.nome) || (EG.auth.currentUser && EG.auth.currentUser.displayName) || '';
+      const tipo = tipoValido(extra.tipo);
       tela().innerHTML = moldura(`
         <p style="color:var(--text-2);font-size:13px;margin-bottom:14px;text-align:center">
           Conta <strong>${EG.esc(EG.auth.currentUser ? EG.auth.currentUser.email : '')}</strong> criada. Falta concluir o cadastro no EduGest.</p>
-        <div class="abas">
-          <button class="aba ${tipo === 'equipe' ? 'ativa' : ''}" data-action="completar-tipo" data-tipo="equipe">Equipe do colégio</button>
-          <button class="aba ${tipo === 'responsavel' ? 'ativa' : ''}" data-action="completar-tipo" data-tipo="responsavel">Sou responsável</button>
-        </div>
+        ${avisoDono()}${abasTipo('completar', tipo)}
         <form data-form="completar" data-tipo="${tipo}" novalidate>
           <div class="campo"><label>Seu nome completo</label><input class="input" name="nome" maxlength="100" value="${EG.esc(nome)}"></div>
-          ${tipo === 'equipe' ? camposEquipe(extra.dados && extra.dados.opcao) : camposResponsavel()}
+          ${camposDoTipo(tipo)}
           <button class="btn btn-primario btn-bloco" type="submit"><i class="ti ti-check"></i> Concluir cadastro</button>
         </form>
         <button class="auth-link" data-action="sair">Sair e usar outra conta</button>`);
@@ -148,15 +160,18 @@
           <button class="btn btn-secundario btn-bloco" data-action="sair"><i class="ti ti-logout"></i> Sair</button>
         </div>`);
     } else if (qual === 'sem-colegio') {
+      // Já tem cadastro, mas nenhum colégio ativo (acesso removido/recusado ou colégio desativado)
+      const tipo = tipoValido(extra.tipo);
       tela().innerHTML = moldura(`
         <div class="auth-status" style="margin-bottom:6px">
           <div class="icone-grande" style="background:var(--info-bg);color:var(--info)"><i class="ti ti-building"></i></div>
           <h3>Nenhum colégio vinculado</h3>
-          <p>Peça a um administrador para vincular o seu e-mail, ou cadastre um colégio novo.</p>
+          <p>Informe o código abaixo ou peça ao administrador do colégio para vincular o seu e-mail em <strong>Sistema › Usuários</strong>.</p>
         </div>
-        <form data-form="criar-colegio" novalidate>
-          <div class="campo"><label>Nome do colégio</label><input class="input" name="nome" maxlength="120"></div>
-          <button class="btn btn-primario btn-bloco" type="submit"><i class="ti ti-building-plus"></i> Cadastrar colégio</button>
+        ${avisoDono()}${abasTipo('sem-colegio', tipo)}
+        <form data-form="vincular" data-tipo="${tipo}" novalidate>
+          ${camposDoTipo(tipo)}
+          <button class="btn btn-primario btn-bloco" type="submit"><i class="ti ${tipo === 'novo' ? 'ti-building-plus' : 'ti-send'}"></i> ${tipo === 'novo' ? 'Cadastrar colégio' : 'Solicitar acesso'}</button>
         </form>
         <button class="auth-link" data-action="sair">Sair</button>`);
     } else if (qual === 'erro') {
@@ -221,12 +236,12 @@
       return r;
     }
     const corpo = { nome: d.nome };
-    if (d.opcao === 'convite') {
-      exigir(d.codigoConvite, 'Informe o código do colégio.');
-      corpo.codigoConvite = d.codigoConvite.toUpperCase();
-    } else {
+    if (tipo === 'novo') { // só o proprietário do sistema (a API confere)
       exigir(d.colegioNome, 'Informe o nome do colégio.');
       corpo.colegioNome = d.colegioNome;
+    } else {
+      exigir(d.codigoConvite, 'Informe o código do colégio.');
+      corpo.codigoConvite = d.codigoConvite.toUpperCase();
     }
     const r = await EG.api('POST', '/conta/registrar', corpo);
     guardarWhats(r);
@@ -242,8 +257,7 @@
     exigir(d.nome && d.nome.length >= 3, 'Informe o seu nome completo.');
     exigir(d.email, 'Informe o e-mail.');
     validarSenha(d.senha);
-    if (tipo === 'equipe') exigir(d.opcao === 'convite' ? d.codigoConvite : d.colegioNome,
-      d.opcao === 'convite' ? 'Informe o código do colégio.' : 'Informe o nome do colégio.');
+    if (tipo === 'equipe') exigir(d.codigoConvite, 'Informe o código do colégio.');
     if (tipo === 'responsavel') exigir(d.codigoAcesso, 'Informe o código de acesso do aluno.');
 
     EG._fluxoCadastro = true;
@@ -264,6 +278,25 @@
       if (EG.auth.currentUser) EG.mostrarAuth('completar', { erro: e.message, tipo, dados: d });
       else mostrarErro(e.message);
     }
+  }
+
+  /** Quem já tem cadastro e ficou sem colégio: pede acesso pelo código (ou o proprietário cadastra um). */
+  async function vincular(tipo, d) {
+    let r;
+    if (tipo === 'novo') {
+      exigir(d.colegioNome && d.colegioNome.length >= 3, 'Informe o nome do colégio.');
+      r = await EG.api('POST', '/proprietario/colegios', { nome: d.colegioNome });
+      await EG.carregarSessao(r.id);
+      return;
+    }
+    if (tipo === 'responsavel') {
+      r = await enviarRegistro('responsavel', d);
+    } else {
+      exigir(d.codigoConvite, 'Informe o código do colégio.');
+      r = await EG.api('POST', '/conta/entrar-colegio', { codigoConvite: d.codigoConvite.toUpperCase() });
+      guardarWhats(r);
+    }
+    await EG.carregarSessao(r.colegio.id);
   }
 
   /* ---------- Eventos ---------- */
@@ -297,10 +330,8 @@
           EG.carregando(true, 'Concluindo cadastro...');
           try { await enviarRegistro(form.dataset.tipo, d); } finally { EG.carregando(false); }
           await EG.carregarSessao();
-        } else if (tipoForm === 'criar-colegio') {
-          exigir(d.nome && d.nome.length >= 3, 'Informe o nome do colégio.');
-          const r = await EG.api('POST', '/colegios', { nome: d.nome });
-          await EG.carregarSessao(r.id);
+        } else if (tipoForm === 'vincular') {
+          await vincular(form.dataset.tipo, d);
         }
       } catch (e) {
         mostrarErro(e.message);
@@ -313,13 +344,12 @@
     if (!b) return;
     const acao = b.dataset.action;
     if (acao === 'aba') EG.mostrarAuth(b.dataset.aba);
-    else if (acao === 'completar-tipo') EG.mostrarAuth('completar', { tipo: b.dataset.tipo });
-    else if (acao === 'opcao-equipe') {
-      const form = b.closest('form');
-      EG.$$('.opcao', form).forEach((o) => o.classList.toggle('ativa', o === b));
-      form.querySelector('[name=opcao]').value = b.dataset.opcao;
-      EG.$$('[data-bloco]', form).forEach((bl) => { bl.hidden = bl.dataset.bloco !== b.dataset.opcao; });
-    } else if (acao === 'esqueci') {
+    else if (acao === 'tipo') {
+      // Troca de aba sem perder o nome já digitado
+      const nome = EG.$('#telaAuth [name=nome]');
+      EG.mostrarAuth(b.dataset.tela, { tipo: b.dataset.tipo, dados: nome && nome.value ? { nome: nome.value } : null });
+    }
+    else if (acao === 'esqueci') {
       const email = (EG.$('#lEmail').value || '').trim();
       if (!email) { mostrarErro('Digite o seu e-mail no campo acima e clique de novo em "Esqueci minha senha".'); return; }
       try { await EG.auth.sendPasswordResetEmail(email); } catch (e) { /* mesma resposta para não revelar contas */ }

@@ -9,11 +9,13 @@
  *                    X-Colegio-Id e preenche req.colegioId / req.perfil / req.modulos
  *  exigirPerfil(...perfis), exigirModulo(modulo) e
  *  exigirAlgumModulo([modulos]) → controle de acesso
+ *  exigirProprietario → só o proprietário do sistema (PROPRIETARIO_EMAILS)
  * ===================================================================== */
 const admin = require('../firebase');
 const { queryUm } = require('../db');
 const { HttpErro } = require('./erros');
 const { modulosEfetivos } = require('../utils/modulos');
+const { situacaoProprietario } = require('../utils/proprietario');
 
 async function autenticar(req, res, next) {
   const m = (req.headers.authorization || '').match(/^Bearer\s+(.+)$/i);
@@ -102,6 +104,16 @@ function exigirAlgumModulo(modulos) {
   };
 }
 
+/** Funções exclusivas do proprietário do sistema (cadastro de colégios). */
+function exigirProprietario(req, res, next) {
+  const s = situacaoProprietario(req.firebase);
+  if (s === 'ativo') return next();
+  if (s === 'verificar') {
+    return next(new HttpErro(403, 'Confirme o seu e-mail (link enviado pelo EduGest) para usar as funções de proprietário.', 'email_nao_verificado'));
+  }
+  return next(new HttpErro(403, 'Acesso exclusivo do proprietário do sistema', 'proprietario'));
+}
+
 module.exports = {
   autenticar,
   carregarUsuario,
@@ -109,5 +121,6 @@ module.exports = {
   exigirColegio,
   exigirPerfil,
   exigirModulo,
-  exigirAlgumModulo
+  exigirAlgumModulo,
+  exigirProprietario
 };

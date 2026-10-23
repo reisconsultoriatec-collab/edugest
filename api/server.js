@@ -16,8 +16,9 @@ require('./src/utils/crypto');
 const { verificarConexao } = require('./src/db');
 const { tratarErros, naoEncontrado } = require('./src/middleware/erros');
 const {
-  autenticar, carregarUsuario, exigirUsuario, exigirColegio, exigirPerfil
+  autenticar, carregarUsuario, exigirUsuario, exigirColegio, exigirPerfil, exigirProprietario
 } = require('./src/middleware/auth');
+const { emailsProprietario } = require('./src/utils/proprietario');
 const { ipCliente } = require('./src/utils/ip');
 
 const app = express();
@@ -65,6 +66,8 @@ app.use('/api/health', require('./src/routes/health'));
 app.use('/api/me', autenticar, carregarUsuario, require('./src/routes/me'));
 app.use('/api/conta', require('./src/routes/conta')); // autenticação definida rota a rota
 app.use('/api/colegios', autenticar, carregarUsuario, exigirUsuario, require('./src/routes/colegios'));
+// Gestão de Colégios: só o proprietário do sistema (PROPRIETARIO_EMAILS no .env)
+app.use('/api/proprietario', autenticar, carregarUsuario, exigirUsuario, exigirProprietario, require('./src/routes/proprietario'));
 app.use('/api/usuarios', autenticar, carregarUsuario, exigirColegio, exigirPerfil('admin'), require('./src/routes/usuarios'));
 app.use('/api/seguranca', autenticar, carregarUsuario, exigirColegio, exigirPerfil('admin'), require('./src/routes/seguranca'));
 
@@ -105,6 +108,9 @@ app.use(tratarErros);
   } catch (e) {
     console.error('[EduGest] Falha ao conectar no MySQL:', e.message);
   }
+  const donos = emailsProprietario();
+  if (donos.length) console.log(`[EduGest] Proprietário do sistema: ${donos.join(', ')}`);
+  else console.warn('[EduGest] PROPRIETARIO_EMAILS vazio no .env: ninguém consegue cadastrar colégios novos');
   // Escuta só localmente: o acesso externo passa pelo Nginx
   app.listen(PORT, '127.0.0.1', () => {
     console.log(`[EduGest] API ouvindo em 127.0.0.1:${PORT}`);

@@ -8,9 +8,11 @@ const DISCIPLINAS_PADRAO = ['Português', 'Matemática', 'História', 'Geografia
 /**
  * Cria o colégio, a configuração inicial, as disciplinas padrão e
  * vincula o usuário como admin ativo. Deve rodar dentro de transação.
+ * tornarAtual: false mantém o colégio em uso pelo usuário (o proprietário
+ * cadastra vários colégios sem trocar de colégio a cada um).
  * @returns {Promise<number>} id do colégio
  */
-async function criarColegio(conn, { nome, usuarioId, cnpj = null, telefone = null, endereco = null }) {
+async function criarColegio(conn, { nome, usuarioId, cnpj = null, telefone = null, endereco = null, tornarAtual = true }) {
   let colegioId = null;
   for (let tentativa = 0; tentativa < 5 && !colegioId; tentativa++) {
     try {
@@ -39,7 +41,7 @@ async function criarColegio(conn, { nome, usuarioId, cnpj = null, telefone = nul
      VALUES (?, ?, 'admin', 'ativo', NOW())`,
     [usuarioId, colegioId]
   );
-  await conn.query('UPDATE usuarios SET colegio_atual_id = ? WHERE id = ?', [colegioId, usuarioId]);
+  if (tornarAtual) await conn.query('UPDATE usuarios SET colegio_atual_id = ? WHERE id = ?', [colegioId, usuarioId]);
 
   return colegioId;
 }
