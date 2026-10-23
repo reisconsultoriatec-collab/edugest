@@ -46,6 +46,9 @@ window.EG = window.EG || {};
   EG.data = (s) => EG.dataHora(s).slice(0, 10);
   EG.moeda = (n) => Number(n || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+  /** O usuário atual tem o módulo? (admin tem todos) */
+  EG.pode = (modulo) => EG.estado.perfil === 'admin' || (EG.estado.modulos || []).includes(modulo);
+
   EG.PERFIS = { admin: 'Administrador', professor: 'Professor', financeiro: 'Financeiro', responsavel: 'Responsável' };
   EG.STATUS = { ativo: 'Ativo', pendente: 'Pendente', bloqueado: 'Bloqueado' };
 
@@ -214,11 +217,46 @@ window.EG = window.EG || {};
       a + (b ? '.' + b : '') + (d ? '.' + d : '') + (e ? '/' + e : '') + (f ? '-' + f : ''));
     el.value = c;
   };
+  EG.mascaraCPF = function (el) {
+    let d = el.value.replace(/\D/g, '').slice(0, 11);
+    if (d.length > 9) d = d.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
+    else if (d.length > 6) d = d.replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
+    else if (d.length > 3) d = d.replace(/(\d{3})(\d{1,3})/, '$1.$2');
+    el.value = d;
+  };
   document.addEventListener('input', (e) => {
     const t = e.target;
     if (t.matches && t.matches('[data-mascara="telefone"]')) EG.mascaraTelefone(t);
     if (t.matches && t.matches('[data-mascara="cnpj"]')) EG.mascaraCNPJ(t);
+    if (t.matches && t.matches('[data-mascara="cpf"]')) EG.mascaraCPF(t);
   });
+
+  /**
+   * Exclusão em duas etapas: confirma; se a API responder que há registros
+   * vinculados (codigo tem_vinculos), mostra o aviso dela e confirma de novo.
+   * Retorna true se excluiu.
+   */
+  EG.excluirComConfirmacao = async function (url, pergunta) {
+    if (!(await EG.confirmar(pergunta, { perigo: true, textoOk: 'Excluir' }))) return false;
+    try {
+      await EG.api('DELETE', url);
+      return true;
+    } catch (e) {
+      if (e.codigo !== 'tem_vinculos') throw e;
+      if (!(await EG.confirmar(e.message + '\n\nDeseja excluir mesmo assim?', { titulo: 'Atenção', perigo: true, textoOk: 'Excluir mesmo assim' }))) return false;
+      await EG.api('DELETE', url + (url.includes('?') ? '&' : '?') + 'forcar=1');
+      return true;
+    }
+  };
+
+  /** Opções de <select> a partir de [{value, label}] com o atual marcado. */
+  EG.opcoes = (lista, atual) => lista.map((o) =>
+    `<option value="${EG.esc(o.value)}" ${String(o.value) === String(atual ?? '') ? 'selected' : ''}>${EG.esc(o.label)}</option>`).join('');
+
+  EG.SERIES = ['Berçário', 'Maternal I', 'Maternal II', 'Infantil I', 'Infantil II', 'Infantil III',
+    '1º Ano', '2º Ano', '3º Ano', '4º Ano', '5º Ano', '6º Ano', '7º Ano', '8º Ano', '9º Ano',
+    '1ª Série EM', '2ª Série EM', '3ª Série EM', 'EJA', 'Outra'];
+  EG.PERIODOS = { matutino: 'Matutino', vespertino: 'Vespertino', integral: 'Integral', noturno: 'Noturno' };
 
   // Mostrar/ocultar senha
   document.addEventListener('click', (e) => {

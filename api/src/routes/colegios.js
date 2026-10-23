@@ -10,6 +10,7 @@
  *  POST   /atual/disciplinas         cria disciplina             [admin]
  *  PUT    /atual/disciplinas/:id     edita / ativa / desativa    [admin]
  *  DELETE /atual/disciplinas/:id     exclui se não tiver notas   [admin]
+ *  GET    /atual/resumo              indicadores do dashboard    [módulo dashboard]
  *  GET    /atual/atividades          atividade recente           [módulo dashboard]
  *
  *  "atual" = colégio do header X-Colegio-Id (ou o último selecionado).
@@ -22,6 +23,7 @@ const v = require('../utils/validar');
 const { atividade, seguranca } = require('../utils/auditoria');
 const { codigoConvite } = require('../utils/codigos');
 const { criarColegio } = require('../services/colegios');
+const { hojeSP } = require('../utils/datas');
 
 const soAdmin = [exigirColegio, exigirPerfil('admin')];
 const soEquipe = [exigirColegio, exigirPerfil('admin', 'professor', 'financeiro')];
@@ -194,6 +196,30 @@ router.delete('/atual/disciplinas/:id', soAdmin, assincrono(async (req, res) => 
   await query('DELETE FROM disciplinas WHERE id = ? AND colegio_id = ?', [id, req.colegioId]);
   await atividade(req.colegioId, req.usuario.id, `Disciplina excluída: ${d.nome}`);
   res.status(204).end();
+}));
+
+/* ---------------- Indicadores do Dashboard ---------------- */
+router.get('/atual/resumo', soEquipe, exigirModulo('dashboard'), assincrono(async (req, res) => {
+  const cfg = await queryUm('SELECT ano_letivo FROM config_colegio WHERE colegio_id = ?', [req.colegioId]);
+  const ano = cfg ? cfg.ano_letivo : Number(hojeSP().slice(0, 4));
+  const r = await queryUm(
+    `SELECT
+       (SELECT COUNT(*) FROM alunos WHERE colegio_id = ? AND status = 'ativo') AS alunos,
+       (SELECT COUNT(*) FROM alunos WHERE colegio_id = ? AND status = 'ativo' AND turma_id IS NULL) AS alunos_sem_turma,
+       (SELECT COUNT(*) FROM professores WHERE colegio_id = ? AND status = 'ativo') AS professores,
+       (SELECT COUNT(*) FROM turmas WHERE colegio_id = ? AND ativo = 1 AND ano_letivo = ?) AS turmas,
+       (SELECT COUNT(DISTINCT aluno_id) FROM mensalidades
+         WHERE colegio_id = ? AND status = 'pendente' AND vencimento < ?) AS inadimplentes`,
+    [req.colegioId, req.colegioId, req.colegioId, req.colegioId, ano, req.colegioId, hojeSP()]
+  );
+  res.json({
+    anoLetivo: ano,
+    alunos: Number(r.alunos),
+    alunosSemTurma: Number(r.alunos_sem_turma),
+    professores: Number(r.professores),
+    turmas: Number(r.turmas),
+    inadimplentes: Number(r.inadimplentes)
+  });
 }));
 
 /* ---------------- Atividade recente ---------------- */

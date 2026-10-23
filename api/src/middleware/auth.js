@@ -7,7 +7,8 @@
  *  exigirUsuario   → 403 se ainda não tem cadastro no EduGest
  *  exigirColegio   → confere vínculo ATIVO com o colégio do header
  *                    X-Colegio-Id e preenche req.colegioId / req.perfil / req.modulos
- *  exigirPerfil(...perfis) e exigirModulo(modulo) → controle de acesso
+ *  exigirPerfil(...perfis), exigirModulo(modulo) e
+ *  exigirAlgumModulo([modulos]) → controle de acesso
  * ===================================================================== */
 const admin = require('../firebase');
 const { queryUm } = require('../db');
@@ -93,11 +94,20 @@ function exigirModulo(modulo) {
   };
 }
 
+/** Libera se tiver pelo menos um dos módulos (ex.: lista de turmas usada por vários módulos). */
+function exigirAlgumModulo(modulos) {
+  return (req, res, next) => {
+    if (req.perfil === 'admin' || modulos.some((m) => (req.modulos || []).includes(m))) return next();
+    return next(new HttpErro(403, 'Você não tem acesso a este módulo', 'modulo'));
+  };
+}
+
 module.exports = {
   autenticar,
   carregarUsuario,
   exigirUsuario,
   exigirColegio,
   exigirPerfil,
-  exigirModulo
+  exigirModulo,
+  exigirAlgumModulo
 };

@@ -10,9 +10,9 @@
       { id: 'dashboard', rotulo: 'Dashboard', icone: 'ti-dashboard', pronto: true }
     ] },
     { secao: 'Pedagógico', itens: [
-      { id: 'alunos', rotulo: 'Alunos', icone: 'ti-users' },
-      { id: 'professores', rotulo: 'Professores', icone: 'ti-user-check' },
-      { id: 'turmas', rotulo: 'Turmas e Séries', icone: 'ti-layout-grid' },
+      { id: 'alunos', rotulo: 'Alunos', icone: 'ti-users', pronto: true },
+      { id: 'professores', rotulo: 'Professores', icone: 'ti-user-check', pronto: true },
+      { id: 'turmas', rotulo: 'Turmas e Séries', icone: 'ti-layout-grid', pronto: true },
       { id: 'diario', rotulo: 'Diário de Classe', icone: 'ti-notebook' },
       { id: 'notas', rotulo: 'Notas e Médias', icone: 'ti-list-numbers' },
       { id: 'boletim', rotulo: 'Boletim', icone: 'ti-report' },
@@ -126,6 +126,7 @@
     el.onclick = null; // cada módulo registra os próprios eventos
     el.onkeydown = null;
     el.onchange = null;
+    el.oninput = null;
     const mod = EG.modulos[id];
     if (item.pronto && mod) {
       el.innerHTML = '<div class="vazio"><div class="spinner pequeno" style="margin:0 auto"></div></div>';

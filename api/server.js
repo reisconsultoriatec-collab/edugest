@@ -66,6 +66,12 @@ app.use('/api/colegios', autenticar, carregarUsuario, exigirUsuario, require('./
 app.use('/api/usuarios', autenticar, carregarUsuario, exigirColegio, exigirPerfil('admin'), require('./src/routes/usuarios'));
 app.use('/api/seguranca', autenticar, carregarUsuario, exigirColegio, exigirPerfil('admin'), require('./src/routes/seguranca'));
 
+// Pedagógico — só equipe; cada rota confere o módulo
+const equipe = [autenticar, carregarUsuario, exigirColegio, exigirPerfil('admin', 'professor', 'financeiro')];
+app.use('/api/turmas', equipe, require('./src/routes/turmas'));
+app.use('/api/alunos', equipe, require('./src/routes/alunos'));
+app.use('/api/professores', equipe, require('./src/routes/professores'));
+
 app.use(naoEncontrado);
 app.use(tratarErros);
 
