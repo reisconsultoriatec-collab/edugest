@@ -1,12 +1,12 @@
 /* =====================================================================
- *  EduGest — estrutura do app: menu, seletor de colégio, rotas (#/id),
- *  timeout de sessão e saída.
+ *  EduGest — estrutura do app: menu (grupos recolhíveis), seletor de
+ *  colégio, rotas (#/id), timeout de sessão e saída.
  * ===================================================================== */
 'use strict';
 (function (EG) {
   /* pronto: true = módulo já existe nesta versão */
   const MENU = [
-    { secao: 'Principal', itens: [
+    { secao: 'Principal', fixo: true, itens: [
       { id: 'dashboard', rotulo: 'Dashboard', icone: 'ti-dashboard', pronto: true }
     ] },
     { secao: 'Pedagógico', itens: [
@@ -84,20 +84,46 @@
     EG.$('[data-action="novo-colegio"]').hidden = EG.estado.perfil === 'responsavel';
   }
 
+  /* Menu: "Principal" fica sempre à mostra; os demais grupos abrem com um
+   * clique no título (um por vez). O grupo da tela atual abre sozinho. */
   function montarMenu() {
     let html = '';
-    MENU.forEach((s) => {
+    MENU.forEach((s, n) => {
       const itens = s.itens.filter(permitido);
       if (!itens.length) return;
-      html += `<div class="menu-secao">${EG.esc(s.secao)}</div>`;
-      itens.forEach((i) => {
-        html += `<button class="menu-item" data-action="ir" data-pagina="${i.id}">
-          <i class="ti ${i.icone}"></i> ${EG.esc(i.rotulo)}${i.pronto ? '' : '<span class="breve">em breve</span>'}</button>`;
-      });
+      const botoes = itens.map((i) => `<button class="menu-item" data-action="ir" data-pagina="${i.id}">
+          <i class="ti ${i.icone}"></i> ${EG.esc(i.rotulo)}${i.pronto ? '' : '<span class="breve">em breve</span>'}</button>`).join('');
+      if (s.fixo) {
+        html += `<div class="menu-secao">${EG.esc(s.secao)}</div>${botoes}`;
+        return;
+      }
+      html += `<div class="menu-grupo" data-grupo="${n}">
+        <button class="menu-grupo-titulo" data-action="grupo" aria-expanded="false" aria-controls="menuGrupo${n}">
+          <span class="menu-grupo-nome">${EG.esc(s.secao)}</span><span class="contador" hidden></span><i class="ti ti-chevron-down"></i></button>
+        <div class="menu-grupo-itens" id="menuGrupo${n}"><div>${botoes}</div></div>
+      </div>`;
     });
     EG.$('#menu').innerHTML = html;
     const p = EG.estado.colegio.pendentes;
     EG.atualizarPendentes(p ? p.total : 0);
+  }
+
+  /** Abre um grupo e fecha os outros; "alternar" fecha se já estiver aberto. */
+  function abrirGrupo(grupo, alternar) {
+    const abrir = !(alternar && grupo && grupo.classList.contains('aberto'));
+    EG.$$('.menu-grupo').forEach((g) => {
+      const aberto = abrir && g === grupo;
+      g.classList.toggle('aberto', aberto);
+      g.querySelector('.menu-grupo-titulo').setAttribute('aria-expanded', String(aberto));
+    });
+  }
+
+  /** Destaca e abre o grupo da página atual. */
+  function marcarGrupo(id) {
+    const item = EG.$(`.menu-item[data-pagina="${id}"]`);
+    const grupo = item ? item.closest('.menu-grupo') : null;
+    EG.$$('.menu-grupo').forEach((g) => g.classList.toggle('tem-ativo', g === grupo));
+    if (grupo) abrirGrupo(grupo, false);
   }
 
   /** Contador de cadastros pendentes no item "Usuários" do menu (só admin). */
@@ -105,6 +131,13 @@
     if (EG.estado.colegio && EG.estado.colegio.pendentes) EG.estado.colegio.pendentes.total = total;
     const item = EG.$('.menu-item[data-pagina="usuarios"]');
     if (!item) return;
+    // Com o grupo fechado, o número aparece no título para o aviso não sumir
+    const titulo = item.closest('.menu-grupo') && item.closest('.menu-grupo').querySelector('.menu-grupo-titulo .contador');
+    if (titulo) {
+      titulo.hidden = !total;
+      titulo.textContent = total || '';
+      titulo.title = total ? `${total} cadastro(s) aguardando aprovação` : '';
+    }
     let c = item.querySelector('.contador');
     if (!total) { if (c) c.remove(); return; }
     if (!c) {
@@ -137,6 +170,7 @@
     }
     if (!semHistorico || location.hash !== '#/' + id) history.replaceState(null, '', '#/' + id);
     EG.$$('.menu-item').forEach((m) => m.classList.toggle('ativo', m.dataset.pagina === id));
+    marcarGrupo(id);
     EG.$('#titulo').textContent = item.rotulo;
     fecharMenuMobile();
 
@@ -281,6 +315,7 @@
     if (!b) return;
     const acao = b.dataset.action;
     if (acao === 'ir') EG.navegar(b.dataset.pagina);
+    else if (acao === 'grupo') abrirGrupo(b.closest('.menu-grupo'), true);
     else if (acao === 'menu-abrir') { EG.$('#sidebar').classList.add('aberta'); EG.$('.sidebar-fundo').classList.add('aberto'); }
     else if (acao === 'menu-fechar') fecharMenuMobile();
     else if (acao === 'tema') EG.alternarTema();

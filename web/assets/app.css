@@ -137,6 +137,28 @@ h1, h2, h3, .fonte-titulo { font-family: 'Space Grotesk', 'Inter', sans-serif; }
 .menu-item .breve { margin-left: auto; white-space: nowrap; flex-shrink: 0; font-size: 9px; padding: 2px 6px; border-radius: 8px; background: rgba(255, 255, 255, .1); color: rgba(255, 255, 255, .55); }
 .menu-item .contador { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; flex-shrink: 0;
   background: var(--amber); color: var(--navy); font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+/* Grupos recolhíveis do menu */
+.menu-grupo-titulo { display: flex; align-items: center; gap: 8px; width: 100%; padding: 13px 20px 9px; background: none; border: none;
+  cursor: pointer; font: inherit; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
+  color: rgba(255, 255, 255, .45); text-align: left; transition: color .15s; }
+.menu-grupo-titulo:hover, .menu-grupo-titulo:focus-visible { color: rgba(255, 255, 255, .85); }
+.menu-grupo-titulo:focus-visible { outline: 2px solid var(--amber); outline-offset: -2px; }
+.menu-grupo-nome { flex: 1; }
+.menu-grupo-titulo i { font-size: 14px; transition: transform .2s; }
+.menu-grupo.aberto .menu-grupo-titulo { color: rgba(255, 255, 255, .8); }
+.menu-grupo.aberto .menu-grupo-titulo i { transform: rotate(180deg); }
+.menu-grupo.tem-ativo .menu-grupo-titulo { color: var(--amber); }
+.menu-grupo-titulo .contador { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--erro); color: #fff;
+  font-size: 10px; font-weight: 700; letter-spacing: 0; display: inline-flex; align-items: center; justify-content: center; }
+.menu-grupo-titulo .contador[hidden], .menu-grupo.aberto .menu-grupo-titulo .contador { display: none; }
+.menu-grupo-itens { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .22s ease; }
+.menu-grupo.aberto .menu-grupo-itens { grid-template-rows: 1fr; }
+/* fechado: some também do Tab (visibility) depois da animação */
+.menu-grupo-itens > div { overflow: hidden; visibility: hidden; transition: visibility 0s .22s; }
+.menu-grupo.aberto .menu-grupo-itens > div { visibility: visible; transition: visibility 0s 0s; }
+@media (prefers-reduced-motion: reduce) {
+  .menu-grupo-itens, .menu-grupo-titulo i, .menu-grupo-itens > div { transition: none; }
+}
 .sidebar-rodape { padding: 12px 20px; border-top: 1px solid rgba(255, 255, 255, .1); font-size: 11px; color: rgba(255, 255, 255, .35); }
 .sidebar-fundo { display: none; }
 
