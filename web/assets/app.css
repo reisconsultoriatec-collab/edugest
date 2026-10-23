@@ -288,6 +288,20 @@ td small, .sub { color: var(--muted); font-size: 11px; }
 .linha-atual { background: var(--hover); }
 
 /* ---------- Impressão (boletim) ---------- */
+/* ---------- Relatórios ---------- */
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.medidor { flex: 1; height: 6px; min-width: 60px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.medidor span { display: block; height: 100%; background: var(--serie-entradas); border-radius: 3px; }
+.medidor-linha { display: flex; align-items: center; gap: 10px; }
+.medidor-linha > span { font-size: 12px; font-variant-numeric: tabular-nums; min-width: 46px; text-align: right; color: var(--text-2); }
+.tabela-dre .dre-grupo td { background: var(--hover); }
+.tabela-dre .dre-item { display: inline-block; padding-left: 18px; }
+.tabela-dre .dre-resultado td { border-top: 2px solid var(--border); font-size: 15px; }
+.so-print { display: none; }
+.relatorio-cab { flex-direction: column; gap: 2px; padding-bottom: 10px; margin-bottom: 14px; border-bottom: 1px solid #999; }
+.relatorio-cab strong { font-size: 16px; }
+.relatorio-cab small { color: #555; }
+
 @media print {
   :root, [data-theme="dark"] { --bg: #fff; --card: #fff; --text: #111; --text-2: #333; --muted: #555; --border: #bbb;
     --ok-bg: #fff; --erro-bg: #fff; --info-bg: #fff; --aviso-bg: #fff; --hover: transparent; }
@@ -298,6 +312,12 @@ td small, .sub { color: var(--muted); font-size: 11px; }
   .card.boletim { border: none; padding: 0; }
   .selo { border: 1px solid #999; }
   .tabela-wrap { overflow: visible; }
+  .so-print { display: flex !important; }
+  .medidor span, .medidor { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .card { break-inside: avoid; }
+  .grade-kpi { grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .kpi { padding: 10px; }
+  .kpi-icone { display: none; }
 }
 
 .em-breve { text-align: center; padding: 60px 20px; }

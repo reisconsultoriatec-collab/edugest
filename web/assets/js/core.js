@@ -412,6 +412,22 @@ window.EG = window.EG || {};
     m.el.querySelector('[data-fechar]').addEventListener('click', () => setTimeout(() => m.fechar(), 100));
   };
 
+  /* ---------- Exportar CSV (abre direto no Excel em português) ---------- */
+  EG.baixarCsv = function (nome, cabecalho, linhas) {
+    const cel = (v) => {
+      if (v === null || v === undefined) return '';
+      if (typeof v === 'number') return (Number.isInteger(v) ? String(v) : v.toFixed(2)).replace('.', ',');
+      const s = String(v);
+      return /[;"\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    };
+    const texto = '\uFEFF' + [cabecalho, ...linhas].map((l) => (l || []).map(cel).join(';')).join('\r\n');
+    const url = URL.createObjectURL(new Blob([texto], { type: 'text/csv;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = nome;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  };
+
   /* ---------- Documentos em PDF (link assinado) ---------- */
   /** Pede à API o link do PDF. enviar=true → validade longa (WhatsApp). */
   EG.linkDocumento = async function (corpo, enviar) {

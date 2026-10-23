@@ -25,7 +25,7 @@
       { id: 'contas', rotulo: 'Contas a Pagar', icone: 'ti-file-invoice', pronto: true },
       { id: 'fluxo', rotulo: 'Fluxo de Caixa', icone: 'ti-chart-arrows-vertical', pronto: true },
       { id: 'bolsas', rotulo: 'Descontos e Bolsas', icone: 'ti-discount-2', pronto: true },
-      { id: 'relatorios', rotulo: 'Relatórios', icone: 'ti-report-analytics' },
+      { id: 'relatorios', rotulo: 'Relatórios', icone: 'ti-report-analytics', pronto: true },
       { id: 'conciliacao', rotulo: 'Conciliação Bancária', icone: 'ti-arrows-exchange' }
     ] },
     { secao: 'Captação', itens: [{ id: 'funil', rotulo: 'Funil de Matrículas', icone: 'ti-filter' }] },
