@@ -1,6 +1,6 @@
 {
   "name": "edugest-api",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "API do EduGest — Gestão Educacional Multi-Colégio (Reis Tecnologia)",
   "main": "server.js",
   "private": true,

@@ -21,8 +21,36 @@
   const SELO_STATUS = { ativo: 'selo-ok', pendente: 'selo-aviso', bloqueado: 'selo-erro' };
 
   let usuarios = [];
+  let professores = [];
+
+  const semAcento = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 
   /* ---------- Blocos de formulário ---------- */
+
+  /**
+   * Vínculo do login com o cadastro de professor (libera as turmas
+   * atribuídas no Diário e nas Notas). Não aparece para o perfil Financeiro.
+   */
+  function blocoProfessor(u, perfil) {
+    const atual = professores.find((p) => p.usuarioId === u.id);
+    const parecido = (p) => semAcento(p.nome) === semAcento(u.nome) || (!!p.email && semAcento(p.email) === semAcento(u.email));
+    const livres = professores
+      .filter((p) => !p.usuarioId || p.usuarioId === u.id)
+      .sort((a, b) => (parecido(b) - parecido(a)) || a.nome.localeCompare(b.nome));
+    // Sem vínculo e um único cadastro com o mesmo nome/e-mail: já sugere esse
+    const sugestoes = livres.filter((p) => !p.usuarioId && parecido(p));
+    const selecionado = atual ? atual.id : (sugestoes.length === 1 ? sugestoes[0].id : '');
+    return `<div data-bloco-professor ${perfil === 'financeiro' ? 'hidden' : ''} style="border-top:1px solid var(--border);padding-top:14px;margin:4px 0 14px">
+      <div class="campo" style="margin:0"><label><i class="ti ti-link"></i> Cadastro de professor</label>
+        <select class="select" name="professorId">
+          <option value="">— não vinculado —</option>
+          ${livres.map((p) => `<option value="${p.id}" ${p.id === selecionado ? 'selected' : ''}>${EG.esc(p.nome)}${parecido(p) && !(atual && atual.id === p.id) ? ' (mesmo nome)' : ''}${p.status === 'inativo' ? ' (inativo)' : ''}</option>`).join('')}
+          ${atual ? '' : `<option value="novo">+ Criar cadastro de professor "${EG.esc(u.nome)}"</option>`}
+        </select>
+        <small>Necessário para o professor ver as turmas atribuídas a ele no Diário, nas Notas e no Boletim.</small></div>
+    </div>`;
+  }
+
   function checksModulos(marcados) {
     return `<div class="checks">${MODULOS.map((g) => `<div class="grupo">${g.grupo}</div>` +
       g.itens.map(([id, rot]) => `<label><input type="checkbox" name="modulos" value="${id}" ${marcados.includes(id) ? 'checked' : ''}> ${rot}</label>`).join('')).join('')}</div>`;
@@ -49,6 +77,8 @@
       const admin = sel.value === 'admin';
       m.el.querySelector('[data-bloco-modulos]').hidden = admin;
       m.el.querySelector('[data-aviso-admin]').hidden = !admin;
+      const prof = m.el.querySelector('[data-bloco-professor]');
+      if (prof) prof.hidden = sel.value === 'financeiro';
       if (!admin) aplicar(PADRAO[sel.value] || []);
     });
     m.el.addEventListener('click', (e) => {
@@ -67,12 +97,16 @@
       if (!d.modulos || !d.modulos.length) throw EG.erro('Selecione pelo menos um módulo.');
       corpo.modulos = d.modulos;
     }
+    const blocoProf = m.el.querySelector('[data-bloco-professor]');
+    if (blocoProf && !blocoProf.hidden) {
+      corpo.professorId = !d.professorId ? null : d.professorId === 'novo' ? 'novo' : Number(d.professorId);
+    }
     return corpo;
   }
 
   /* ---------- Render ---------- */
   async function carregar(el) {
-    usuarios = await EG.api('GET', '/usuarios');
+    [usuarios, professores] = await Promise.all([EG.api('GET', '/usuarios'), EG.api('GET', '/professores')]);
     const pend = usuarios.filter((u) => u.status === 'pendente');
     const outros = usuarios.filter((u) => u.status !== 'pendente');
     EG.atualizarPendentes(pend.length);
@@ -111,6 +145,9 @@
     const acesso = u.perfil === 'admin' ? '<span class="sub">Acesso total</span>'
       : u.perfil === 'responsavel' ? `<span class="sub">${u.alunos.length ? 'Aluno(s): ' + EG.esc(u.alunos.join(', ')) : 'Portal'}</span>`
         : `<span class="sub">${u.modulos.length} módulo(s)${u.modulosPersonalizados ? ' · personalizado' : ''}</span>`;
+    const vinculo = u.perfil !== 'professor' ? ''
+      : u.professor ? `<br><small><i class="ti ti-link" style="color:var(--ok)"></i> Professor: ${EG.esc(u.professor.nome)}</small>`
+        : `<br><small style="color:var(--aviso-tx)" title="Sem o vínculo, o professor não vê turmas no Diário e nas Notas"><i class="ti ti-alert-triangle"></i> sem cadastro de professor vinculado</small>`;
     const acoes = u.voce ? '<span class="sub">você</span>' : `
       <button class="btn-icone" data-action="editar" title="Perfil, módulos e bloqueio"><i class="ti ti-adjustments"></i></button>
       <button class="btn-icone perigo" data-action="remover" title="Remover do colégio"><i class="ti ti-user-minus"></i></button>`;
@@ -118,7 +155,7 @@
       <td><strong>${EG.esc(u.nome)}</strong><br><small>${EG.esc(u.email)}</small></td>
       <td><span class="selo ${SELO_PERFIL[u.perfil] || 'selo-neutro'}">${EG.esc(EG.PERFIS[u.perfil] || u.perfil)}</span></td>
       <td><span class="selo ${SELO_STATUS[u.status] || 'selo-neutro'}">${EG.esc(EG.STATUS[u.status] || u.status)}</span></td>
-      <td>${acesso}</td>
+      <td>${acesso}${vinculo}</td>
       <td>${u.ultimoAcesso ? EG.dataHora(u.ultimoAcesso) : '<span class="sub">nunca</span>'}</td>
       <td class="acoes">${acoes}</td></tr>`;
   }
@@ -129,7 +166,7 @@
     const m = EG.modal({
       titulo: `Aprovar ${u.nome}`,
       corpo: `<p class="card-desc" style="margin:0 0 14px">${EG.esc(u.email)}</p>
-        ${equipe ? `<div class="campo"><label>Perfil</label>${seletorPerfil(u.perfil)}</div>${blocoModulos(u.perfil, PADRAO[u.perfil] || [])}`
+        ${equipe ? `<div class="campo"><label>Perfil</label>${seletorPerfil(u.perfil)}</div>${blocoProfessor(u, u.perfil)}${blocoModulos(u.perfil, PADRAO[u.perfil] || [])}`
           : `<div class="msg-info">Responsável por: <strong>${EG.esc(u.alunos.join(', ') || '—')}</strong>. Terá acesso apenas ao portal do responsável.</div>`}`,
       botoes: [
         { texto: 'Cancelar', acao: () => m.fechar() },
@@ -153,7 +190,7 @@
             <option value="ativo" ${u.status === 'ativo' ? 'selected' : ''}>Ativo</option>
             <option value="bloqueado" ${u.status === 'bloqueado' ? 'selected' : ''}>Bloqueado</option></select></div>
         </div>
-        ${equipe ? blocoModulos(u.perfil, u.modulos) : ''}`,
+        ${equipe ? blocoProfessor(u, u.perfil) + blocoModulos(u.perfil, u.modulos) : ''}`,
       botoes: [
         { texto: 'Cancelar', acao: () => m.fechar() },
         { texto: 'Salvar', classe: 'btn-primario', icone: 'ti-device-floppy', acao: async () => {

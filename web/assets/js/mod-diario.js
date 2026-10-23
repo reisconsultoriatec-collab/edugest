@@ -21,7 +21,7 @@
     const t = turmaSel();
     el.innerHTML = `
       <div class="card">
-        <div class="card-cab"><div class="card-titulo"><i class="ti ti-notebook"></i> Diário de Classe</div></div>
+        <div class="card-cab"><div class="card-titulo"><i class="ti ti-notebook"></i> Diário de Classe</div><div class="acoes-topo" data-area="acoes"></div></div>
         <div class="linha-3">
           <div class="campo"><label>Turma</label><select class="select" data-filtro="turma">${EG.opcoesTurmas(op.turmas, sel.turmaId)}</select></div>
           <div class="campo"><label>Data da aula</label><input class="input" type="date" data-filtro="data" max="${EG.hojeSP()}" value="${EG.esc(sel.data)}"></div>
@@ -47,20 +47,17 @@
     if (!dados) return;
     const c = contagem();
     const d = dados.diario;
+    EG.$('[data-area="acoes"]', el).innerHTML = `
+      <button class="btn btn-secundario" data-action="todos-presentes" ${dados.alunos.length ? '' : 'disabled'}><i class="ti ti-checks"></i> Todos presentes</button>
+      ${d ? '<button class="btn btn-secundario" data-action="excluir"><i class="ti ti-trash"></i> Excluir registro</button>' : ''}
+      <button class="btn btn-primario" data-action="salvar"><i class="ti ti-device-floppy"></i> Salvar diário</button>`;
     area.innerHTML = `
       <div class="sub" style="margin-bottom:12px">${d
         ? `<i class="ti ti-circle-check" style="color:var(--ok)"></i> Registrado por <strong>${EG.esc(d.registradoPor || '—')}</strong> · última alteração em ${EG.dataHora(d.atualizadoEm)}`
         : '<i class="ti ti-circle-plus"></i> Nenhum registro nesta data — preencha e salve.'}</div>
       <div class="campo"><label>Conteúdo ministrado</label>
         <textarea class="textarea" data-campo="conteudo" maxlength="2000" rows="3" placeholder="Descreva o conteúdo da aula...">${EG.esc(rascunho !== null ? rascunho : (d ? d.conteudo : ''))}</textarea></div>
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:6px 0 10px">
-        <div class="rotulo" style="margin:0">Chamada · ${dados.alunos.length} aluno(s) <span data-area="contagem" style="text-transform:none;letter-spacing:0">${textoContagem(c)}</span></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-secundario btn-pequeno" data-action="todos-presentes"><i class="ti ti-checks"></i> Todos presentes</button>
-          ${d ? '<button class="btn btn-secundario btn-pequeno" data-action="excluir"><i class="ti ti-trash"></i> Excluir registro</button>' : ''}
-          <button class="btn btn-primario btn-pequeno" data-action="salvar"><i class="ti ti-device-floppy"></i> Salvar diário</button>
-        </div>
-      </div>
+      <div class="rotulo" style="margin:6px 0 10px">Chamada · ${dados.alunos.length} aluno(s) <span data-area="contagem" style="text-transform:none;letter-spacing:0">${textoContagem(c)}</span></div>
       ${dados.alunos.length ? `<div class="chamada">${dados.alunos.map((a, i) => `
         <div class="chamada-linha" data-aluno="${a.id}">
           <span class="num">${i + 1}</span>
@@ -99,6 +96,8 @@
     dados = null;
     rascunho = null;
     alterado = false;
+    const acoes = EG.$('[data-area="acoes"]', el);
+    if (acoes) acoes.innerHTML = '';
     if (!sel.turmaId || !sel.data) return;
     try {
       const q = `?turmaId=${sel.turmaId}&data=${sel.data}&disciplinaId=${sel.disciplinaId || ''}`;

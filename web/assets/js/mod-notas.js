@@ -18,7 +18,7 @@
     const t = turmaSel();
     el.innerHTML = `
       <div class="card">
-        <div class="card-cab"><div class="card-titulo"><i class="ti ti-list-numbers"></i> Lançamento de Notas</div></div>
+        <div class="card-cab"><div class="card-titulo"><i class="ti ti-list-numbers"></i> Lançamento de Notas</div><div class="acoes-topo" data-area="acoes"></div></div>
         <div class="linha-3">
           <div class="campo"><label>Turma</label><select class="select" data-filtro="turma">${EG.opcoesTurmas(op.turmas, sel.turmaId)}</select></div>
           <div class="campo"><label>Disciplina</label><select class="select" data-filtro="disciplina" ${t ? '' : 'disabled'}>
@@ -43,6 +43,8 @@
     const area = EG.$('[data-area="planilha"]', el);
     if (!dados) return;
     const u = dados.ultimaAlteracao;
+    EG.$('[data-area="acoes"]', el).innerHTML = dados.alunos.length
+      ? '<button class="btn btn-primario" data-action="salvar"><i class="ti ti-device-floppy"></i> Salvar notas</button>' : '';
     area.innerHTML = `
       <div class="msg-info">Média para aprovação: <strong>${EG.fmtNota(op.mediaAprovacao)}</strong>.
         A média do bimestre é a média das notas lançadas — nota em branco não conta como zero.
@@ -58,10 +60,8 @@
           <td data-situacao>${situacao(a.media)}</td>
         </tr>`).join('')}</tbody>
       </table></div>
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px">
-        <span class="sub" data-area="status">${u ? `Última alteração por ${EG.esc(u.por || '—')} em ${EG.dataHora(u.em)}` : 'Nenhuma nota lançada neste bimestre'}</span>
-        <button class="btn btn-primario" data-action="salvar"><i class="ti ti-device-floppy"></i> Salvar notas</button>
-      </div>` : '<div class="vazio"><i class="ti ti-users"></i>Nenhum aluno ativo nesta turma</div>'}`;
+      <div class="sub" data-area="status" style="margin-top:12px">${u ? `Última alteração por ${EG.esc(u.por || '—')} em ${EG.dataHora(u.em)}` : 'Nenhuma nota lançada neste bimestre'}</div>`
+      : '<div class="vazio"><i class="ti ti-users"></i>Nenhum aluno ativo nesta turma</div>'}`;
   }
 
   /** Recalcula média e situação da linha; marca nota inválida. */
@@ -80,6 +80,8 @@
   async function carregarPlanilha(el) {
     dados = null;
     alterado = false;
+    const acoes = EG.$('[data-area="acoes"]', el);
+    if (acoes) acoes.innerHTML = '';
     const area = EG.$('[data-area="planilha"]', el);
     if (!sel.turmaId || !sel.disciplinaId) return;
     try {

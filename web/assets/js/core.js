@@ -294,7 +294,8 @@ window.EG = window.EG || {};
   EG.semTurmas = function (op) {
     if (op.restrito && !op.vinculado) {
       return `<div class="card em-breve"><i class="ti ti-link-off"></i><h2>Login não vinculado</h2>
-        <p>Seu login ainda não está vinculado a um cadastro de professor. Peça ao administrador para fazer o vínculo em <strong>Professores</strong>.</p></div>`;
+        <p>Seu login ainda não está vinculado a um cadastro de professor. Peça ao administrador para fazer o vínculo em
+        <strong>Usuários</strong> (botão de acesso, campo "Cadastro de professor").</p></div>`;
     }
     if (op.restrito) {
       return `<div class="card em-breve"><i class="ti ti-school-off"></i><h2>Nenhuma turma atribuída</h2>

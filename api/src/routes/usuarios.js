@@ -53,6 +53,51 @@ async function garantirOutroAdmin(conn, colegioId, usuarioId) {
   if (r.n === 0) throw new HttpErro(409, 'O colégio precisa ter pelo menos um administrador ativo', 'ultimo_admin');
 }
 
+/**
+ * Vincula o login ao cadastro de professor (o que libera as turmas
+ * atribuídas no Diário e nas Notas).
+ *   valor undefined → não altera · null/'' → desfaz o vínculo
+ *   número → vincula ao cadastro existente · 'novo' → cria o cadastro
+ * Retorna o texto para o log, ou null se nada mudou.
+ */
+async function vincularProfessor(conn, colegioId, usuario, perfil, valor) {
+  if (valor === undefined) return null;
+  if (valor !== null && valor !== '' && !['admin', 'professor'].includes(perfil)) {
+    throw new HttpErro(400, 'Só professores e administradores podem ser vinculados a um cadastro de professor', 'validacao');
+  }
+  const [[atual]] = await conn.query(
+    'SELECT id, nome FROM professores WHERE colegio_id = ? AND usuario_id = ? LIMIT 1 FOR UPDATE',
+    [colegioId, usuario.id]
+  );
+
+  if (valor === null || valor === '') {
+    if (!atual) return null;
+    await conn.query('UPDATE professores SET usuario_id = NULL WHERE colegio_id = ? AND usuario_id = ?', [colegioId, usuario.id]);
+    return `desvinculado do cadastro de professor ${atual.nome}`;
+  }
+
+  if (valor === 'novo') {
+    if (atual) throw new HttpErro(409, `Este login já está vinculado ao cadastro de ${atual.nome}`, 'duplicado');
+    await conn.query(
+      "INSERT INTO professores (colegio_id, usuario_id, nome, email, status) VALUES (?, ?, ?, ?, 'ativo')",
+      [colegioId, usuario.id, usuario.nome, usuario.email]
+    );
+    return 'cadastro de professor criado e vinculado';
+  }
+
+  const id = v.inteiro(valor, 'Cadastro de professor', { min: 1, obrigatorio: true });
+  if (atual && atual.id === id) return null;
+  const [[p]] = await conn.query('SELECT id, nome, usuario_id FROM professores WHERE id = ? AND colegio_id = ? FOR UPDATE', [id, colegioId]);
+  if (!p) throw new HttpErro(400, 'Cadastro de professor inválido', 'validacao');
+  if (p.usuario_id && p.usuario_id !== usuario.id) {
+    const [[outro]] = await conn.query('SELECT nome FROM usuarios WHERE id = ?', [p.usuario_id]);
+    throw new HttpErro(409, `O cadastro de ${p.nome} já está vinculado ao login de ${outro ? outro.nome : 'outro usuário'}`, 'duplicado');
+  }
+  if (atual) await conn.query('UPDATE professores SET usuario_id = NULL WHERE id = ?', [atual.id]);
+  await conn.query('UPDATE professores SET usuario_id = ? WHERE id = ?', [usuario.id, id]);
+  return `vinculado ao cadastro de professor ${p.nome}`;
+}
+
 function naoPodeSerVoce(req, usuarioId) {
   if (usuarioId === req.usuario.id) {
     throw new HttpErro(400, 'Você não pode alterar o seu próprio acesso. Peça a outro administrador.', 'proprio_usuario');
@@ -66,7 +111,9 @@ router.get('/', assincrono(async (req, res) => {
             uc.perfil, uc.status, uc.modulos, uc.criado_em, uc.aprovado_em,
             (SELECT GROUP_CONCAT(a.nome ORDER BY a.nome SEPARATOR '|')
                FROM responsavel_aluno ra JOIN alunos a ON a.id = ra.aluno_id
-              WHERE ra.usuario_id = u.id AND ra.colegio_id = uc.colegio_id) AS alunos
+              WHERE ra.usuario_id = u.id AND ra.colegio_id = uc.colegio_id) AS alunos,
+            (SELECT p.id FROM professores p WHERE p.colegio_id = uc.colegio_id AND p.usuario_id = u.id LIMIT 1) AS professor_id,
+            (SELECT p.nome FROM professores p WHERE p.colegio_id = uc.colegio_id AND p.usuario_id = u.id LIMIT 1) AS professor_nome
        FROM usuario_colegio uc
        JOIN usuarios u ON u.id = uc.usuario_id
       WHERE uc.colegio_id = ?
@@ -82,6 +129,7 @@ router.get('/', assincrono(async (req, res) => {
     modulos: modulosEfetivos(l.perfil, l.modulos),
     modulosPersonalizados: l.modulos !== null && l.perfil !== 'admin' && l.perfil !== 'responsavel',
     alunos: l.alunos ? l.alunos.split('|') : [],
+    professor: l.professor_id ? { id: l.professor_id, nome: l.professor_nome } : null,
     desde: l.criado_em,
     aprovadoEm: l.aprovado_em,
     ultimoAcesso: l.ultimo_acesso,
@@ -144,12 +192,14 @@ router.post('/:id/aprovar', assincrono(async (req, res) => {
         WHERE usuario_id = ? AND colegio_id = ?`,
       [perfil, modulos ? JSON.stringify(modulos) : null, req.usuario.id, usuarioId, req.colegioId]
     );
-    return { ...vinc, perfil };
+    const professor = perfil === 'responsavel' ? null
+      : await vincularProfessor(conn, req.colegioId, { id: usuarioId, nome: vinc.nome, email: vinc.email }, perfil, req.body.professorId);
+    return { ...vinc, perfil, professor };
   });
 
   await seguranca(req, {
     tipo: 'admin', colegioId: req.colegioId, usuarioId: req.usuario.id, email: req.usuario.email,
-    detalhes: `Aprovou ${r.nome} (${r.email}) como ${r.perfil}`
+    detalhes: `Aprovou ${r.nome} (${r.email}) como ${r.perfil}${r.professor ? ' · ' + r.professor : ''}`
   });
   await atividade(req.colegioId, req.usuario.id, `Usuário ${r.nome} aprovado`);
   res.json({ id: usuarioId, perfil: r.perfil, status: 'ativo' });
@@ -215,12 +265,15 @@ router.put('/:id', assincrono(async (req, res) => {
       'UPDATE usuario_colegio SET perfil = ?, status = ?, modulos = ? WHERE usuario_id = ? AND colegio_id = ?',
       [perfil, status, modulosSql, usuarioId, req.colegioId]
     );
-    return { ...vinc, perfilNovo: perfil, statusNovo: status };
+    const professor = perfil === 'responsavel' ? null
+      : await vincularProfessor(conn, req.colegioId, { id: usuarioId, nome: vinc.nome, email: vinc.email }, perfil, req.body.professorId);
+    return { ...vinc, perfilNovo: perfil, statusNovo: status, professor };
   });
 
   const mudancas = [];
   if (r.perfil !== r.perfilNovo) mudancas.push(`perfil ${r.perfil} → ${r.perfilNovo}`);
   if (r.status !== r.statusNovo) mudancas.push(r.statusNovo === 'bloqueado' ? 'bloqueado' : 'desbloqueado');
+  if (r.professor) mudancas.push(r.professor);
   if (!mudancas.length) mudancas.push('módulos atualizados');
   await seguranca(req, {
     tipo: 'admin', colegioId: req.colegioId, usuarioId: req.usuario.id, email: req.usuario.email,

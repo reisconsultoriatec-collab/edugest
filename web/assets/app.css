@@ -220,6 +220,10 @@ td small, .sub { color: var(--muted); font-size: 11px; }
   .autorizado { grid-template-columns: 1fr 1fr; padding: 10px; border: 1px solid var(--border); border-radius: 8px; }
   .autorizado [data-campo="nome"] { grid-column: 1 / -1; }
 }
+/* ---------- Botões de ação no topo do card ---------- */
+.acoes-topo { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.acoes-topo:empty { display: none; }
+
 /* ---------- Diário: chamada ---------- */
 .chamada { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
 .chamada-linha { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border); }
