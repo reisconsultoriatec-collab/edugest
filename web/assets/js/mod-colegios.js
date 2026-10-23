@@ -1,7 +1,8 @@
 /* =====================================================================
  *  EduGest — Gestão de Colégios   [somente o proprietário do sistema]
  *  Todos os colégios do sistema · cadastrar · editar dados cadastrais ·
- *  convite para o diretor · desativar / reativar · entrar no colégio.
+ *  convite para o diretor · aprovar cadastros pendentes · desativar /
+ *  reativar · entrar no colégio (ou acessar como administrador, suporte).
  *
  *  Os parâmetros de cada colégio continuam com o administrador do próprio
  *  colégio (Sistema › Configurações).
@@ -9,6 +10,7 @@
 'use strict';
 (function (EG) {
   let dados = null;
+  let elAtual = null; // conteúdo da tela, para redesenhar depois de ações em modais
   let busca = '';
 
   const semAcento = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
@@ -57,20 +59,24 @@
   function linha(c) {
     const atual = c.id === EG.estado.colegioId;
     const meu = c.meuVinculo;
-    const podeEntrar = c.ativo && meu && meu.status === 'ativo' && !atual;
+    const temAcesso = !!(meu && meu.status === 'ativo');
+    const podeEntrar = c.ativo && temAcesso && !atual;
+    const podeAcessar = c.ativo && !temAcesso;
     const admins = c.administradores.length
       ? c.administradores.map((a) => `<div>${EG.esc(a.nome)}${a.voce ? ' <small>(você)</small>' : ''}${a.status !== 'ativo' ? ` <span class="selo selo-neutro">${EG.esc((EG.STATUS[a.status] || a.status).toLowerCase())}</span>` : ''}<br><small>${EG.esc(a.email)}</small></div>`).join('')
       : '<small>Nenhum administrador</small>';
     return `<tr data-id="${c.id}" ${c.ativo ? '' : 'style="opacity:.6"'}>
       <td><strong>${EG.esc(c.nome)}</strong>${atual ? ' <span class="selo selo-info">em uso</span>' : ''}<br>
         <small>${c.cnpj ? EG.esc(c.cnpj) + ' · ' : ''}desde ${EG.data(c.criadoEm)}</small></td>
-      <td>${admins}${c.pendentes ? `<div style="margin-top:4px"><span class="selo selo-aviso">${c.pendentes} aguardando aprovação</span></div>` : ''}</td>
+      <td>${admins}${c.pendentes ? `<div style="margin-top:4px"><button class="selo selo-aviso" data-action="pendentes" title="Ver e aprovar os cadastros"
+          style="border:0;cursor:pointer;font-family:inherit"><i class="ti ti-user-check"></i> ${c.pendentes === 1 ? '1 cadastro aguardando aprovação' : c.pendentes + ' cadastros aguardando aprovação'} · ver</button></div>` : ''}</td>
       <td class="num">${c.equipe}<br><small>${c.responsaveis} resp.</small></td>
       <td class="num">${c.alunos}</td>
       <td style="white-space:nowrap"><code>${EG.esc(c.codigoConvite)}</code></td>
       <td><span class="selo ${c.ativo ? 'selo-ok' : 'selo-erro'}">${c.ativo ? 'Ativo' : 'Desativado'}</span></td>
       <td class="acoes">
         ${podeEntrar ? '<button class="btn-icone" data-action="entrar" title="Entrar neste colégio"><i class="ti ti-login-2"></i></button>' : ''}
+        ${podeAcessar ? '<button class="btn-icone" data-action="acessar" title="Acessar como administrador (suporte)"><i class="ti ti-door-enter"></i></button>' : ''}
         <button class="btn-icone" data-action="editar" title="Editar dados do colégio"><i class="ti ti-pencil"></i></button>
         ${c.ativo ? '<button class="btn-icone" data-action="convite" title="Convite para o diretor (código do colégio)"><i class="ti ti-send"></i></button>' : ''}
         ${c.ativo
@@ -200,6 +206,83 @@
     });
   }
 
+  /* ---------- Cadastros aguardando aprovação ---------- */
+  const PERFIS = [['admin', 'Administrador'], ['professor', 'Professor'], ['financeiro', 'Financeiro']];
+
+  async function modalPendentes(c) {
+    const m = EG.modal({
+      titulo: `Cadastros aguardando — ${c.nome}`,
+      largura: 760,
+      corpo: `<div class="msg-info" style="margin-bottom:14px"><i class="ti ti-info-circle"></i> O colégio já está <strong>ativo</strong>; quem aguarda
+          é a pessoa que se cadastrou com o código. Normalmente o administrador do colégio aprova em <strong>Sistema › Usuários</strong>;
+          aqui você aprova direto (por exemplo, o diretor de um colégio novo). Os módulos seguem o padrão do perfil e o administrador
+          do colégio pode ajustar depois.</div>
+        <div data-lista><div class="vazio"><div class="spinner pequeno" style="margin:0 auto"></div></div></div>`,
+      botoes: [{ texto: 'Fechar', acao: () => m.fechar() }]
+    });
+    const lista = m.el.querySelector('[data-lista]');
+
+    async function desenhar() {
+      const r = await EG.api('GET', `/proprietario/colegios/${c.id}/pendentes`);
+      if (!r.pendentes.length) {
+        lista.innerHTML = '<div class="vazio"><i class="ti ti-circle-check"></i>Nenhum cadastro aguardando aprovação</div>';
+        return 0;
+      }
+      lista.innerHTML = `<div class="tabela-wrap"><table>
+        <thead><tr><th>Pessoa</th><th>Cadastro</th><th>Aprovar como</th><th></th></tr></thead>
+        <tbody>${r.pendentes.map((p) => `<tr data-uid="${p.id}" data-nome="${EG.esc(p.nome)}">
+          <td><strong>${EG.esc(p.nome)}</strong><br><small>${EG.esc(p.email)}</small></td>
+          <td>${p.tipo === 'responsavel'
+            ? `<span class="selo selo-roxo">Responsável</span><br><small>${EG.esc(p.alunos.join(', ') || '—')}</small>`
+            : '<span class="selo selo-info">Equipe</span><br><small>pelo código do colégio</small>'}<br><small>em ${EG.data(p.desde)}</small></td>
+          <td>${p.tipo === 'responsavel' ? 'Responsável'
+            : `<select class="select" data-perfil style="min-width:150px"><option value="">Escolha o perfil</option>${PERFIS.map(([v, rot]) => `<option value="${v}">${rot}</option>`).join('')}</select>`}</td>
+          <td class="acoes"><button class="btn btn-primario btn-pequeno" data-ap="aprovar"><i class="ti ti-check"></i> Aprovar</button>
+            <button class="btn btn-secundario btn-pequeno" data-ap="recusar"><i class="ti ti-x"></i> Recusar</button></td></tr>`).join('')}</tbody>
+      </table></div>`;
+      return r.pendentes.length;
+    }
+
+    try { await desenhar(); } catch (e) { m.erro(e.message); }
+
+    lista.addEventListener('click', (ev) => {
+      const b = ev.target.closest('[data-ap]');
+      if (!b) return;
+      const tr = b.closest('tr[data-uid]');
+      const nome = tr.dataset.nome;
+      EG.guarda(b, async () => {
+        m.erro('');
+        try {
+          if (b.dataset.ap === 'aprovar') {
+            const sel = tr.querySelector('[data-perfil]');
+            if (sel && !sel.value) { sel.focus(); throw EG.erro(`Escolha o perfil de ${nome} antes de aprovar.`); }
+            const r = await EG.api('POST', `/proprietario/colegios/${c.id}/pendentes/${tr.dataset.uid}/aprovar`, sel ? { perfil: sel.value } : {});
+            EG.toast(`${nome} aprovado(a) como ${r.perfilNome}`);
+          } else {
+            const ok = await EG.confirmar(`Recusar o cadastro de ${nome} em ${c.nome}?\n\nA pessoa poderá se cadastrar de novo com o código do colégio.`,
+              { titulo: 'Recusar cadastro', textoOk: 'Recusar', perigo: true });
+            if (!ok) return;
+            await EG.api('POST', `/proprietario/colegios/${c.id}/pendentes/${tr.dataset.uid}/rejeitar`);
+            EG.toast(`Cadastro de ${nome} recusado`);
+          }
+          const restantes = await desenhar();
+          if (elAtual && location.hash === '#/colegios') await carregar(elAtual); // atualiza os números da lista
+          if (!restantes) m.fechar();
+        } catch (e) { m.erro(e.message); }
+      });
+    });
+  }
+
+  /* ---------- Acessar como administrador (suporte) ---------- */
+  async function acessar(c) {
+    const ok = await EG.confirmar(`Acessar o colégio "${c.nome}" como administrador?\n\nVocê será incluído como Administrador para dar suporte. `
+      + 'A inclusão fica registrada no Log de Segurança do colégio e a equipe verá você em Sistema › Usuários.',
+    { titulo: 'Acessar como administrador', textoOk: 'Acessar' });
+    if (!ok) return;
+    await EG.api('POST', `/proprietario/colegios/${c.id}/acesso`);
+    await EG.trocarColegio(c.id);
+  }
+
   /* ---------- Desativar / reativar ---------- */
   async function mudarSituacao(c, ativo) {
     const ok = await EG.confirmar(ativo
@@ -217,6 +300,7 @@
     async render(el) {
       const me = EG.estado.me || {};
       if (!me.proprietario) { telaVerificar(el); return; }
+      elAtual = el;
       await carregar(el);
       el.oninput = (ev) => {
         if (!ev.target.matches('[data-busca]')) return;
@@ -234,6 +318,8 @@
         EG.guarda(b, async () => {
           try {
             if (acao === 'entrar') await EG.trocarColegio(c.id);
+            else if (acao === 'acessar') await acessar(c);
+            else if (acao === 'pendentes') await modalPendentes(c);
             else if (acao === 'editar') modalEditar(c);
             else if (acao === 'convite') modalConvite(c, false);
             else if (acao === 'desativar') await mudarSituacao(c, false);

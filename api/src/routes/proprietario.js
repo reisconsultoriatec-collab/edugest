@@ -6,6 +6,10 @@
  *  POST /colegios                 cadastra um colégio novo
  *  PUT  /colegios/:id             dados cadastrais (nome, CNPJ, contatos, endereço)
  *  PUT  /colegios/:id/situacao    { ativo } desativa / reativa um colégio
+ *  GET  /colegios/:id/pendentes   cadastros aguardando aprovação no colégio
+ *  POST /colegios/:id/pendentes/:usuarioId/aprovar   { perfil }
+ *  POST /colegios/:id/pendentes/:usuarioId/rejeitar
+ *  POST /colegios/:id/acesso      o proprietário entra como administrador (suporte)
  *
  *  O proprietário é definido no .env (PROPRIETARIO_EMAILS) — veja
  *  src/utils/proprietario.js. Os parâmetros de cada colégio continuam com
@@ -17,6 +21,15 @@ const { HttpErro, assincrono } = require('../middleware/erros');
 const v = require('../utils/validar');
 const { atividade, seguranca } = require('../utils/auditoria');
 const { criarColegio, lerDadosColegio, salvarDadosColegio } = require('../services/colegios');
+const { aprovarPendente, rejeitarPendente } = require('../services/cadastros');
+
+const NOME_PERFIL = { admin: 'Administrador', professor: 'Professor', financeiro: 'Financeiro', responsavel: 'Responsável' };
+
+async function colegioOu404(id) {
+  const c = await queryUm('SELECT id, nome, ativo FROM colegios WHERE id = ?', [id]);
+  if (!c) throw new HttpErro(404, 'Colégio não encontrado', 'nao_encontrado');
+  return c;
+}
 
 /* ---------------- Lista ---------------- */
 router.get('/colegios', assincrono(async (req, res) => {
@@ -137,6 +150,104 @@ router.put('/colegios/:id/situacao', assincrono(async (req, res) => {
     detalhes: `Proprietário do sistema ${acao} o colégio ${c.nome}`
   });
   res.json({ id, ativo });
+}));
+
+/* ---------------- Cadastros aguardando aprovação ----------------
+ * O proprietário aprova/recusa direto daqui, inclusive em colégios em que
+ * não é administrador (ex.: o único admin não está mais no colégio). */
+router.get('/colegios/:id/pendentes', assincrono(async (req, res) => {
+  const id = v.inteiro(req.params.id, 'Colégio', { min: 1, obrigatorio: true });
+  const c = await colegioOu404(id);
+  const [pendentes, alunos] = await Promise.all([
+    query(
+      `SELECT u.id, u.nome, u.email, uc.perfil, uc.criado_em
+         FROM usuario_colegio uc JOIN usuarios u ON u.id = uc.usuario_id
+        WHERE uc.colegio_id = ? AND uc.status = 'pendente'
+        ORDER BY uc.criado_em, u.nome`,
+      [id]
+    ),
+    query(
+      `SELECT ra.usuario_id, a.nome
+         FROM responsavel_aluno ra JOIN alunos a ON a.id = ra.aluno_id
+        WHERE ra.colegio_id = ?
+        ORDER BY a.nome`,
+      [id]
+    )
+  ]);
+  res.json({
+    colegio: { id: c.id, nome: c.nome, ativo: !!c.ativo },
+    pendentes: pendentes.map((p) => ({
+      id: p.id,
+      nome: p.nome,
+      email: p.email,
+      tipo: p.perfil === 'responsavel' ? 'responsavel' : 'equipe',
+      desde: p.criado_em,
+      alunos: p.perfil === 'responsavel' ? alunos.filter((a) => a.usuario_id === p.id).map((a) => a.nome) : []
+    }))
+  });
+}));
+
+router.post('/colegios/:id/pendentes/:usuarioId/aprovar', assincrono(async (req, res) => {
+  const id = v.inteiro(req.params.id, 'Colégio', { min: 1, obrigatorio: true });
+  const usuarioId = v.inteiro(req.params.usuarioId, 'Usuário', { min: 1, obrigatorio: true });
+  const c = await colegioOu404(id);
+
+  // Perfil padrão do perfil escolhido (os módulos o admin do colégio ajusta depois)
+  const r = await transacao((conn) => aprovarPendente(conn, {
+    colegioId: id, usuarioId, perfil: req.body.perfil, modulos: null, aprovadoPor: req.usuario.id
+  }));
+
+  await seguranca(req, {
+    tipo: 'admin', colegioId: id, usuarioId: req.usuario.id, email: req.usuario.email,
+    detalhes: `Proprietário do sistema aprovou ${r.nome} (${r.email}) como ${r.perfil}`
+  });
+  await atividade(id, req.usuario.id, `Usuário ${r.nome} aprovado pela Reis Tecnologia`);
+  res.json({ id: usuarioId, colegio: c.nome, perfil: r.perfil, perfilNome: NOME_PERFIL[r.perfil], status: 'ativo' });
+}));
+
+router.post('/colegios/:id/pendentes/:usuarioId/rejeitar', assincrono(async (req, res) => {
+  const id = v.inteiro(req.params.id, 'Colégio', { min: 1, obrigatorio: true });
+  const usuarioId = v.inteiro(req.params.usuarioId, 'Usuário', { min: 1, obrigatorio: true });
+  await colegioOu404(id);
+
+  const r = await transacao((conn) => rejeitarPendente(conn, { colegioId: id, usuarioId }));
+  await seguranca(req, {
+    tipo: 'admin', colegioId: id, usuarioId: req.usuario.id, email: req.usuario.email,
+    detalhes: `Proprietário do sistema recusou o cadastro de ${r.nome} (${r.email})`
+  });
+  res.status(204).end();
+}));
+
+/* ---------------- Acessar como administrador (suporte) ---------------- */
+router.post('/colegios/:id/acesso', assincrono(async (req, res) => {
+  const id = v.inteiro(req.params.id, 'Colégio', { min: 1, obrigatorio: true });
+  const c = await colegioOu404(id);
+  if (!c.ativo) throw new HttpErro(409, 'Reative o colégio antes de acessá-lo', 'colegio_inativo');
+
+  const vinc = await queryUm(
+    'SELECT perfil, status FROM usuario_colegio WHERE usuario_id = ? AND colegio_id = ?',
+    [req.usuario.id, id]
+  );
+  if (vinc && vinc.perfil === 'admin' && vinc.status === 'ativo') return res.json({ id, nome: c.nome, jaTinhaAcesso: true });
+
+  if (vinc) {
+    await query(
+      `UPDATE usuario_colegio SET perfil = 'admin', status = 'ativo', modulos = NULL, aprovado_por = ?, aprovado_em = NOW()
+        WHERE usuario_id = ? AND colegio_id = ?`,
+      [req.usuario.id, req.usuario.id, id]
+    );
+  } else {
+    await query(
+      `INSERT INTO usuario_colegio (usuario_id, colegio_id, perfil, status, aprovado_por, aprovado_em)
+       VALUES (?, ?, 'admin', 'ativo', ?, NOW())`,
+      [req.usuario.id, id, req.usuario.id]
+    );
+  }
+  await seguranca(req, {
+    tipo: 'admin', colegioId: id, usuarioId: req.usuario.id, email: req.usuario.email,
+    detalhes: 'Proprietário do sistema passou a acessar o colégio como administrador (suporte)'
+  });
+  res.json({ id, nome: c.nome, jaTinhaAcesso: false });
 }));
 
 module.exports = router;

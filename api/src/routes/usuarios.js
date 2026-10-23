@@ -17,30 +17,8 @@ const { query, transacao } = require('../db');
 const { HttpErro, assincrono } = require('../middleware/erros');
 const v = require('../utils/validar');
 const { seguranca, atividade } = require('../utils/auditoria');
-const { MODULOS, modulosEfetivos } = require('../utils/modulos');
-
-const PERFIS_EQUIPE = ['admin', 'professor', 'financeiro'];
-
-/** Valida lista de módulos; null = usar o padrão do perfil. */
-function lerModulos(valor) {
-  if (valor === undefined || valor === null) return null;
-  if (!Array.isArray(valor)) throw new HttpErro(400, 'Módulos inválidos', 'validacao');
-  const lista = [...new Set(valor.filter((m) => MODULOS.includes(m)))];
-  if (!lista.length) throw new HttpErro(400, 'Selecione pelo menos um módulo', 'validacao');
-  return lista;
-}
-
-async function buscarVinculo(conn, usuarioId, colegioId) {
-  const [[vinc]] = await conn.query(
-    `SELECT uc.perfil, uc.status, u.nome, u.email
-       FROM usuario_colegio uc JOIN usuarios u ON u.id = uc.usuario_id
-      WHERE uc.usuario_id = ? AND uc.colegio_id = ?
-      FOR UPDATE`,
-    [usuarioId, colegioId]
-  );
-  if (!vinc) throw new HttpErro(404, 'Usuário não encontrado neste colégio', 'nao_encontrado');
-  return vinc;
-}
+const { modulosEfetivos } = require('../utils/modulos');
+const { PERFIS_EQUIPE, lerModulos, buscarVinculo, aprovarPendente, rejeitarPendente } = require('../services/cadastros');
 
 /** Impede que o colégio fique sem nenhum admin ativo. */
 async function garantirOutroAdmin(conn, colegioId, usuarioId) {
@@ -175,26 +153,13 @@ router.post('/:id/aprovar', assincrono(async (req, res) => {
   const usuarioId = v.id(req.params.id);
 
   const r = await transacao(async (conn) => {
-    const vinc = await buscarVinculo(conn, usuarioId, req.colegioId);
-    if (vinc.status !== 'pendente') throw new HttpErro(409, 'Este cadastro não está pendente', 'nao_pendente');
-
     // Responsável continua responsável; equipe pode ter o perfil definido na aprovação
-    let perfil = vinc.perfil;
-    let modulos = null;
-    if (perfil !== 'responsavel') {
-      if (req.body.perfil !== undefined) perfil = v.umDe(req.body.perfil, PERFIS_EQUIPE, 'Perfil');
-      if (perfil !== 'admin') modulos = lerModulos(req.body.modulos);
-    }
-
-    await conn.query(
-      `UPDATE usuario_colegio
-          SET status = 'ativo', perfil = ?, modulos = ?, aprovado_por = ?, aprovado_em = NOW()
-        WHERE usuario_id = ? AND colegio_id = ?`,
-      [perfil, modulos ? JSON.stringify(modulos) : null, req.usuario.id, usuarioId, req.colegioId]
-    );
-    const professor = perfil === 'responsavel' ? null
-      : await vincularProfessor(conn, req.colegioId, { id: usuarioId, nome: vinc.nome, email: vinc.email }, perfil, req.body.professorId);
-    return { ...vinc, perfil, professor };
+    const ap = await aprovarPendente(conn, {
+      colegioId: req.colegioId, usuarioId, perfil: req.body.perfil, modulos: req.body.modulos, aprovadoPor: req.usuario.id
+    });
+    const professor = ap.perfil === 'responsavel' ? null
+      : await vincularProfessor(conn, req.colegioId, { id: usuarioId, nome: ap.nome, email: ap.email }, ap.perfil, req.body.professorId);
+    return { ...ap, professor };
   });
 
   await seguranca(req, {
@@ -209,14 +174,7 @@ router.post('/:id/aprovar', assincrono(async (req, res) => {
 router.post('/:id/rejeitar', assincrono(async (req, res) => {
   const usuarioId = v.id(req.params.id);
 
-  const r = await transacao(async (conn) => {
-    const vinc = await buscarVinculo(conn, usuarioId, req.colegioId);
-    if (vinc.status !== 'pendente') throw new HttpErro(409, 'Este cadastro não está pendente', 'nao_pendente');
-    await conn.query('DELETE FROM responsavel_aluno WHERE usuario_id = ? AND colegio_id = ?', [usuarioId, req.colegioId]);
-    await conn.query('DELETE FROM usuario_colegio WHERE usuario_id = ? AND colegio_id = ?', [usuarioId, req.colegioId]);
-    await conn.query('UPDATE usuarios SET colegio_atual_id = NULL WHERE id = ? AND colegio_atual_id = ?', [usuarioId, req.colegioId]);
-    return vinc;
-  });
+  const r = await transacao((conn) => rejeitarPendente(conn, { colegioId: req.colegioId, usuarioId }));
 
   await seguranca(req, {
     tipo: 'admin', colegioId: req.colegioId, usuarioId: req.usuario.id, email: req.usuario.email,
