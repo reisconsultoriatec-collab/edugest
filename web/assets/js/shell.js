@@ -96,7 +96,25 @@
       });
     });
     EG.$('#menu').innerHTML = html;
+    const p = EG.estado.colegio.pendentes;
+    EG.atualizarPendentes(p ? p.total : 0);
   }
+
+  /** Contador de cadastros pendentes no item "Usuários" do menu (só admin). */
+  EG.atualizarPendentes = function (total) {
+    if (EG.estado.colegio && EG.estado.colegio.pendentes) EG.estado.colegio.pendentes.total = total;
+    const item = EG.$('.menu-item[data-pagina="usuarios"]');
+    if (!item) return;
+    let c = item.querySelector('.contador');
+    if (!total) { if (c) c.remove(); return; }
+    if (!c) {
+      c = document.createElement('span');
+      c.className = 'contador';
+      item.appendChild(c);
+    }
+    c.textContent = total;
+    c.title = `${total} cadastro(s) aguardando aprovação`;
+  };
 
   /* ---------- Navegação ---------- */
   function paginaInicial() {

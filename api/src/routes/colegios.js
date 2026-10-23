@@ -26,6 +26,18 @@ const { criarColegio } = require('../services/colegios');
 const { hojeSP } = require('../utils/datas');
 
 const soAdmin = [exigirColegio, exigirPerfil('admin')];
+
+/** Cadastros aguardando aprovação no colégio (só o admin aprova). */
+async function contarPendentes(colegioId) {
+  const r = await queryUm(
+    `SELECT COUNT(*) AS total, COALESCE(SUM(perfil = 'responsavel'), 0) AS responsaveis
+       FROM usuario_colegio WHERE colegio_id = ? AND status = 'pendente'`,
+    [colegioId]
+  );
+  const total = Number(r.total || 0);
+  const responsaveis = Number(r.responsaveis || 0);
+  return { total, responsaveis, equipe: total - responsaveis };
+}
 const soEquipe = [exigirColegio, exigirPerfil('admin', 'professor', 'financeiro')];
 
 /* ---------------- Criar colégio ---------------- */
@@ -86,6 +98,7 @@ router.get('/atual', exigirColegio, assincrono(async (req, res) => {
       timeoutSessaoMin: c.timeout_sessao_min
     },
     disciplinas: disciplinas.map((d) => ({ id: d.id, nome: d.nome, ordem: d.ordem, ativo: !!d.ativo })),
+    pendentes: admin ? await contarPendentes(req.colegioId) : undefined,
     perfil: req.perfil,
     modulos: req.modulos
   });
@@ -218,7 +231,8 @@ router.get('/atual/resumo', soEquipe, exigirModulo('dashboard'), assincrono(asyn
     alunosSemTurma: Number(r.alunos_sem_turma),
     professores: Number(r.professores),
     turmas: Number(r.turmas),
-    inadimplentes: Number(r.inadimplentes)
+    inadimplentes: Number(r.inadimplentes),
+    pendentes: req.perfil === 'admin' ? await contarPendentes(req.colegioId) : undefined
   });
 }));
 

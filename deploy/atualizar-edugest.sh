@@ -6,6 +6,8 @@
 #  Uso:  ~/atualizar-edugest.sh
 #
 #  1. Baixa a versão mais recente do repositório (~/edugest-repo)
+#  1b. Aplica as alterações de banco novas (api/sql/migracoes), pedindo a
+#      senha do root do MySQL; as já aplicadas ficam em ~/.edugest-migracoes
 #  2. Copia a API para ~/edugest-api (preserva .env, chave do Firebase
 #     e node_modules) e roda npm install só se o package.json mudou
 #  3. Copia o front para /var/www/edugest
@@ -34,7 +36,34 @@ main() {
   else
     echo "    $antes → $depois"
     git --no-pager log --oneline "$antes..$depois" | sed 's/^/    • /'
+    # Se o próprio script mudou, roda de novo com a versão nova
+    if [ -z "${EDUGEST_REEXEC:-}" ] && ! git diff --quiet "$antes" "$depois" -- deploy/atualizar-edugest.sh; then
+      echo "    O script de atualização mudou — reiniciando com a versão nova..."
+      EDUGEST_REEXEC=1 exec bash "$REPO/deploy/atualizar-edugest.sh"
+    fi
   fi
+
+  echo "==> Verificando alterações no banco..."
+  local controle="$HOME/.edugest-migracoes" mig nome aplicou=0
+  touch "$controle"
+  for mig in "$REPO"/api/sql/migracoes/*.sql; do
+    [ -e "$mig" ] || continue
+    nome=$(basename "$mig")
+    grep -qxF "$nome" "$controle" && continue
+    echo "    Aplicando $nome — digite a senha do root do MySQL:"
+    sudo docker cp "$mig" mysql:/tmp/migracao.sql
+    if sudo docker exec -it mysql sh -c 'mysql -u root -p edugest < /tmp/migracao.sql'; then
+      sudo docker exec mysql rm -f /tmp/migracao.sql
+      echo "$nome" >> "$controle"
+      echo "    ✓ $nome aplicada"
+      aplicou=1
+    else
+      sudo docker exec mysql rm -f /tmp/migracao.sql || true
+      echo "!!  Falha ao aplicar $nome. A versão no ar NÃO foi alterada. Rode o script de novo."
+      exit 1
+    fi
+  done
+  [ "$aplicou" = 0 ] && echo "    Nenhuma alteração pendente."
 
   echo "==> Atualizando a API..."
   local precisa_npm=0

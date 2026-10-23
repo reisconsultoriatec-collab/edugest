@@ -75,6 +75,7 @@
     usuarios = await EG.api('GET', '/usuarios');
     const pend = usuarios.filter((u) => u.status === 'pendente');
     const outros = usuarios.filter((u) => u.status !== 'pendente');
+    EG.atualizarPendentes(pend.length);
     const codigo = EG.estado.colegio.codigoConvite;
 
     el.innerHTML = `

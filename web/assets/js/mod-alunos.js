@@ -8,6 +8,31 @@
   const STATUS = { ativo: 'Ativo', inativo: 'Inativo', transferido: 'Transferido' };
   const SELO = { ativo: 'selo-ok', inativo: 'selo-neutro', transferido: 'selo-roxo' };
   const PARENTESCOS = ['Mãe', 'Pai', 'Avó/Avô', 'Tio(a)', 'Irmão(ã)', 'Responsável legal', 'Outro'];
+  const PARENTESCOS_RETIRADA = ['Pai', 'Mãe', 'Avó/Avô', 'Tio(a)', 'Irmão(ã)', 'Padrasto/Madrasta', 'Transporte escolar', 'Vizinho(a)', 'Outro'];
+  const MAX_AUTORIZADOS = 6;
+
+  /* ---------- Autorizados a retirar o aluno ---------- */
+  function linhaAutorizado(p) {
+    p = p || {};
+    const opcoes = !p.parentesco || PARENTESCOS_RETIRADA.includes(p.parentesco) ? PARENTESCOS_RETIRADA : [p.parentesco, ...PARENTESCOS_RETIRADA];
+    return `<div class="autorizado" data-autorizado>
+      <input class="input" data-campo="nome" maxlength="100" placeholder="Nome completo *" value="${EG.esc(p.nome)}">
+      <select class="select" data-campo="parentesco">${EG.opcoes(opcoes.map((x) => ({ value: x, label: x })), p.parentesco || 'Tio(a)')}</select>
+      <input class="input" data-campo="documento" maxlength="20" placeholder="RG ou CPF" autocomplete="off" value="${EG.esc(p.documento)}">
+      <input class="input" data-campo="telefone" data-mascara="telefone" maxlength="15" placeholder="Telefone" value="${EG.esc(p.telefone)}">
+      <button type="button" class="btn-icone perigo" data-ficha="remover-autorizado" title="Remover"><i class="ti ti-x"></i></button>
+    </div>`;
+  }
+
+  /** Lê as linhas preenchidas (linhas totalmente vazias são ignoradas). */
+  function lerAutorizados(m) {
+    const lista = EG.$$('[data-autorizado]', m.el).map((linha) => {
+      const val = (c) => linha.querySelector(`[data-campo="${c}"]`).value.trim();
+      return { nome: val('nome'), parentesco: val('parentesco'), documento: val('documento'), telefone: val('telefone') };
+    }).filter((p) => p.nome || p.documento || p.telefone);
+    if (lista.some((p) => p.nome.length < 3)) throw EG.erro('Informe o nome completo de cada pessoa autorizada a retirar o aluno.');
+    return lista;
+  }
 
   let alunos = [];
   let turmas = [];
@@ -62,7 +87,8 @@
             <td><code style="font-size:12px">${EG.esc(a.ra)}</code></td>
             <td><strong>${EG.esc(a.nome)}</strong>${a.nascimento ? `<br><small>${EG.data(a.nascimento)}</small>` : ''}</td>
             <td>${a.turma ? EG.esc(a.turma) : '<span class="sub">sem turma</span>'}</td>
-            <td>${EG.esc(a.respNome || '—')}${a.respTelefone ? `<br><small>${EG.esc(a.respTelefone)}</small>` : ''}</td>
+            <td>${EG.esc(a.respNome || '—')}${a.respTelefone ? `<br><small>${EG.esc(a.respTelefone)}</small>` : ''}
+              ${a.autorizadosRetirada ? `<br><small title="Pessoas autorizadas a retirar o aluno"><i class="ti ti-shield-check"></i> +${a.autorizadosRetirada} autorizado(s) a retirar</small>` : ''}</td>
             <td><code style="color:var(--amber-d);font-weight:700;letter-spacing:1px">${EG.esc(a.codigoAcesso)}</code>
               <button class="btn-icone" data-action="copiar-codigo" title="Copiar código" style="width:26px;height:26px;margin-left:4px"><i class="ti ti-copy"></i></button>
               ${a.responsaveisPortal ? `<br><small><i class="ti ti-user-check"></i> ${a.responsaveisPortal} no portal</small>` : ''}</td>
@@ -108,6 +134,11 @@
           <div class="campo"><label>E-mail</label><input class="input" type="email" name="respEmail" maxlength="160" value="${EG.esc(a.respEmail)}"></div>
         </div>
 
+        <div class="rotulo" style="margin:18px 0 4px;padding-top:14px;border-top:1px solid var(--border)"><i class="ti ti-shield-check"></i> Autorizados a retirar o aluno</div>
+        <p class="sub" style="margin-bottom:10px">Além do responsável acima, quem mais pode buscar o aluno na escola. Na retirada, confira o documento com foto.</p>
+        <div data-autorizados>${(a.autorizados || []).map(linhaAutorizado).join('')}</div>
+        <button type="button" class="btn btn-secundario btn-pequeno" data-ficha="add-autorizado"><i class="ti ti-plus"></i> Adicionar pessoa autorizada</button>
+
         ${novo ? '<div class="msg-info" style="margin-top:6px">O <strong>RA</strong> e o <strong>código de acesso do responsável</strong> são gerados automaticamente ao salvar.</div>' : `
         <div class="rotulo" style="margin:18px 0 10px;padding-top:14px;border-top:1px solid var(--border)"><i class="ti ti-key"></i> Acesso do responsável ao portal</div>
         <div class="codigo-box">
@@ -121,6 +152,7 @@
         { texto: 'Cancelar', acao: () => m.fechar() },
         { texto: novo ? 'Cadastrar aluno' : 'Salvar', classe: 'btn-primario', icone: 'ti-device-floppy', acao: async () => {
           const d = EG.lerForm(m.el);
+          d.autorizados = lerAutorizados(m);
           if (novo) {
             const r = await EG.api('POST', '/alunos', d);
             m.fechar();
@@ -135,27 +167,36 @@
       ]
     });
 
-    if (!novo) {
-      m.el.addEventListener('click', async (ev) => {
-        const b = ev.target.closest('[data-ficha]');
-        if (!b) return;
-        const codigoEl = m.el.querySelector('[data-codigo]');
-        try {
-          if (b.dataset.ficha === 'copiar') EG.copiar(codigoEl.textContent, 'Código copiado!');
-          else if (b.dataset.ficha === 'whats') {
-            const tel = m.el.querySelector('[name=respTelefone]').value;
-            EG.abrirWhatsApp(tel, mensagemCodigo(a.nome, codigoEl.textContent));
-          } else if (b.dataset.ficha === 'novo-codigo') {
-            const ok = await EG.confirmar('Gerar um novo código de acesso?\n\nO código atual deixa de valer para novos cadastros. Responsáveis que já usam o portal continuam com acesso.', { textoOk: 'Gerar novo código' });
-            if (!ok) return;
-            const r = await EG.api('POST', `/alunos/${id}/novo-codigo`);
-            codigoEl.textContent = r.codigoAcesso;
-            EG.toast('Novo código gerado');
-            await carregarDados(); render(el);
-          }
-        } catch (e) { m.erro(e.message); }
-      });
-    }
+    m.el.addEventListener('click', async (ev) => {
+      const b = ev.target.closest('[data-ficha]');
+      if (!b) return;
+      const codigoEl = m.el.querySelector('[data-codigo]');
+      try {
+        if (b.dataset.ficha === 'add-autorizado') {
+          const caixa = m.el.querySelector('[data-autorizados]');
+          if (caixa.children.length >= MAX_AUTORIZADOS) { m.erro(`Máximo de ${MAX_AUTORIZADOS} pessoas autorizadas por aluno.`); return; }
+          caixa.insertAdjacentHTML('beforeend', linhaAutorizado());
+          caixa.lastElementChild.querySelector('[data-campo="nome"]').focus();
+        } else if (b.dataset.ficha === 'remover-autorizado') {
+          b.closest('[data-autorizado]').remove();
+          m.erro('');
+        } else if (novo) {
+          // As ações abaixo só existem na ficha de um aluno já cadastrado
+        } else if (b.dataset.ficha === 'copiar') {
+          EG.copiar(codigoEl.textContent, 'Código copiado!');
+        } else if (b.dataset.ficha === 'whats') {
+          const tel = m.el.querySelector('[name=respTelefone]').value;
+          EG.abrirWhatsApp(tel, mensagemCodigo(a.nome, codigoEl.textContent));
+        } else if (b.dataset.ficha === 'novo-codigo') {
+          const ok = await EG.confirmar('Gerar um novo código de acesso?\n\nO código atual deixa de valer para novos cadastros. Responsáveis que já usam o portal continuam com acesso.', { textoOk: 'Gerar novo código' });
+          if (!ok) return;
+          const r = await EG.api('POST', `/alunos/${id}/novo-codigo`);
+          codigoEl.textContent = r.codigoAcesso;
+          EG.toast('Novo código gerado');
+          await carregarDados(); render(el);
+        }
+      } catch (e) { m.erro(e.message); }
+    });
   }
 
   function mensagemCodigo(nomeAluno, codigo) {

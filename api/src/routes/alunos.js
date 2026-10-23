@@ -3,7 +3,8 @@
  *  /api/alunos — alunos do colégio atual   [módulo alunos]
  *
  *  GET    /?busca=&status=&turmaId=     lista (sem CPF/RG)
- *  GET    /:id                          ficha completa (CPF/RG decifrados)
+ *  GET    /:id                          ficha completa (CPF/RG decifrados) e
+ *                                       pessoas autorizadas a retirar o aluno
  *  POST   /                             cadastra (RA e código PAI gerados aqui)
  *  PUT    /:id                          edita
  *  POST   /:id/novo-codigo              gera novo código PAI
@@ -24,8 +25,38 @@ const { codigoAcessoAluno } = require('../utils/codigos');
 const { hojeSP, dataValida } = require('../utils/datas');
 
 const STATUS = ['ativo', 'inativo', 'transferido'];
+const MAX_AUTORIZADOS = 6;
 
 router.use(exigirModulo('alunos'));
+
+/** Pessoas autorizadas a retirar o aluno. undefined = não alterar. */
+function lerAutorizados(lista) {
+  if (lista === undefined) return undefined;
+  if (!Array.isArray(lista)) throw new HttpErro(400, 'Lista de autorizados inválida', 'validacao');
+  if (lista.length > MAX_AUTORIZADOS) {
+    throw new HttpErro(400, `Máximo de ${MAX_AUTORIZADOS} pessoas autorizadas por aluno`, 'validacao');
+  }
+  return lista.map((p, i) => {
+    const n = i + 1;
+    p = p || {};
+    return {
+      nome: v.texto(p.nome, `Nome do autorizado ${n}`, { max: 100, min: 3, obrigatorio: true }),
+      parentesco: v.texto(p.parentesco, `Parentesco do autorizado ${n}`, { max: 30 }),
+      documento: v.texto(p.documento, `Documento do autorizado ${n}`, { max: 20 }),
+      telefone: v.telefone(p.telefone, `Telefone do autorizado ${n}`)
+    };
+  });
+}
+
+async function gravarAutorizados(conn, colegioId, alunoId, lista) {
+  await conn.query('DELETE FROM autorizados_retirada WHERE aluno_id = ? AND colegio_id = ?', [alunoId, colegioId]);
+  if (lista.length) {
+    await conn.query(
+      'INSERT INTO autorizados_retirada (colegio_id, aluno_id, nome, parentesco, documento_cript, telefone) VALUES ?',
+      [lista.map((p) => [colegioId, alunoId, p.nome, p.parentesco, cifrar(p.documento), p.telefone])]
+    );
+  }
+}
 
 function lerAluno(b) {
   const nascimento = b.nascimento ? String(b.nascimento) : null;
@@ -70,7 +101,8 @@ function formatarLista(a) {
     respParentesco: a.resp_parentesco,
     respTelefone: a.resp_telefone,
     respEmail: a.resp_email,
-    responsaveisPortal: Number(a.responsaveis_portal || 0)
+    responsaveisPortal: Number(a.responsaveis_portal || 0),
+    autorizadosRetirada: Number(a.autorizados || 0)
   };
 }
 
@@ -78,7 +110,8 @@ const SELECT_LISTA = `
   SELECT a.id, a.ra, a.nome, a.nascimento, a.status, a.codigo_acesso, a.turma_id,
          a.resp_nome, a.resp_parentesco, a.resp_telefone, a.resp_email,
          t.nome AS turma_nome, t.ano_letivo AS turma_ano,
-         (SELECT COUNT(*) FROM responsavel_aluno ra WHERE ra.aluno_id = a.id) AS responsaveis_portal
+         (SELECT COUNT(*) FROM responsavel_aluno ra WHERE ra.aluno_id = a.id) AS responsaveis_portal,
+         (SELECT COUNT(*) FROM autorizados_retirada ar WHERE ar.aluno_id = a.id) AS autorizados
     FROM alunos a
     LEFT JOIN turmas t ON t.id = a.turma_id`;
 
@@ -110,11 +143,18 @@ router.get('/:id', assincrono(async (req, res) => {
   const a = await queryUm(`${SELECT_LISTA} WHERE a.id = ? AND a.colegio_id = ?`, [id, req.colegioId]);
   if (!a) throw new HttpErro(404, 'Aluno não encontrado', 'nao_encontrado');
   const extra = await queryUm('SELECT cpf_cript, rg_cript, endereco FROM alunos WHERE id = ?', [id]);
+  const autorizados = await query(
+    'SELECT id, nome, parentesco, documento_cript, telefone FROM autorizados_retirada WHERE aluno_id = ? AND colegio_id = ? ORDER BY id',
+    [id, req.colegioId]
+  );
   res.json({
     ...formatarLista(a),
     cpf: decifrar(extra.cpf_cript),
     rg: decifrar(extra.rg_cript),
-    endereco: extra.endereco
+    endereco: extra.endereco,
+    autorizados: autorizados.map((p) => ({
+      id: p.id, nome: p.nome, parentesco: p.parentesco, documento: decifrar(p.documento_cript), telefone: p.telefone
+    }))
   });
 }));
 
@@ -130,6 +170,7 @@ async function proximoRA(conn, colegioId, ano) {
 
 router.post('/', assincrono(async (req, res) => {
   const a = lerAluno(req.body);
+  const autorizados = lerAutorizados(req.body.autorizados) || [];
   await conferirTurma(req.colegioId, a.turma_id);
   const raInformado = v.texto(req.body.ra, 'RA', { max: 20 });
 
@@ -146,6 +187,7 @@ router.post('/', assincrono(async (req, res) => {
           [req.colegioId, ra, a.nome, a.nascimento, cifrar(a.cpf), cifrar(a.rg), a.endereco, a.turma_id, a.status,
             codigo, a.resp_nome, a.resp_parentesco, a.resp_telefone, a.resp_email]
         );
+        await gravarAutorizados(conn, req.colegioId, r.insertId, autorizados);
         return { id: r.insertId, ra, codigo };
       });
     } catch (e) {
@@ -165,18 +207,22 @@ router.put('/:id', assincrono(async (req, res) => {
   const atual = await queryUm('SELECT ra FROM alunos WHERE id = ? AND colegio_id = ?', [id, req.colegioId]);
   if (!atual) throw new HttpErro(404, 'Aluno não encontrado', 'nao_encontrado');
   const a = lerAluno(req.body);
+  const autorizados = lerAutorizados(req.body.autorizados);
   await conferirTurma(req.colegioId, a.turma_id);
   const ra = v.texto(req.body.ra, 'RA', { max: 20 }) || atual.ra;
 
-  await query(
-    `UPDATE alunos SET ra = ?, nome = ?, nascimento = ?, cpf_cript = ?, rg_cript = ?, endereco = ?, turma_id = ?, status = ?,
-            resp_nome = ?, resp_parentesco = ?, resp_telefone = ?, resp_email = ?
-      WHERE id = ? AND colegio_id = ?`,
-    [ra, a.nome, a.nascimento, cifrar(a.cpf), cifrar(a.rg), a.endereco, a.turma_id, a.status,
-      a.resp_nome, a.resp_parentesco, a.resp_telefone, a.resp_email, id, req.colegioId]
-  ).catch((e) => {
-    if (e.code === 'ER_DUP_ENTRY') throw new HttpErro(409, `Já existe um aluno com o RA ${ra}`, 'duplicado');
-    throw e;
+  await transacao(async (conn) => {
+    await conn.query(
+      `UPDATE alunos SET ra = ?, nome = ?, nascimento = ?, cpf_cript = ?, rg_cript = ?, endereco = ?, turma_id = ?, status = ?,
+              resp_nome = ?, resp_parentesco = ?, resp_telefone = ?, resp_email = ?
+        WHERE id = ? AND colegio_id = ?`,
+      [ra, a.nome, a.nascimento, cifrar(a.cpf), cifrar(a.rg), a.endereco, a.turma_id, a.status,
+        a.resp_nome, a.resp_parentesco, a.resp_telefone, a.resp_email, id, req.colegioId]
+    ).catch((e) => {
+      if (e.code === 'ER_DUP_ENTRY') throw new HttpErro(409, `Já existe um aluno com o RA ${ra}`, 'duplicado');
+      throw e;
+    });
+    if (autorizados !== undefined) await gravarAutorizados(conn, req.colegioId, id, autorizados);
   });
   await atividade(req.colegioId, req.usuario.id, `Aluno atualizado: ${a.nome}`);
   res.json({ id, ra });

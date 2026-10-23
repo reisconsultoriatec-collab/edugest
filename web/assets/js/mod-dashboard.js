@@ -10,8 +10,10 @@
         EG.api('GET', '/colegios/atual/resumo')
       ]);
       const nome = (e.me.usuario.nome || '').split(' ')[0];
+      if (r.pendentes) EG.atualizarPendentes(r.pendentes.total);
 
       el.innerHTML = `
+        ${avisoPendentes(r.pendentes)}
         <div class="card" style="background:linear-gradient(135deg,#1A2744,#2D3F63);color:#fff;border:none">
           <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
             <div class="avatar" style="width:56px;height:56px;font-size:22px">${EG.esc(EG.iniciais(e.me.usuario.nome))}</div>
@@ -40,6 +42,22 @@
         </div>`;
     }
   });
+
+  /** Alerta de cadastros aguardando aprovação (só chega preenchido para o admin). */
+  function avisoPendentes(p) {
+    if (!p || !p.total) return '';
+    const partes = [];
+    if (p.responsaveis) partes.push(`${p.responsaveis} ${p.responsaveis === 1 ? 'responsável de aluno' : 'responsáveis de alunos'}`);
+    if (p.equipe) partes.push(`${p.equipe} da equipe`);
+    return `<div class="pendente-item" style="margin-bottom:20px">
+      <span class="avatar"><i class="ti ti-user-exclamation"></i></span>
+      <div class="pendente-info">
+        <strong>${p.total === 1 ? '1 cadastro aguardando' : `${p.total} cadastros aguardando`} a sua aprovação</strong>
+        <span class="sub">${EG.esc(partes.join(' e '))} · essas pessoas só acessam o sistema depois de aprovadas</span>
+      </div>
+      <button class="btn btn-primario" data-action="ir" data-pagina="usuarios"><i class="ti ti-user-check"></i> Revisar agora</button>
+    </div>`;
+  }
 
   function kpi(icone, fundo, cor, rotulo, valor, obs, modulo) {
     const link = modulo && EG.pode(modulo) ? ` data-action="ir" data-pagina="${modulo}" style="cursor:pointer"` : '';
