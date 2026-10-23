@@ -1,7 +1,8 @@
 /* =====================================================================
  *  EduGest — Mensalidades
  *  Geração por período (com simulação), baixa, estorno, cobrança por
- *  WhatsApp. O desconto vem sempre da bolsa vigente do aluno.
+ *  WhatsApp com link do PDF (QR Code PIX), recibo, carnê, lote do mês e
+ *  declaração anual. O desconto vem sempre da bolsa vigente do aluno.
  * ===================================================================== */
 'use strict';
 (function (EG) {
@@ -46,7 +47,10 @@
       <div class="card">
         <div class="card-cab">
           <div class="card-titulo"><i class="ti ti-receipt"></i> Mensalidades</div>
-          <div class="acoes-topo"><button class="btn btn-primario" data-action="gerar"><i class="ti ti-calendar-plus"></i> Gerar mensalidades</button></div>
+          <div class="acoes-topo">
+            <button class="btn btn-secundario" data-action="documentos"><i class="ti ti-file-type-pdf"></i> Documentos</button>
+            <button class="btn btn-primario" data-action="gerar"><i class="ti ti-calendar-plus"></i> Gerar mensalidades</button>
+          </div>
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
           <select class="select" data-filtro="referencia" style="width:auto;min-width:180px">${opcoesReferencia()}</select>
@@ -82,7 +86,8 @@
     let acoes = '';
     if (aberto) {
       acoes = `<button class="btn btn-primario btn-pequeno" data-action="pagar"><i class="ti ti-cash"></i> Receber</button>
-        <button class="btn-icone" data-action="whats" title="Lembrete por WhatsApp"><i class="ti ti-brand-whatsapp"></i></button>
+        <button class="btn-icone" data-action="whats" title="Enviar cobrança por WhatsApp (com PDF e QR Code PIX)"><i class="ti ti-brand-whatsapp"></i></button>
+        <button class="btn-icone" data-action="pdf" title="Abrir PDF da cobrança"><i class="ti ti-file-type-pdf"></i></button>
         <button class="btn-icone" data-action="editar" title="Alterar valor ou vencimento"><i class="ti ti-edit"></i></button>
         <button class="btn-icone" data-action="cancelar" title="Cancelar"><i class="ti ti-ban"></i></button>
         <button class="btn-icone perigo" data-action="excluir" title="Excluir"><i class="ti ti-trash"></i></button>`;
@@ -90,7 +95,9 @@
       acoes = `<button class="btn-icone" data-action="editar" title="Alterar valor ou vencimento"><i class="ti ti-edit"></i></button>
         <button class="btn-icone perigo" data-action="excluir" title="Excluir"><i class="ti ti-trash"></i></button>`;
     } else if (m.situacao === 'paga') {
-      acoes = '<button class="btn btn-secundario btn-pequeno" data-action="estornar" title="Desfazer o recebimento"><i class="ti ti-arrow-back-up"></i> Estornar</button>';
+      acoes = `<button class="btn btn-secundario btn-pequeno" data-action="estornar" title="Desfazer o recebimento"><i class="ti ti-arrow-back-up"></i> Estornar</button>
+        <button class="btn-icone" data-action="whats" title="Enviar recibo por WhatsApp"><i class="ti ti-brand-whatsapp"></i></button>
+        <button class="btn-icone" data-action="pdf" title="Abrir recibo em PDF"><i class="ti ti-receipt"></i></button>`;
     } else if (m.situacao === 'cancelada') {
       acoes = `<button class="btn btn-secundario btn-pequeno" data-action="reativar"><i class="ti ti-restore"></i> Reativar</button>
         <button class="btn-icone perigo" data-action="excluir" title="Excluir"><i class="ti ti-trash"></i></button>`;
@@ -219,16 +226,105 @@
     });
   }
 
-  function cobrarWhatsApp(m) {
+  const validoAte = (r) => new Date(r.expira).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+  const assinatura = () => `_${EG.estado.colegio.nome} — Financeiro_`;
+
+  function textoCobranca(m, r) {
     const vencida = m.situacao === 'vencida';
-    const msg = `${vencida ? '🔴' : '🟡'} *Lembrete de mensalidade*\n\n🏫 ${EG.estado.colegio.nome}\n👤 Aluno(a): *${m.aluno}*\n`
+    return `${vencida ? '🔴' : '🟡'} *Lembrete de mensalidade*\n\n🏫 ${EG.estado.colegio.nome}\n👤 Aluno(a): *${m.aluno}*\n`
       + `📅 Referência: ${EG.nomeRef(m.referencia)}\n💰 Valor: *${EG.moeda(m.valor)}*\n📆 Vencimento: ${EG.data(m.vencimento)}\n`
       + (vencida ? `⚠️ *Em atraso há ${m.diasAtraso} dia(s)*\n` : '')
-      + `\n${vencida ? 'Pedimos a gentileza de regularizar o pagamento.' : 'Este é apenas um lembrete do próximo vencimento.'}`
+      + `\n📄 ${r.pixConfigurado ? 'Cobrança com QR Code PIX e copia e cola' : 'Cobrança em PDF'}:\n${r.url}\n_(link válido até ${validoAte(r)})_\n`
+      + `\n${vencida ? 'Pedimos a gentileza de regularizar o pagamento.' : 'Este é um lembrete do vencimento.'}`
       + ' Se já pagou, por favor desconsidere esta mensagem.'
-      + `\n\n_${EG.estado.colegio.nome} — Financeiro_`;
+      + `\n\n${assinatura()}`;
+  }
+
+  function textoRecibo(m, r) {
+    return `✅ *Recibo de pagamento*\n\n🏫 ${EG.estado.colegio.nome}\n👤 Aluno(a): *${m.aluno}*\n`
+      + `📅 Referência: ${EG.nomeRef(m.referencia)}\n💰 Valor recebido: *${EG.moeda(m.valorPago ?? m.valor)}*\n📆 Pago em: ${EG.data(m.dataPagamento)}\n`
+      + `\n📄 Recibo em PDF:\n${r.url}\n_(link válido até ${validoAte(r)})_\n\nObrigado!\n\n${assinatura()}`;
+  }
+
+  function enviarWhatsApp(m) {
     if (!m.respTelefone) EG.toast(`${m.aluno} não tem telefone do responsável cadastrado — escolha o contato no WhatsApp.`, 'info');
-    EG.abrirWhatsApp(m.respTelefone, msg);
+    const paga = m.situacao === 'paga';
+    return EG.enviarDocumentoWhatsApp(m.respTelefone, { tipo: 'mensalidade', id: m.id }, (r) => (paga ? textoRecibo(m, r) : textoCobranca(m, r)));
+  }
+
+  /* ---------- Documentos: carnê, lote do mês, declaração ---------- */
+  const DOCS = {
+    carne: { rotulo: 'Carnê do aluno', info: 'Todas as mensalidades em aberto do aluno no ano, três por folha, cada uma com o seu QR Code PIX e canhoto.', whats: true },
+    lote: { rotulo: 'Mensalidades do mês (para imprimir)', info: 'Uma cobrança por aluno, com as mensalidades em aberto do mês escolhido — ideal para imprimir e mandar na agenda. Três por folha A4.', whats: false },
+    declaracao: { rotulo: 'Declaração anual de pagamentos (IR)', info: 'Pagamentos recebidos no ano (pela data do pagamento), para o responsável usar no Imposto de Renda. Sai com o CPF do responsável, se estiver no cadastro do aluno.', whats: true }
+  };
+
+  async function modalDocumentos() {
+    const alunos = await EG.api('GET', '/financeiro/alunos?todos=1');
+    const ano = Number(EG.hojeSP().slice(0, 4));
+    const refs = [...new Set([EG.mesAtualSP(), ...dados.referencias])].sort().reverse();
+    const pix = EG.estado.colegio.cobranca && EG.estado.colegio.cobranca.pixConfigurado;
+    const m = EG.modal({
+      titulo: 'Documentos em PDF',
+      largura: 560,
+      corpo: `
+        ${pix ? '' : `<div class="msg-aviso">A chave PIX ainda não foi configurada: as cobranças sairão sem QR Code. ${EG.estado.perfil === 'admin' ? 'Configure em <strong>Configurações → Cobrança e PIX</strong>.' : 'Peça ao administrador para configurar.'}</div>`}
+        <div class="campo"><label>Documento</label><select class="select" data-doc>
+          ${Object.entries(DOCS).map(([k, d]) => `<option value="${k}">${d.rotulo}</option>`).join('')}</select></div>
+        <div class="linha-2" data-bloco-doc="aluno">
+          <div class="campo"><label>Aluno</label><select class="select" name="alunoId"><option value="">Selecione o aluno</option>
+            ${alunos.map((a) => `<option value="${a.id}">${EG.esc(a.nome)}${a.turma ? ' — ' + EG.esc(a.turma) : ''}${a.status !== 'ativo' ? ` (${EG.esc(a.status)})` : ''}</option>`).join('')}</select></div>
+          <div class="campo"><label>Ano</label><input class="input" type="number" name="ano" min="2000" max="2100" value="${ano}"></div>
+        </div>
+        <div class="linha-2" data-bloco-doc="lote" hidden>
+          <div class="campo"><label>Mês de referência</label><select class="select" name="referencia">
+            ${refs.map((r) => `<option value="${r}" ${r === (filtro.referencia || EG.mesAtualSP()) ? 'selected' : ''}>${EG.nomeRef(r)}</option>`).join('')}</select></div>
+          <div class="campo"><label>Turma</label><select class="select" name="turmaId">${EG.opcoesTurmas(turmas, filtro.turmaId, { vazio: 'Todas as turmas' })}</select></div>
+        </div>
+        <div class="msg-info" data-doc-info>${DOCS.carne.info}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+          <button class="btn btn-secundario" data-doc-acao="whats"><i class="ti ti-brand-whatsapp"></i> Enviar por WhatsApp</button>
+          <button class="btn btn-primario" data-doc-acao="abrir"><i class="ti ti-file-type-pdf"></i> Abrir PDF</button>
+        </div>`,
+      botoes: [{ texto: 'Fechar', acao: () => m.fechar() }]
+    });
+    const tipoAtual = () => m.el.querySelector('[data-doc]').value;
+    m.el.querySelector('[data-doc]').addEventListener('change', () => {
+      const t = tipoAtual();
+      m.el.querySelector('[data-bloco-doc="aluno"]').hidden = t === 'lote';
+      m.el.querySelector('[data-bloco-doc="lote"]').hidden = t !== 'lote';
+      m.el.querySelector('[data-doc-info]').textContent = DOCS[t].info;
+      m.el.querySelector('[data-doc-acao="whats"]').hidden = !DOCS[t].whats;
+      m.erro('');
+    });
+    m.el.addEventListener('click', (ev) => {
+      const b = ev.target.closest('[data-doc-acao]');
+      if (!b) return;
+      EG.guarda(b, async () => {
+        m.erro('');
+        try {
+          const t = tipoAtual();
+          const f = EG.lerForm(m.el);
+          let corpo;
+          let aluno = null;
+          if (t === 'lote') corpo = { tipo: 'lote', referencia: f.referencia, turmaId: f.turmaId || null };
+          else {
+            aluno = alunos.find((a) => a.id === Number(f.alunoId));
+            if (!aluno) throw EG.erro('Selecione o aluno.');
+            corpo = { tipo: t, alunoId: aluno.id, ano: Number(f.ano) };
+          }
+          if (b.dataset.docAcao === 'abrir') { await EG.abrirDocumento(corpo); return; }
+          if (!aluno.respTelefone) EG.toast(`${aluno.nome} não tem telefone do responsável cadastrado — escolha o contato no WhatsApp.`, 'info');
+          await EG.enviarDocumentoWhatsApp(aluno.respTelefone, corpo, (r) => (t === 'carne'
+            ? `📘 *Carnê de mensalidades ${corpo.ano}*\n\n🏫 ${EG.estado.colegio.nome}\n👤 Aluno(a): *${aluno.nome}*\n`
+              + `🧾 ${r.resumo.parcelas} parcela(s) em aberto · total ${EG.moeda(r.resumo.total)}\n\n`
+              + `📄 ${r.pixConfigurado ? 'Carnê com o QR Code PIX de cada parcela' : 'Carnê em PDF'}:\n${r.url}\n_(link válido até ${validoAte(r)})_\n\n${assinatura()}`
+            : `🧾 *Declaração de pagamentos ${corpo.ano}*\n\n🏫 ${EG.estado.colegio.nome}\n👤 Aluno(a): *${aluno.nome}*\n`
+              + `💰 Total pago no ano: *${EG.moeda(r.resumo.total)}*\n\n`
+              + `📄 Declaração para o Imposto de Renda (PDF):\n${r.url}\n_(link válido até ${validoAte(r)})_\n\n${assinatura()}`));
+        } catch (e) { m.erro(e.message); }
+      });
+    });
   }
 
   async function aoClicar(ev, el) {
@@ -240,10 +336,12 @@
     try {
       switch (b.dataset.action) {
         case 'gerar': await modalGerar(el); break;
+        case 'documentos': await modalDocumentos(); break;
+        case 'pdf': await EG.guarda(b, () => EG.abrirDocumento({ tipo: 'mensalidade', id: m.id })); break;
         case 'status': filtro.status = b.dataset.status; render(el); break;
         case 'pagar': modalPagar(m, el); break;
         case 'editar': modalEditar(m, el); break;
-        case 'whats': cobrarWhatsApp(m); break;
+        case 'whats': await EG.guarda(b, () => enviarWhatsApp(m)); break;
         case 'estornar':
           if (!(await EG.confirmar(`Estornar o recebimento de ${desc}?\n\nA mensalidade volta a ficar em aberto.`, { textoOk: 'Estornar' }))) return;
           await EG.api('POST', `/mensalidades/${m.id}/estornar`); EG.toast('Recebimento estornado');

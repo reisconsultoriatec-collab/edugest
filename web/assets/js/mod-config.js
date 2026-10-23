@@ -1,6 +1,6 @@
 /* =====================================================================
  *  EduGest — Configurações do colégio  [admin]
- *  Dados cadastrais · Parâmetros · Disciplinas · Código de convite
+ *  Dados cadastrais · Parâmetros · Cobrança e PIX · Disciplinas · Convite
  * ===================================================================== */
 'use strict';
 (function (EG) {
@@ -13,6 +13,40 @@
     const ops = [[5, '5 minutos'], [10, '10 minutos'], [15, '15 minutos'], [30, '30 minutos'], [60, '60 minutos'], [120, '2 horas'], [0, 'Desativado']];
     if (!ops.some(([v]) => v === atual)) ops.unshift([atual, atual + ' minutos']);
     return ops.map(([v, t]) => `<option value="${v}" ${v === atual ? 'selected' : ''}>${t}</option>`).join('');
+  }
+
+  const TIPOS_PIX = [['', 'Sem PIX nas cobranças'], ['cnpj', 'CNPJ'], ['cpf', 'CPF'], ['celular', 'Celular'], ['email', 'E-mail'], ['aleatoria', 'Chave aleatória']];
+  const EXEMPLO_PIX = { cnpj: '00.000.000/0000-00', cpf: '000.000.000-00', celular: '(11) 99999-9999', email: 'financeiro@colegio.com.br', aleatoria: '123e4567-e89b-12d3-a456-426614174000', '': '' };
+
+  function blocoCobranca(c) {
+    const b = c.cobranca || {};
+    const dias = [7, 15, 30, 60, 90];
+    if (!dias.includes(b.linkValidadeDias)) dias.push(b.linkValidadeDias);
+    return `
+      <div class="card" data-bloco="cobranca">
+        <div class="card-cab"><div class="card-titulo"><i class="ti ti-qrcode"></i> Cobrança e PIX</div></div>
+        <p class="card-desc">Os PDFs de mensalidade, carnê e lote saem com QR Code PIX e "copia e cola" desta chave, já com o valor de cada parcela. O dinheiro cai direto na conta do colégio; a baixa continua pelo botão <strong>Receber</strong>.</p>
+        <div class="linha-2">
+          <div class="campo"><label>Tipo da chave PIX</label><select class="select" name="pixTipo" data-pix-tipo>${TIPOS_PIX.map(([v, r]) => `<option value="${v}" ${(b.pixTipo || '') === v ? 'selected' : ''}>${r}</option>`).join('')}</select></div>
+          <div class="campo"><label>Chave PIX</label><input class="input" name="pixChave" maxlength="80" autocomplete="off" value="${EG.esc(b.pixChave)}" placeholder="${EG.esc(EXEMPLO_PIX[b.pixTipo || ''])}" ${b.pixTipo ? '' : 'disabled'}></div>
+        </div>
+        <div class="linha-2">
+          <div class="campo"><label>Nome do beneficiário</label><input class="input" name="pixBeneficiario" maxlength="60" value="${EG.esc(b.pixBeneficiario)}" placeholder="${EG.esc(c.nome)}">
+            <small>Nome que aparece no QR Code. Em branco, usa o nome do colégio.</small></div>
+          <div class="campo"><label>Cidade</label><input class="input" name="cidade" maxlength="60" value="${EG.esc(b.cidade)}" placeholder="Ex.: Itapevi">
+            <small>Obrigatória no PIX; também aparece na data dos recibos.</small></div>
+        </div>
+        <div class="campo"><label>Instruções impressas nas cobranças</label>
+          <textarea class="textarea" name="instrucoes" maxlength="300" rows="2" placeholder="Ex.: Após o vencimento, multa de 2% e juros de 1% ao mês.">${EG.esc(b.instrucoes)}</textarea></div>
+        <div class="campo" style="max-width:320px"><label>Validade dos links enviados por WhatsApp</label>
+          <select class="select" name="linkValidadeDias">${dias.map((d) => `<option value="${d}" ${d === b.linkValidadeDias ? 'selected' : ''}>${d} dias</option>`).join('')}</select>
+          <small>Depois disso, o link deixa de abrir e é preciso enviar outro.</small></div>
+        <div class="msg-aviso">Antes de mandar cobranças, gere o <strong>PDF de teste</strong> e leia o QR Code com o app do seu banco: confira se aparece o nome do colégio e o valor de R$ 1,00. Não precisa concluir o pagamento.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primario" data-action="salvar-cobranca"><i class="ti ti-device-floppy"></i> Salvar cobrança</button>
+          <button class="btn btn-secundario" data-action="teste-pix" ${b.pixConfigurado ? '' : 'disabled title="Salve a chave PIX primeiro"'}><i class="ti ti-file-type-pdf"></i> PDF de teste (R$ 1,00)</button>
+        </div>
+      </div>`;
   }
 
   function render(el, c) {
@@ -49,6 +83,7 @@
         </div>
         <button class="btn btn-primario" data-action="salvar-config"><i class="ti ti-device-floppy"></i> Salvar parâmetros</button>
       </div>
+      ${blocoCobranca(c)}
 
       <div class="card">
         <div class="card-cab"><div class="card-titulo"><i class="ti ti-book"></i> Disciplinas</div></div>
@@ -105,6 +140,13 @@
           const c = await recarregarColegio();
           EG.iniciarSessao(c.config.timeoutSessaoMin);
           EG.toast('Parâmetros salvos');
+        } else if (acao === 'salvar-cobranca') {
+          const d = EG.lerForm(b.closest('[data-bloco]'));
+          await EG.api('PUT', '/colegios/atual/cobranca', d);
+          render(el, await recarregarColegio());
+          EG.toast(d.pixTipo ? 'Cobrança salva. Gere o PDF de teste para conferir o QR Code.' : 'Cobrança salva (sem PIX)');
+        } else if (acao === 'teste-pix') {
+          await EG.abrirDocumento({ tipo: 'teste' });
         } else if (acao === 'add-disciplina') {
           const inp = EG.$('#novaDisciplina');
           if (!inp.value.trim()) { inp.focus(); return; }
@@ -146,6 +188,13 @@
     async render(el) {
       render(el, await recarregarColegio());
       el.onclick = (ev) => aoClicar(ev, el);
+      el.onchange = (ev) => {
+        if (!ev.target.matches('[data-pix-tipo]')) return;
+        const chave = EG.$('[name="pixChave"]', el);
+        chave.disabled = !ev.target.value;
+        chave.placeholder = EXEMPLO_PIX[ev.target.value] || '';
+        if (!ev.target.value) chave.value = '';
+      };
       el.onkeydown = (ev) => {
         if (ev.key === 'Enter' && ev.target.id === 'novaDisciplina') EG.$('[data-action="add-disciplina"]', el).click();
       };

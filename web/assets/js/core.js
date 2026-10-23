@@ -367,11 +367,64 @@ window.EG = window.EG || {};
   };
 
   /* ---------- WhatsApp ---------- */
-  EG.abrirWhatsApp = function (telefone, texto) {
+  EG.urlWhatsApp = function (telefone, texto) {
     let d = String(telefone || '').replace(/\D/g, '');
     if (d && !d.startsWith('55')) d = '55' + d;
-    window.open('https://wa.me/' + (d.length >= 12 ? d : '') + '?text=' + encodeURIComponent(texto), '_blank', 'noopener');
+    return 'https://wa.me/' + (d.length >= 12 ? d : '') + '?text=' + encodeURIComponent(texto);
   };
+  EG.abrirWhatsApp = function (telefone, texto) {
+    window.open(EG.urlWhatsApp(telefone, texto), '_blank', 'noopener');
+  };
+
+  /**
+   * Abre uma nova aba cujo endereço só fica pronto depois de uma chamada à API.
+   * A aba é aberta já no clique (senão o navegador bloqueia como pop-up) e
+   * recebe o endereço quando ele chega. Se o pop-up for bloqueado mesmo assim,
+   * mostra um botão para abrir.
+   */
+  EG.abrirDepois = async function (gerarUrl, rotulo) {
+    const aba = window.open('', '_blank');
+    if (aba) {
+      try {
+        aba.document.title = 'Abrindo...';
+        aba.document.body.innerHTML = '<p style="font-family:system-ui,sans-serif;color:#64748b;padding:24px">Preparando o documento...</p>';
+      } catch (e) { /* aba de outra origem */ }
+    }
+    let url;
+    try {
+      url = await gerarUrl();
+    } catch (e) {
+      if (aba) aba.close();
+      throw e;
+    }
+    if (aba && !aba.closed) {
+      aba.opener = null;
+      aba.location.replace(url);
+      return;
+    }
+    const m = EG.modal({
+      titulo: 'Pronto',
+      largura: 420,
+      corpo: `<p class="card-desc" style="margin:0 0 14px">O navegador bloqueou a abertura automática. Clique no botão abaixo.</p>
+        <a class="btn btn-primario" href="${EG.esc(url)}" target="_blank" rel="noopener" data-fechar><i class="ti ti-external-link"></i> ${EG.esc(rotulo || 'Abrir')}</a>`,
+      botoes: [{ texto: 'Fechar', acao: () => m.fechar() }]
+    });
+    m.el.querySelector('[data-fechar]').addEventListener('click', () => setTimeout(() => m.fechar(), 100));
+  };
+
+  /* ---------- Documentos em PDF (link assinado) ---------- */
+  /** Pede à API o link do PDF. enviar=true → validade longa (WhatsApp). */
+  EG.linkDocumento = async function (corpo, enviar) {
+    const r = await EG.api('POST', '/documentos/link', { ...corpo, enviar: !!enviar });
+    r.url = new URL(r.url, location.origin).href;
+    return r;
+  };
+  EG.abrirDocumento = (corpo) => EG.abrirDepois(async () => (await EG.linkDocumento(corpo, false)).url, 'Abrir PDF');
+  /** Abre o WhatsApp com a mensagem montada a partir do link (texto(link) → string). */
+  EG.enviarDocumentoWhatsApp = (telefone, corpo, texto) => EG.abrirDepois(async () => {
+    const r = await EG.linkDocumento(corpo, true);
+    return EG.urlWhatsApp(telefone, texto(r));
+  }, 'Abrir WhatsApp');
 
   /* ---------- Registro de módulos ---------- */
   EG.modulos = {};   // id → { titulo, render(el) }

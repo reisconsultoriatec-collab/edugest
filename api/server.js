@@ -82,6 +82,10 @@ app.use('/api/bolsas', equipe, require('./src/routes/bolsas'));
 app.use('/api/contas', equipe, require('./src/routes/contas'));
 app.use('/api/fluxo', equipe, require('./src/routes/fluxo'));
 app.use('/api/financeiro', equipe, require('./src/routes/financeiro'));
+app.use('/api/documentos', equipe, require('./src/routes/documentos'));
+
+// Sem login: PDFs por link assinado e com validade (enviados por WhatsApp)
+app.use('/api/publico', require('./src/routes/publico'));
 
 app.use(naoEncontrado);
 app.use(tratarErros);

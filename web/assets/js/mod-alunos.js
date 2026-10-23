@@ -129,10 +129,12 @@
           <div class="campo"><label>Nome do responsável</label><input class="input" name="respNome" maxlength="100" value="${EG.esc(a.respNome)}"></div>
           <div class="campo"><label>Parentesco</label><select class="select" name="respParentesco">${EG.opcoes(PARENTESCOS.map((p) => ({ value: p, label: p })), a.respParentesco || 'Mãe')}</select></div>
         </div>
-        <div class="linha-2">
+        <div class="linha-3">
+          <div class="campo"><label>CPF do responsável</label><input class="input" name="respCpf" data-mascara="cpf" maxlength="14" autocomplete="off" value="${EG.esc(a.respCpf)}"></div>
           <div class="campo"><label>Telefone / WhatsApp</label><input class="input" name="respTelefone" data-mascara="telefone" maxlength="15" value="${EG.esc(a.respTelefone)}"></div>
           <div class="campo"><label>E-mail</label><input class="input" type="email" name="respEmail" maxlength="160" value="${EG.esc(a.respEmail)}"></div>
         </div>
+        <small class="sub" style="display:block;margin:-6px 0 4px">O CPF do responsável sai na declaração anual de pagamentos (Imposto de Renda). Fica gravado criptografado.</small>
 
         <div class="rotulo" style="margin:18px 0 4px;padding-top:14px;border-top:1px solid var(--border)"><i class="ti ti-shield-check"></i> Autorizados a retirar o aluno</div>
         <p class="sub" style="margin-bottom:10px">Além do responsável acima, quem mais pode buscar o aluno na escola. Na retirada, confira o documento com foto.</p>

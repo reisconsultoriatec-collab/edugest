@@ -75,6 +75,7 @@ function lerAluno(b) {
     status: v.umDe(b.status || 'ativo', STATUS, 'Status'),
     resp_nome: v.texto(b.respNome, 'Nome do responsável', { max: 100 }),
     resp_parentesco: v.texto(b.respParentesco, 'Parentesco', { max: 20 }),
+    resp_cpf: v.cpf(b.respCpf, 'CPF do responsável'),
     resp_telefone: v.telefone(b.respTelefone, 'Telefone do responsável'),
     resp_email: v.email(b.respEmail, 'E-mail do responsável')
   };
@@ -142,7 +143,7 @@ router.get('/:id', assincrono(async (req, res) => {
   const id = v.id(req.params.id);
   const a = await queryUm(`${SELECT_LISTA} WHERE a.id = ? AND a.colegio_id = ?`, [id, req.colegioId]);
   if (!a) throw new HttpErro(404, 'Aluno não encontrado', 'nao_encontrado');
-  const extra = await queryUm('SELECT cpf_cript, rg_cript, endereco FROM alunos WHERE id = ?', [id]);
+  const extra = await queryUm('SELECT cpf_cript, rg_cript, resp_cpf_cript, endereco FROM alunos WHERE id = ?', [id]);
   const autorizados = await query(
     'SELECT id, nome, parentesco, documento_cript, telefone FROM autorizados_retirada WHERE aluno_id = ? AND colegio_id = ? ORDER BY id',
     [id, req.colegioId]
@@ -151,6 +152,7 @@ router.get('/:id', assincrono(async (req, res) => {
     ...formatarLista(a),
     cpf: decifrar(extra.cpf_cript),
     rg: decifrar(extra.rg_cript),
+    respCpf: decifrar(extra.resp_cpf_cript),
     endereco: extra.endereco,
     autorizados: autorizados.map((p) => ({
       id: p.id, nome: p.nome, parentesco: p.parentesco, documento: decifrar(p.documento_cript), telefone: p.telefone
@@ -182,10 +184,10 @@ router.post('/', assincrono(async (req, res) => {
         const codigo = codigoAcessoAluno();
         const [r] = await conn.query(
           `INSERT INTO alunos (colegio_id, ra, nome, nascimento, cpf_cript, rg_cript, endereco, turma_id, status,
-                               codigo_acesso, resp_nome, resp_parentesco, resp_telefone, resp_email)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                               codigo_acesso, resp_nome, resp_parentesco, resp_cpf_cript, resp_telefone, resp_email)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [req.colegioId, ra, a.nome, a.nascimento, cifrar(a.cpf), cifrar(a.rg), a.endereco, a.turma_id, a.status,
-            codigo, a.resp_nome, a.resp_parentesco, a.resp_telefone, a.resp_email]
+            codigo, a.resp_nome, a.resp_parentesco, cifrar(a.resp_cpf), a.resp_telefone, a.resp_email]
         );
         await gravarAutorizados(conn, req.colegioId, r.insertId, autorizados);
         return { id: r.insertId, ra, codigo };
@@ -214,10 +216,10 @@ router.put('/:id', assincrono(async (req, res) => {
   await transacao(async (conn) => {
     await conn.query(
       `UPDATE alunos SET ra = ?, nome = ?, nascimento = ?, cpf_cript = ?, rg_cript = ?, endereco = ?, turma_id = ?, status = ?,
-              resp_nome = ?, resp_parentesco = ?, resp_telefone = ?, resp_email = ?
+              resp_nome = ?, resp_parentesco = ?, resp_cpf_cript = ?, resp_telefone = ?, resp_email = ?
         WHERE id = ? AND colegio_id = ?`,
       [ra, a.nome, a.nascimento, cifrar(a.cpf), cifrar(a.rg), a.endereco, a.turma_id, a.status,
-        a.resp_nome, a.resp_parentesco, a.resp_telefone, a.resp_email, id, req.colegioId]
+        a.resp_nome, a.resp_parentesco, cifrar(a.resp_cpf), a.resp_telefone, a.resp_email, id, req.colegioId]
     ).catch((e) => {
       if (e.code === 'ER_DUP_ENTRY') throw new HttpErro(409, `Já existe um aluno com o RA ${ra}`, 'duplicado');
       throw e;

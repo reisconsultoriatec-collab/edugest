@@ -6,6 +6,7 @@
  *  GET    /atual                     dados, configuração e disciplinas
  *  PUT    /atual                     dados cadastrais            [admin]
  *  PUT    /atual/config              configuração                [admin]
+ *  PUT    /atual/cobranca            chave PIX e textos das cobranças [admin]
  *  POST   /atual/convite/regenerar   novo código de convite      [admin]
  *  POST   /atual/disciplinas         cria disciplina             [admin]
  *  PUT    /atual/disciplinas/:id     edita / ativa / desativa    [admin]
@@ -24,6 +25,7 @@ const { atividade, seguranca } = require('../utils/auditoria');
 const { codigoConvite } = require('../utils/codigos');
 const { criarColegio } = require('../services/colegios');
 const { hojeSP } = require('../utils/datas');
+const { TIPOS_CHAVE, normalizarChave } = require('../utils/pix');
 
 const soAdmin = [exigirColegio, exigirPerfil('admin')];
 
@@ -63,7 +65,8 @@ router.get('/atual', exigirColegio, assincrono(async (req, res) => {
   const c = await queryUm(
     `SELECT c.id, c.nome, c.cnpj, c.telefone, c.email, c.endereco, c.codigo_convite, c.whatsapp_notif,
             cfg.ano_letivo, cfg.valor_mensalidade, cfg.dia_vencimento, cfg.media_aprovacao,
-            cfg.frequencia_minima, cfg.timeout_sessao_min
+            cfg.frequencia_minima, cfg.timeout_sessao_min, cfg.pix_tipo, cfg.pix_chave, cfg.pix_beneficiario,
+            cfg.cidade, cfg.cobranca_instrucoes, cfg.link_validade_dias
        FROM colegios c
        LEFT JOIN config_colegio cfg ON cfg.colegio_id = c.id
       WHERE c.id = ?`,
@@ -96,6 +99,16 @@ router.get('/atual', exigirColegio, assincrono(async (req, res) => {
       mediaAprovacao: c.media_aprovacao,
       frequenciaMinima: c.frequencia_minima,
       timeoutSessaoMin: c.timeout_sessao_min
+    },
+    // Dados de cobrança (a chave PIX já é pública: vai impressa nas cobranças)
+    cobranca: req.perfil === 'responsavel' ? undefined : {
+      pixTipo: c.pix_tipo,
+      pixChave: c.pix_chave,
+      pixBeneficiario: c.pix_beneficiario,
+      cidade: c.cidade,
+      instrucoes: c.cobranca_instrucoes,
+      linkValidadeDias: c.link_validade_dias || 30,
+      pixConfigurado: !!(c.pix_tipo && c.pix_chave && c.cidade)
     },
     disciplinas: disciplinas.map((d) => ({ id: d.id, nome: d.nome, ordem: d.ordem, ativo: !!d.ativo })),
     pendentes: admin ? await contarPendentes(req.colegioId) : undefined,
@@ -147,6 +160,44 @@ router.put('/atual/config', soAdmin, assincrono(async (req, res) => {
   );
   await atividade(req.colegioId, req.usuario.id, 'Configurações do colégio atualizadas');
   res.json({ ok: true });
+}));
+
+/* ---------------- Cobrança (PIX e documentos) ---------------- */
+router.put('/atual/cobranca', soAdmin, assincrono(async (req, res) => {
+  const b = req.body;
+  const tipo = v.umDe(b.pixTipo || null, Object.keys(TIPOS_CHAVE), 'Tipo da chave PIX', { obrigatorio: false });
+  let chave = null;
+  if (tipo) {
+    if (!String(b.pixChave || '').trim()) throw new HttpErro(400, 'Informe a chave PIX', 'validacao');
+    if (tipo === 'cpf') v.cpf(b.pixChave, 'Chave PIX (CPF)');
+    if (tipo === 'cnpj') v.cnpj(b.pixChave, 'Chave PIX (CNPJ)');
+    chave = normalizarChave(tipo, b.pixChave);
+    if (!chave) throw new HttpErro(400, `Chave PIX inválida para o tipo ${TIPOS_CHAVE[tipo]}`, 'validacao');
+  }
+  const beneficiario = v.texto(b.pixBeneficiario, 'Nome do beneficiário', { max: 60 });
+  const cidade = v.texto(b.cidade, 'Cidade', { max: 60 });
+  if (tipo && !cidade) throw new HttpErro(400, 'Informe a cidade — ela é obrigatória no QR Code PIX', 'validacao');
+  const instrucoes = v.texto(b.instrucoes, 'Instruções', { max: 300 });
+  const validade = v.inteiro(b.linkValidadeDias, 'Validade dos links', { min: 1, max: 365 }) || 30;
+
+  const antes = await queryUm('SELECT pix_tipo, pix_chave FROM config_colegio WHERE colegio_id = ?', [req.colegioId]);
+  if (!antes) throw new HttpErro(404, 'Configuração do colégio não encontrada', 'nao_encontrado');
+  await query(
+    `UPDATE config_colegio SET pix_tipo = ?, pix_chave = ?, pix_beneficiario = ?, cidade = ?,
+            cobranca_instrucoes = ?, link_validade_dias = ?
+      WHERE colegio_id = ?`,
+    [tipo, chave, beneficiario, cidade, instrucoes, validade, req.colegioId]
+  );
+  // Trocar a chave PIX muda para onde vai o dinheiro: fica no log de segurança
+  if ((antes.pix_chave || null) !== chave) {
+    const fim = chave ? `${TIPOS_CHAVE[tipo]} terminada em ${chave.slice(-4)}` : 'removida';
+    await seguranca(req, {
+      tipo: 'admin', colegioId: req.colegioId, usuarioId: req.usuario.id, email: req.usuario.email,
+      detalhes: `Chave PIX das cobranças alterada (${fim})`
+    });
+  }
+  await atividade(req.colegioId, req.usuario.id, 'Dados de cobrança (PIX) atualizados');
+  res.json({ ok: true, pixChave: chave });
 }));
 
 /* ---------------- Código de convite ---------------- */

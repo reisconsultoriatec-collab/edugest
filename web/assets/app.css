@@ -86,6 +86,7 @@ h1, h2, h3, .fonte-titulo { font-family: 'Space Grotesk', 'Inter', sans-serif; }
 .linha-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .msg-erro { background: var(--erro-bg); color: var(--erro-tx); border-radius: 8px; padding: 10px 12px; font-size: 13px; margin-bottom: 14px; text-align: left; }
 .msg-info { background: var(--info-bg); color: var(--info-tx); border-radius: 8px; padding: 10px 12px; font-size: 12px; margin-bottom: 14px; text-align: left; line-height: 1.5; }
+.msg-aviso { background: var(--aviso-bg); color: var(--aviso-tx); border-radius: 8px; padding: 10px 12px; font-size: 12px; margin-bottom: 14px; text-align: left; line-height: 1.5; }
 .checks { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 16px; max-height: 260px; overflow-y: auto; }
 .checks .grupo { grid-column: 1 / -1; font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; margin: 8px 0 2px; }
 .checks label { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 4px 0; cursor: pointer; }
