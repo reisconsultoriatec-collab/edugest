@@ -192,6 +192,9 @@
   /* ---------- Sessão ---------- */
   EG.aoMudarLogin = async function (user) {
     if (EG._fluxoCadastro) return; // o cadastro conduz o próprio fluxo
+    // Saiu, expirou ou entrou com outra conta (inclusive em outra aba do
+    // mesmo navegador): nenhuma janela da sessão anterior fica aberta
+    EG.fecharModais();
     if (!user) {
       if (EG.pararSessao) EG.pararSessao();
       EG.estado.me = null; EG.estado.colegioId = null; EG.estado.colegio = null;

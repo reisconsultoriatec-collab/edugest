@@ -71,22 +71,45 @@
     el.querySelector('[data-lista]').innerHTML = itens.length ? itens.map(cartao).join('') : vazio;
   }
 
+  /* ---------- Rascunho do comunicado novo ----------
+   * Guardado neste navegador enquanto a pessoa escreve: se a sessão
+   * expirar (ou cair) antes de publicar, o texto volta ao abrir de novo. */
+  const chaveRascunho = () => 'edugest_rascunho_comunicado:' + EG.chaveSessao();
+  function lerRascunho() {
+    try { const t = localStorage.getItem(chaveRascunho()); return t ? JSON.parse(t) : null; } catch (e) { return null; }
+  }
+  function salvarRascunho(d) {
+    try {
+      if (d && ((d.titulo || '').trim() || (d.mensagem || '').trim())) localStorage.setItem(chaveRascunho(), JSON.stringify(d));
+      else localStorage.removeItem(chaveRascunho());
+    } catch (e) { /* navegador sem armazenamento: segue sem rascunho */ }
+  }
+
   /* ---------- Publicar / editar ---------- */
   const ALCANCES = [['todos', 'Colégio todo', 'ti-building'], ['segmentos', 'Segmentos', 'ti-stack-2'], ['turmas', 'Turmas', 'ti-layout-grid']];
 
   function modalForm(el, c) {
     const editando = !!c;
-    c = c || {
+    const padrao = {
       titulo: '', mensagem: '', tipo: 'aviso', alcance: opcoes.restrito ? 'turmas' : 'todos',
       segmentos: [], turmas: opcoes.restrito && opcoes.turmas.length === 1 ? [{ id: opcoes.turmas[0].id }] : [],
       fixado: false, exigeCiencia: false, expiraEm: null
     };
+    const rascunho = editando ? null : lerRascunho();
+    if (!editando) {
+      c = rascunho
+        ? { ...padrao, ...rascunho, alcance: opcoes.restrito ? 'turmas' : (rascunho.alcance || 'todos'),
+          segmentos: rascunho.segmentos || [], turmas: (rascunho.turmas || []).map((id) => ({ id })) }
+        : padrao;
+    }
     const turmasSel = new Set(c.turmas.map((t) => t.id));
     const hoje = EG.hojeSP();
     const m = EG.modal({
       titulo: editando ? 'Editar comunicado' : 'Novo comunicado',
       largura: 680,
       corpo: `
+        ${rascunho ? `<div class="msg-info" style="margin-bottom:14px"><i class="ti ti-file-pencil"></i> Recuperamos o rascunho que você estava escrevendo.
+          <button type="button" class="auth-link" data-descartar style="display:inline;width:auto;padding:0;margin:0 0 0 4px">Descartar rascunho</button></div>` : ''}
         ${opcoes.restrito && !opcoes.vinculado ? '<div class="msg-erro" style="margin-bottom:14px">Seu login ainda não está ligado a um cadastro de professor. Peça ao administrador (Sistema › Usuários).</div>' : ''}
         <div class="campo"><label>Título *</label><input class="input" name="titulo" maxlength="150" value="${EG.esc(c.titulo)}" placeholder="Ex.: Reunião de pais e mestres"></div>
         <div class="linha-2">
@@ -120,17 +143,13 @@
       botoes: [
         { texto: 'Cancelar', acao: () => m.fechar() },
         { texto: editando ? 'Salvar' : 'Publicar', classe: 'btn-primario', icone: editando ? 'ti-device-floppy' : 'ti-send', acao: async () => {
-          const d = EG.lerForm(m.el);
-          const corpo = {
-            titulo: d.titulo, mensagem: d.mensagem, tipo: d.tipo, alcance: d.alcance, expiraEm: d.expiraEm || null,
-            segmentos: d.segmentos || [], turmas: (d.turmas || []).map(Number),
-            fixado: m.el.querySelector('[name=fixado]').checked, exigeCiencia: m.el.querySelector('[name=exigeCiencia]').checked
-          };
+          const corpo = coletar();
           if (!corpo.titulo || corpo.titulo.trim().length < 3) throw EG.erro('Informe o título.');
           if (!corpo.mensagem || corpo.mensagem.trim().length < 3) throw EG.erro('Escreva a mensagem.');
           if (corpo.alcance === 'segmentos' && !corpo.segmentos.length) throw EG.erro('Escolha pelo menos um segmento.');
           if (corpo.alcance === 'turmas' && !corpo.turmas.length) throw EG.erro('Escolha pelo menos uma turma.');
           const r = editando ? await EG.api('PUT', `/comunicados/${c.id}`, corpo) : await EG.api('POST', '/comunicados', corpo);
+          if (!editando) salvarRascunho(null);
           m.fechar();
           await carregarLista(el);
           if (editando) EG.toast('Comunicado salvo');
@@ -138,6 +157,20 @@
         } }
       ]
     });
+
+    function coletar() {
+      const d = EG.lerForm(m.el);
+      return {
+        titulo: d.titulo, mensagem: d.mensagem, tipo: d.tipo, alcance: d.alcance, expiraEm: d.expiraEm || null,
+        segmentos: d.segmentos || [], turmas: (d.turmas || []).map(Number),
+        fixado: m.el.querySelector('[name=fixado]').checked, exigeCiencia: m.el.querySelector('[name=exigeCiencia]').checked
+      };
+    }
+    if (!editando) {
+      const guardar = () => salvarRascunho(coletar());
+      m.el.addEventListener('input', guardar);
+      m.el.addEventListener('change', guardar);
+    }
 
     const contar = () => { const t = m.el.querySelector('[name=mensagem]'); m.el.querySelector('[data-contador]').textContent = `${t.value.length}/5000 caracteres`; };
     contar();
@@ -148,7 +181,9 @@
         m.el.querySelectorAll('[data-alcance]').forEach((x) => x.classList.toggle('ativo', x === b));
         m.el.querySelector('[name=alcance]').value = b.dataset.alcance;
         m.el.querySelectorAll('[data-bloco]').forEach((bl) => { bl.hidden = bl.dataset.bloco !== b.dataset.alcance; });
+        if (!editando) salvarRascunho(coletar());
       }
+      if (ev.target.closest('[data-descartar]')) { salvarRascunho(null); m.fechar(); modalForm(el, null); return; }
       if (ev.target.closest('[data-marcar-turmas]')) {
         const caixas = [...m.el.querySelectorAll('[name=turmas]')];
         const todas = caixas.every((x) => x.checked);

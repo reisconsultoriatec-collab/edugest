@@ -68,6 +68,8 @@ window.EG = window.EG || {};
     opcoes = opcoes || {};
     const headers = {};
     const u = EG.auth.currentUser;
+    // Sessão encerrada (inatividade ou saída em outra aba): nem chega a chamar a API
+    if (!u && !opcoes.semToken) throw EG.erro('Sua sessão foi encerrada. Entre novamente para continuar.', 'sem_sessao', 401);
     if (u && !opcoes.semToken) headers.Authorization = 'Bearer ' + (await u.getIdToken());
     if (EG.estado.colegioId) headers['X-Colegio-Id'] = String(EG.estado.colegioId);
     if (corpo !== undefined) headers['Content-Type'] = 'application/json';
@@ -132,7 +134,10 @@ window.EG = window.EG || {};
     const caixaErro = fundo.querySelector('[data-erro]');
     const m = {
       el: fundo,
-      fechar() { fundo.remove(); document.removeEventListener('keydown', esc); if (aoFechar) aoFechar(); },
+      fechar() {
+        if (!fundo.isConnected) return;
+        fundo.remove(); document.removeEventListener('keydown', esc); if (aoFechar) aoFechar();
+      },
       erro(msg) { caixaErro.textContent = msg; caixaErro.hidden = !msg; if (msg) caixaErro.scrollIntoView({ block: 'nearest' }); }
     };
     const esc = (e) => { if (e.key === 'Escape') m.fechar(); };
@@ -151,10 +156,16 @@ window.EG = window.EG || {};
       }));
       rodape.appendChild(btn);
     });
+    fundo._fechar = m.fechar;
     EG.$('#modais').appendChild(fundo);
     const primeiro = fundo.querySelector('.modal-corpo input, .modal-corpo select');
     if (primeiro) setTimeout(() => primeiro.focus(), 50);
     return m;
+  };
+
+  /** Fecha todas as janelas abertas (ao sair, trocar de usuário ou a sessão expirar). */
+  EG.fecharModais = function () {
+    EG.$$('#modais .modal-fundo').forEach((f) => (f._fechar ? f._fechar() : f.remove()));
   };
 
   /** Confirmação: resolve true/false. */
