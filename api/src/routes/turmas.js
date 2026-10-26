@@ -102,6 +102,14 @@ router.put('/:id', exigirModulo('turmas'), assincrono(async (req, res) => {
     if (e.code === 'ER_DUP_ENTRY') throw new HttpErro(409, `Já existe a turma ${t.nome} em ${t.ano_letivo}`, 'duplicado');
     throw e;
   });
+  // Trocou o turno: a grade montada nos horários do turno antigo deixa de valer
+  // (senão as aulas ficariam escondidas, mas ainda contando para o professor)
+  if (t.periodo !== atual.periodo) {
+    await query(
+      'DELETE FROM grade_horaria WHERE turma_id = ? AND horario_id IN (SELECT id FROM horarios_aula WHERE colegio_id = ? AND periodo <> ?)',
+      [id, req.colegioId, t.periodo]
+    );
+  }
   await atividade(req.colegioId, req.usuario.id,
     somenteAtivo ? `Turma ${atual.nome} ${ativo ? 'reativada' : 'desativada'}` : `Turma atualizada: ${t.nome}`);
   const n = await queryUm("SELECT COUNT(*) AS n FROM alunos WHERE turma_id = ? AND status = 'ativo'", [id]);

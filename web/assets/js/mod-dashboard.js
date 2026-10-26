@@ -5,11 +5,13 @@
     async render(el) {
       const e = EG.estado;
       const col = e.colegio;
-      const [atividades, r, com, agenda] = await Promise.all([
+      const ehProfessor = e.perfil === 'professor' && EG.pode('grade');
+      const [atividades, r, com, agenda, minha] = await Promise.all([
         EG.api('GET', '/colegios/atual/atividades?limite=15'),
         EG.api('GET', '/colegios/atual/resumo'),
         EG.pode('comunicados') ? EG.api('GET', '/comunicados/recentes?limite=5').catch(() => null) : null,
-        EG.pode('calendario') ? EG.api('GET', '/calendario/proximos?dias=30&limite=6').catch(() => null) : null
+        EG.pode('calendario') ? EG.api('GET', '/calendario/proximos?dias=30&limite=6').catch(() => null) : null,
+        ehProfessor ? EG.api('GET', '/grade/minha').catch(() => null) : null
       ]);
       const nome = (e.me.usuario.nome || '').split(' ')[0];
       if (r.pendentes) EG.atualizarPendentes(r.pendentes.total);
@@ -41,6 +43,7 @@
           ${kpi('ti-alert-triangle', 'var(--erro-bg)', 'var(--erro)', 'Inadimplentes', r.inadimplentes, 'com mensalidade vencida', 'mensalidades', 'inadimplentes')}
         </div>
 
+        ${minha && minha.vinculado && minha.total ? cardAulasHoje(minha) : ''}
         ${agenda || com ? `<div class="${agenda && com ? 'linha-2' : ''}" style="gap:20px;align-items:start;margin-bottom:20px">
           ${agenda ? cardAgenda(agenda.itens, !!com) : ''}
           ${com ? cardComunicados(com.itens, !!agenda) : ''}
@@ -66,6 +69,17 @@
           <span>${EG.esc(c.titulo)}<br><small class="sub">${EG.esc(c.publico)}${c.leitura.destinatarios ? ` · lido por ${c.leitura.lidos} de ${c.leitura.destinatarios}` : ''}</small></span>
           <span class="quando">${EG.data(c.criadoEm)}</span></li>`).join('')}</ul>`
         : '<div class="vazio"><i class="ti ti-speakerphone"></i>Nenhum comunicado no ar</div>'}
+    </div>`;
+  }
+
+  /** Professor: as aulas de hoje pela grade horária. */
+  function cardAulasHoje(m) {
+    return `<div class="card">
+      <div class="card-cab"><div class="card-titulo"><i class="ti ti-clock-hour-3"></i> Suas aulas hoje</div>
+        <button class="btn btn-secundario btn-pequeno" data-action="ir" data-pagina="grade">Minha grade</button></div>
+      ${m.hoje.length ? `<ul class="lista-atividade">${m.hoje.map((a) => `<li><span class="selo selo-info">${a.inicio}–${a.fim}</span>
+          <span><strong>${EG.esc(a.turma)}</strong> · ${EG.esc(a.disciplina || '—')}</span></li>`).join('')}</ul>`
+        : '<div class="vazio" style="padding:20px"><i class="ti ti-mood-happy"></i>Nenhuma aula na grade hoje</div>'}
     </div>`;
   }
 

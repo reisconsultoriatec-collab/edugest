@@ -419,6 +419,30 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
   .linha-bim > :first-child { grid-column: 1 / -1; }
 }
 
+/* ---------- Grade horária ---------- */
+.grade-tab { table-layout: fixed; min-width: 640px; }
+.grade-tab th, .grade-tab td { text-align: center; vertical-align: middle; padding: 6px; }
+.grade-tab th:first-child, .grade-tab td:first-child { width: 112px; text-align: left; }
+.grade-tab th.hoje { color: var(--amber-d); }
+.grade-cel { width: 100%; min-height: 50px; border: 1px dashed var(--border); border-radius: 8px; background: var(--card); padding: 6px;
+  font-family: inherit; color: var(--text); display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 2px;
+  font-size: 12px; line-height: 1.3; overflow-wrap: anywhere; }
+button.grade-cel { cursor: pointer; }
+button.grade-cel:hover { border-color: var(--amber); }
+.grade-cel.vazia { color: var(--muted); font-size: 16px; }
+.grade-cel.cheia { border-style: solid; border-color: transparent; }
+.grade-cel strong { font-size: 12px; }
+.grade-cel small { color: var(--text-2); font-size: 11px; }
+.grade-cel.cor-0 { background: var(--info-bg); } .grade-cel.cor-1 { background: var(--roxo-bg); } .grade-cel.cor-2 { background: var(--ok-bg); }
+.grade-cel.cor-3 { background: var(--aviso-bg); } .grade-cel.cor-4 { background: var(--teal-bg); }
+.grade-cel.conflito { background: var(--erro-bg); box-shadow: inset 0 0 0 2px var(--erro); }
+.grade-cel.conflito small { color: var(--erro-tx); }
+.grade-intervalo td { background: var(--bg); color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .4px; }
+.grade-resumo { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 14px; align-items: center; }
+.grade-acoes { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; align-items: center; flex-wrap: wrap; }
+.horarios-tab td { vertical-align: middle; }
+.horarios-tab .input, .horarios-tab .select { padding: 6px 8px; min-width: 96px; }
+
 /* ---------- Comunicados ---------- */
 .com-item { border: 1px solid var(--border); border-left: 4px solid var(--border); border-radius: 12px; padding: 14px 16px;
   background: var(--card); margin-bottom: 12px; }
@@ -463,6 +487,9 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
   .medidor span, .medidor { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .card { break-inside: avoid; }
   .so-print-bloco { display: block !important; }
+  .grade-tab { min-width: 0; }
+  .grade-cel { border: 1px solid #999 !important; background: #fff !important; box-shadow: none !important; min-height: 0; }
+  .grade-cel.vazia { visibility: hidden; }
   .cal-print-mes { break-inside: avoid; margin-bottom: 14px; }
   .grade-kpi { grid-template-columns: repeat(4, 1fr); gap: 8px; }
   .kpi { padding: 10px; }

@@ -133,6 +133,14 @@
         { texto: 'Cancelar', acao: () => m.fechar() },
         { texto: 'Salvar', classe: 'btn-primario', icone: 'ti-device-floppy', acao: async () => {
           const d = EG.lerForm(m.el);
+          // Trocar o turno apaga a grade horária montada nos horários do turno antigo
+          if (!nova && d.periodo !== t.periodo) {
+            const aulas = await EG.api('GET', '/grade/opcoes')
+              .then((o) => ((o.turmas || []).find((x) => x.id === t.id) || {}).aulas || 0).catch(() => 0);
+            if (aulas && !(await EG.confirmar(
+              `O ${t.nome} tem ${aulas} aula(s) na grade horária do turno ${EG.PERIODOS[t.periodo]}. Mudando para ${EG.PERIODOS[d.periodo]}, essa grade é apagada e precisa ser montada de novo nos horários do novo turno.\n\nContinuar?`,
+              { titulo: 'Trocar o turno', textoOk: 'Trocar e apagar a grade', perigo: true }))) return;
+          }
           if (nova) await EG.api('POST', '/turmas', d); else await EG.api('PUT', `/turmas/${t.id}`, d);
           filtroAno = Number(d.anoLetivo) || filtroAno;
           m.fechar(); EG.toast(nova ? 'Turma criada' : 'Turma atualizada'); carregar(el);

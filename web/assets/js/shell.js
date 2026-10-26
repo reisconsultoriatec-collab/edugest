@@ -18,7 +18,7 @@
       { id: 'notas', rotulo: 'Notas e Médias', icone: 'ti-list-numbers', pronto: true },
       { id: 'boletim', rotulo: 'Boletim', icone: 'ti-report', pronto: true },
       { id: 'calendario', rotulo: 'Calendário Escolar', icone: 'ti-calendar-event', pronto: true },
-      { id: 'grade', rotulo: 'Grade Horária', icone: 'ti-clock-hour-3' },
+      { id: 'grade', rotulo: 'Grade Horária', icone: 'ti-clock-hour-3', pronto: true },
       { id: 'documentos', rotulo: 'Documentos', icone: 'ti-file-certificate' }
     ] },
     { secao: 'Financeiro', itens: [
@@ -35,6 +35,7 @@
       { id: 'portal', modulo: 'portal', rotulo: 'Início', icone: 'ti-home-heart', pronto: true },
       { id: 'portal-boletim', modulo: 'portal', rotulo: 'Boletim', icone: 'ti-report', pronto: true },
       { id: 'portal-frequencia', modulo: 'portal', rotulo: 'Frequência', icone: 'ti-calendar-check', pronto: true },
+      { id: 'portal-grade', modulo: 'portal', rotulo: 'Horário de aulas', icone: 'ti-clock-hour-3', pronto: true },
       { id: 'portal-financeiro', modulo: 'portal', rotulo: 'Financeiro', icone: 'ti-receipt', pronto: true },
       { id: 'portal-comunicados', modulo: 'portal', rotulo: 'Comunicados', icone: 'ti-speakerphone', pronto: true },
       { id: 'portal-calendario', modulo: 'portal', rotulo: 'Calendário', icone: 'ti-calendar-event', pronto: true }

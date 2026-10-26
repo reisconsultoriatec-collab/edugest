@@ -14,6 +14,7 @@
  *  POST /comunicados/:id/ciente        confirma ciência (se o comunicado pedir)
  *  GET  /calendario?inicio=&fim=       eventos visíveis às famílias dos filhos
  *  GET  /calendario/proximos           próximas datas (Início)
+ *  GET  /alunos/:id/grade              horário de aulas da turma atual do aluno
  *
  *  Segurança: TODA consulta passa por meuFilho(), que só aceita alunos
  *  ligados a este usuário (responsavel_aluno) neste colégio.
@@ -30,6 +31,7 @@ const { assinar } = require('../utils/links');
 const { TIPOS, DocErro } = require('../services/documentos');
 const { visiveisParaResponsavel } = require('../services/comunicados');
 const cal = require('../services/calendario');
+const { gradeDaTurma } = require('../services/grade');
 
 async function filhos(req) {
   return query(
@@ -342,6 +344,14 @@ router.post('/comunicados/:id/ciente', assincrono(async (req, res) => {
     [agora, c.id, req.usuario.id]
   );
   res.json(await minhaLeitura(req, c.id));
+}));
+
+/* ---------------- Horário de aulas ---------------- */
+router.get('/alunos/:id/grade', assincrono(async (req, res) => {
+  const a = await meuFilho(req);
+  const turma = turmaAtual(a);
+  if (!turma) return res.json({ aluno: alunoPublico(a), turma: null });
+  res.json({ aluno: alunoPublico(a), ...(await gradeDaTurma(req.colegioId, turma)) });
 }));
 
 /* ---------------- Calendário ---------------- */

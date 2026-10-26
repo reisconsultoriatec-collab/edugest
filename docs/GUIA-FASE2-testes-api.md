@@ -26,6 +26,9 @@ Reis Tecnologia · API versão 1.1.0
 | `GET /api/calendario` · `/opcoes` · `/proximos` · `/:id` · `POST /` · `PUT /:id` · `DELETE /:id` | módulo calendario | Eventos com público, horário e local. Professor: evento/prova/reunião só das turmas dele |
 | `GET/PUT /api/calendario/ano-letivo` · `GET/POST /api/calendario/feriados` | coordenação (não professor) | Bimestres e dias letivos (mínimo 200) · feriados nacionais do ano |
 | `GET /api/portal/calendario` · `/proximos` | responsável | Calendário da família (só eventos visíveis das turmas dos filhos) |
+| `GET /api/grade/opcoes` · `/turmas/:id` · `/professores/:id` · `/minha` | módulo grade | Grade da turma, semana do professor (com carga horária) e "Suas aulas hoje". Professor: só consulta, e só a própria semana |
+| `GET /api/grade/horarios` · `PUT /horarios/:periodo` · `PUT /api/grade/turmas/:id` | coordenação (não professor) | Horários de cada turno (aulas e intervalos) · montar a grade; professor em duas turmas no mesmo horário é recusado (409) |
+| `GET /api/portal/alunos/:id/grade` | responsável | Horário de aulas do filho |
 
 Proteções: cadastro limitado a 10 tentativas por IP a cada 15 min; admin não altera nem remove o próprio acesso; o colégio nunca fica sem admin ativo; tudo filtrado pelo colégio atual.
 

@@ -280,6 +280,21 @@
   });
 
   /* =====================================================================
+   *  Horário de aulas (grade da turma atual)
+   * ===================================================================== */
+  registrar('portal-grade', async () => {
+    const r = await EG.api('GET', `/portal/alunos/${est.alunoId}/grade`);
+    if (!r.turma) return `${cabecalho('<i class="ti ti-clock-hour-3"></i> Horário de aulas')}<div class="card"><div class="vazio">O aluno ainda não está em uma turma.</div></div>`;
+    const temAulas = r.celulas.length > 0;
+    return `${cabecalho('<i class="ti ti-clock-hour-3"></i> Horário de aulas', temAulas ? '<button class="btn btn-secundario" data-action="imprimir"><i class="ti ti-printer"></i> Imprimir</button>' : '')}
+      <div class="card">
+        <div class="so-print-bloco"><h3 style="margin:0 0 8px">${EG.esc(portal.colegio.nome)} · Horário de aulas · ${EG.esc(r.turma.nome)}</h3></div>
+        <p class="card-desc">${EG.esc(r.turma.nome)} · turno ${EG.esc(r.turma.periodoNome.toLowerCase())}</p>
+        ${temAulas ? EG.gradeTabela(r) : '<div class="vazio"><i class="ti ti-clock"></i>O colégio ainda não publicou a grade desta turma.</div>'}
+      </div>`;
+  });
+
+  /* =====================================================================
    *  Financeiro
    * ===================================================================== */
   registrar('portal-financeiro', async () => {
