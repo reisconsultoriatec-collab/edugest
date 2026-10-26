@@ -30,12 +30,13 @@
       { id: 'conciliacao', rotulo: 'Conciliação Bancária', icone: 'ti-arrows-exchange', pronto: true }
     ] },
     { secao: 'Captação', itens: [{ id: 'funil', rotulo: 'Funil de Matrículas', icone: 'ti-filter' }] },
-    { secao: 'Comunicação', itens: [{ id: 'comunicados', rotulo: 'Comunicados', icone: 'ti-message-circle' }] },
+    { secao: 'Comunicação', itens: [{ id: 'comunicados', rotulo: 'Comunicados', icone: 'ti-speakerphone', pronto: true }] },
     { secao: 'Portal do Responsável', fixo: true, itens: [
       { id: 'portal', modulo: 'portal', rotulo: 'Início', icone: 'ti-home-heart', pronto: true },
       { id: 'portal-boletim', modulo: 'portal', rotulo: 'Boletim', icone: 'ti-report', pronto: true },
       { id: 'portal-frequencia', modulo: 'portal', rotulo: 'Frequência', icone: 'ti-calendar-check', pronto: true },
-      { id: 'portal-financeiro', modulo: 'portal', rotulo: 'Financeiro', icone: 'ti-receipt', pronto: true }
+      { id: 'portal-financeiro', modulo: 'portal', rotulo: 'Financeiro', icone: 'ti-receipt', pronto: true },
+      { id: 'portal-comunicados', modulo: 'portal', rotulo: 'Comunicados', icone: 'ti-speakerphone', pronto: true }
     ] },
     { secao: 'Sistema', itens: [
       { id: 'config', rotulo: 'Configurações', icone: 'ti-settings', pronto: true },
@@ -75,6 +76,8 @@
 
     montarSeletor();
     montarMenu();
+    // Responsável: número de comunicados novos no menu
+    if (col.perfil === 'responsavel' && EG.atualizarComunicadosPortal) EG.atualizarComunicadosPortal();
     EG.$('#telaAuth').hidden = true;
     EG.$('#app').hidden = false;
     EG.carregando(false);
@@ -132,6 +135,21 @@
     EG.$$('.menu-grupo').forEach((g) => g.classList.toggle('tem-ativo', g === grupo));
     if (grupo) abrirGrupo(grupo, false);
   }
+
+  /** Número ao lado de um item do menu (some quando zero). */
+  EG.contadorMenu = function (pagina, total, titulo) {
+    const item = EG.$(`.menu-item[data-pagina="${pagina}"]`);
+    if (!item) return;
+    let c = item.querySelector('.contador');
+    if (!total) { if (c) c.remove(); return; }
+    if (!c) {
+      c = document.createElement('span');
+      c.className = 'contador';
+      item.appendChild(c);
+    }
+    c.textContent = total;
+    c.title = titulo || '';
+  };
 
   /** Contador de cadastros pendentes no item "Usuários" do menu (só admin). */
   EG.atualizarPendentes = function (total) {

@@ -1,12 +1,23 @@
 /* =====================================================================
  *  EduGest — Portal do Responsável
- *  Início · Boletim · Frequência · Financeiro, para cada filho vinculado.
+ *  Início · Boletim · Frequência · Financeiro, para cada filho vinculado,
+ *  e os Comunicados do colégio para a família.
  *  A API só devolve dados dos alunos ligados a este usuário.
  * ===================================================================== */
 'use strict';
 (function (EG) {
   const est = {};
+  const estCom = { filtro: 'todos', abrir: null };
   let portal = null;
+
+  /** Número de comunicados que pedem atenção (menu e Início). */
+  EG.atualizarComunicadosPortal = async function () {
+    try {
+      const r = await EG.api('GET', '/portal/comunicados/pendentes');
+      EG.contadorMenu('portal-comunicados', r.atencao, r.atencao ? `${r.atencao} comunicado(s) para ler` : '');
+      return r;
+    } catch (e) { return null; }
+  };
 
   const pct = (n) => (n === null || n === undefined ? '—' : `${String(Number(n).toFixed(1)).replace('.', ',').replace(',0', '')}%`);
   const nota = (n) => (n === null || n === undefined ? '—' : String(Number(n).toFixed(1)).replace('.', ','));
@@ -98,7 +109,8 @@
       const b = ev.target.closest('[data-action]');
       if (!b || !el.contains(b)) return;
       try {
-        if (b.dataset.action === 'filho') { est.alunoId = Number(b.dataset.id); await EG.guarda(b, recarregar); }
+        if (b.dataset.action === 'ir' && b.dataset.comunicado) estCom.abrir = Number(b.dataset.comunicado); // a navegação segue no shell
+        else if (b.dataset.action === 'filho') { est.alunoId = Number(b.dataset.id); await EG.guarda(b, recarregar); }
         else if (b.dataset.action === 'adicionar-filho') modalAdicionar(el, recarregar);
         else if (b.dataset.action === 'imprimir') window.print();
         else if (b.dataset.action === 'whats-escola') EG.abrirWhatsApp(portal.colegio.whatsapp, `Olá! Sou responsável por ${alunoAtual() ? alunoAtual().nome : 'um(a) aluno(a)'}.`);
@@ -136,10 +148,19 @@
    *  Início
    * ===================================================================== */
   registrar('portal', async () => {
-    const r = await EG.api('GET', `/portal/alunos/${est.alunoId}/resumo`);
+    const [r, com] = await Promise.all([
+      EG.api('GET', `/portal/alunos/${est.alunoId}/resumo`),
+      EG.atualizarComunicadosPortal()
+    ]);
     const nome = (EG.estado.me.usuario.nome || '').split(' ')[0];
     const fr = r.frequencia; const nt = r.notas; const fi = r.financeiro;
     const alertas = [];
+    if (com && com.atencao) {
+      const partes = [];
+      if (com.naoLidos) partes.push(com.naoLidos === 1 ? '1 comunicado novo do colégio' : `${com.naoLidos} comunicados novos do colégio`);
+      if (com.aguardandoCiencia) partes.push(`${com.aguardandoCiencia} aguardando a sua confirmação de ciência`);
+      alertas.push(['ti-speakerphone', 'info', partes.join(' · ') + '.', 'portal-comunicados', 'Ler agora']);
+    }
     if (fi.vencidas) alertas.push(['ti-alert-triangle', 'erro', `${fi.vencidas} mensalidade(s) em atraso, total de ${EG.moeda(fi.valorVencido)}.`, 'portal-financeiro', 'Ver financeiro']);
     if (fr && fr.percentual !== null && fr.percentual < fr.minima) alertas.push(['ti-calendar-x', 'erro', `Frequência de ${pct(fr.percentual)}, abaixo do mínimo de ${fr.minima}%.`, 'portal-frequencia', 'Ver frequência']);
     if (nt && nt.abaixo.length) alertas.push(['ti-chart-arrows', 'aviso', `Média abaixo de ${nota(nt.mediaAprovacao)} em: ${nt.abaixo.join(', ')}.`, 'portal-boletim', 'Ver boletim']);
@@ -168,6 +189,15 @@
       ${alertas.length ? `<div class="card"><div class="card-cab"><div class="card-titulo"><i class="ti ti-bell"></i> Atenção</div></div>
         ${alertas.map(([ic, tipo, txt, pag, rot]) => `<div class="portal-alerta ${tipo}"><i class="ti ${ic}"></i><span>${EG.esc(txt)}</span>
           <button class="btn btn-secundario btn-pequeno" data-action="ir" data-pagina="${pag}">${rot}</button></div>`).join('')}</div>` : ''}
+      ${com && com.ultimos.length ? `<div class="card">
+        <div class="card-cab"><div class="card-titulo"><i class="ti ti-speakerphone"></i> Comunicados</div>
+          <button class="btn btn-secundario btn-pequeno" data-action="ir" data-pagina="portal-comunicados">Ver todos</button></div>
+        <ul class="lista-atividade">${com.ultimos.map((c) => `<li style="cursor:pointer" data-action="ir" data-pagina="portal-comunicados" data-comunicado="${c.id}">
+          ${EG.seloTipoComunicado(c.tipo)}
+          <span>${c.lidoEm ? EG.esc(c.titulo) : `<strong>${EG.esc(c.titulo)}</strong> <span class="selo selo-aviso">Novo</span>`}
+            ${c.exigeCiencia && !c.cienteEm ? ' <span class="selo selo-erro">Confirme a ciência</span>' : ''}</span>
+          <span class="quando">${EG.data(c.criadoEm)}</span></li>`).join('')}</ul>
+      </div>` : ''}
       <div class="linha-2" style="gap:20px">
         <div class="card" style="margin:0">
           <div class="card-cab"><div class="card-titulo"><i class="ti ti-receipt"></i> Pagamento</div></div>
@@ -287,5 +317,87 @@
         </table></div>
         <p class="sub" style="margin-top:10px">Pagou agora? A baixa aparece aqui assim que o colégio confirmar o recebimento.</p>
       </div>`;
+  });
+  /* =====================================================================
+   *  Comunicados (da família toda, não de um filho só)
+   * ===================================================================== */
+  function cartaoComunicado(c, aberto) {
+    const novo = !c.lidoEm;
+    const falta = c.exigeCiencia && !c.cienteEm;
+    const selos = EG.seloTipoComunicado(c.tipo)
+      + (c.fixado ? '<span class="selo selo-aviso"><i class="ti ti-pin"></i> Fixado</span>' : '')
+      + (novo ? '<span class="selo selo-aviso">Novo</span>' : '')
+      + (falta ? '<span class="selo selo-erro"><i class="ti ti-checks"></i> Confirme a ciência</span>' : '');
+    let acoes = '';
+    if (!aberto) acoes += `<button class="btn ${novo ? 'btn-primario' : 'btn-secundario'} btn-pequeno" data-com="ler"><i class="ti ti-eye"></i> ${novo ? 'Ler comunicado' : 'Abrir'}</button>`;
+    if (aberto && falta) acoes += '<button class="btn btn-primario btn-pequeno" data-com="ciente"><i class="ti ti-checks"></i> Estou ciente</button>';
+    if (c.cienteEm) acoes += `<span class="com-ciente"><i class="ti ti-circle-check"></i> Ciente em ${EG.dataHora(c.cienteEm)}</span>`;
+    if (aberto) acoes += '<button class="btn btn-secundario btn-pequeno" data-com="fechar"><i class="ti ti-chevron-up"></i> Recolher</button>';
+    return `<div class="com-item tipo-${c.tipo} ${novo ? 'novo' : ''}" data-id="${c.id}">
+      <div class="com-selos">${selos}</div>
+      <div class="com-titulo">${EG.esc(c.titulo)}</div>
+      <div class="com-meta">Para: ${EG.esc(c.para.join(', '))}${c.autor ? ' · ' + EG.esc(c.autor) : ''} · ${EG.dataHora(c.criadoEm)}${c.atualizadoEm ? ' (atualizado)' : ''}</div>
+      <div class="com-texto ${aberto ? '' : 'resumo'}">${EG.esc(c.mensagem)}</div>
+      <div class="com-acoes">${acoes}</div></div>`;
+  }
+
+  EG.registrarModulo('portal-comunicados', {
+    async render(el) {
+      await carregarPortal(false);
+      if (!portal.alunos.length) { el.innerHTML = semFilhos(); ligar(el, async () => EG.recarregarPagina()); return; }
+      const lista = (await EG.api('GET', '/portal/comunicados')).itens;
+      const abertos = new Set();
+
+      async function marcarLido(c) {
+        if (c.lidoEm) return;
+        const r = await EG.api('POST', `/portal/comunicados/${c.id}/lido`);
+        c.lidoEm = r.lidoEm;
+        EG.atualizarComunicadosPortal();
+      }
+      function desenhar() {
+        const naoLidos = lista.filter((c) => !c.lidoEm).length;
+        const ciencia = lista.filter((c) => c.exigeCiencia && !c.cienteEm).length;
+        const filtrada = lista.filter((c) => estCom.filtro === 'todos' || (estCom.filtro === 'nao' ? !c.lidoEm : c.exigeCiencia && !c.cienteEm));
+        el.innerHTML = `<div class="card">
+          <div class="card-cab"><div class="card-titulo"><i class="ti ti-speakerphone"></i> Comunicados do ${EG.esc(portal.colegio.nome)}</div></div>
+          <div class="filtros">
+            ${[['todos', `Todos (${lista.length})`], ['nao', `Não lidos (${naoLidos})`], ['ciencia', `Aguardando ciência (${ciencia})`]]
+              .map(([v, r]) => `<button class="chip ${estCom.filtro === v ? 'ativo' : ''}" data-filtro-com="${v}">${r}</button>`).join('')}
+          </div>
+          ${filtrada.length ? filtrada.map((c) => cartaoComunicado(c, abertos.has(c.id))).join('')
+            : `<div class="vazio"><i class="ti ti-mood-happy"></i>${lista.length ? 'Nada pendente por aqui' : 'Nenhum comunicado no momento'}</div>`}
+        </div>`;
+      }
+
+      // Veio de um comunicado da Início: abre e marca como lido
+      if (estCom.abrir) {
+        const alvo = lista.find((c) => c.id === estCom.abrir);
+        estCom.abrir = null;
+        if (alvo) { estCom.filtro = 'todos'; abertos.add(alvo.id); await marcarLido(alvo).catch(() => {}); }
+      }
+      desenhar();
+      if (abertos.size) { const card = el.querySelector(`.com-item[data-id="${[...abertos][0]}"]`); if (card) card.scrollIntoView({ block: 'start' }); }
+
+      el.onclick = (ev) => {
+        const f = ev.target.closest('[data-filtro-com]');
+        if (f) { estCom.filtro = f.dataset.filtroCom; desenhar(); return; }
+        const b = ev.target.closest('[data-com]');
+        if (!b) return;
+        const c = lista.find((x) => x.id === Number(b.closest('[data-id]').dataset.id));
+        EG.guarda(b, async () => {
+          try {
+            if (b.dataset.com === 'ler') { abertos.add(c.id); await marcarLido(c); }
+            else if (b.dataset.com === 'fechar') abertos.delete(c.id);
+            else if (b.dataset.com === 'ciente') {
+              const r = await EG.api('POST', `/portal/comunicados/${c.id}/ciente`);
+              c.lidoEm = r.lidoEm; c.cienteEm = r.cienteEm;
+              EG.toast('Obrigado! Sua ciência foi registrada.');
+              EG.atualizarComunicadosPortal();
+            }
+            desenhar();
+          } catch (e) { EG.toast(e.message, 'erro'); }
+        });
+      };
+    }
   });
 })(window.EG);

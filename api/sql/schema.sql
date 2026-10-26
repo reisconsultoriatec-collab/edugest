@@ -474,14 +474,43 @@ CREATE TABLE IF NOT EXISTS comunicados (
   id             INT UNSIGNED NOT NULL AUTO_INCREMENT,
   colegio_id     INT UNSIGNED NOT NULL,
   titulo         VARCHAR(150) NOT NULL,
-  tipo           ENUM('aviso','circular','evento') NOT NULL DEFAULT 'aviso',
-  destinatarios  VARCHAR(30)  NOT NULL DEFAULT 'todos' COMMENT 'todos | infantil | fundamental1 | fundamental2 | medio',
+  tipo           ENUM('aviso','circular','evento','urgente') NOT NULL DEFAULT 'aviso',
+  alcance        ENUM('todos','segmentos','turmas') NOT NULL DEFAULT 'todos',
+  segmentos      VARCHAR(80)  NULL COMMENT 'Lista separada por vírgula: infantil,fundamental1,fundamental2,medio,eja,outros',
   mensagem       TEXT         NOT NULL,
+  fixado         TINYINT(1)   NOT NULL DEFAULT 0,
+  exige_ciencia  TINYINT(1)   NOT NULL DEFAULT 0,
+  expira_em      DATE         NULL COMMENT 'Último dia em que aparece no portal',
   publicado_por  INT UNSIGNED NULL,
   criado_em      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  atualizado_por INT UNSIGNED NULL,
+  atualizado_em  DATETIME     NULL,
   PRIMARY KEY (id),
   KEY idx_com_colegio (colegio_id, criado_em),
   CONSTRAINT fk_com_colegio FOREIGN KEY (colegio_id) REFERENCES colegios (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Turmas de um comunicado com alcance = 'turmas'
+CREATE TABLE IF NOT EXISTS comunicado_turmas (
+  comunicado_id  INT UNSIGNED NOT NULL,
+  turma_id       INT UNSIGNED NOT NULL,
+  PRIMARY KEY (comunicado_id, turma_id),
+  KEY idx_comt_turma (turma_id),
+  CONSTRAINT fk_comt_comunicado FOREIGN KEY (comunicado_id) REFERENCES comunicados (id) ON DELETE CASCADE,
+  CONSTRAINT fk_comt_turma      FOREIGN KEY (turma_id)      REFERENCES turmas (id)      ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Leitura (e ciência) dos responsáveis no portal
+CREATE TABLE IF NOT EXISTS comunicado_leituras (
+  comunicado_id  INT UNSIGNED NOT NULL,
+  usuario_id     INT UNSIGNED NOT NULL,
+  colegio_id     INT UNSIGNED NOT NULL,
+  lido_em        DATETIME     NOT NULL,
+  ciente_em      DATETIME     NULL COMMENT 'Só nos comunicados que exigem ciência',
+  PRIMARY KEY (comunicado_id, usuario_id),
+  KEY idx_coml_usuario (usuario_id, colegio_id),
+  CONSTRAINT fk_coml_comunicado FOREIGN KEY (comunicado_id) REFERENCES comunicados (id) ON DELETE CASCADE,
+  CONSTRAINT fk_coml_usuario    FOREIGN KEY (usuario_id)    REFERENCES usuarios (id)    ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ---------------------------------------------------------------------

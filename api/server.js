@@ -91,6 +91,9 @@ app.use('/api/documentos', equipe, require('./src/routes/documentos'));
 app.use('/api/relatorios', equipe, require('./src/routes/relatorios'));
 app.use('/api/conciliacao', equipe, require('./src/routes/conciliacao'));
 
+// Comunicação — cada rota confere o módulo
+app.use('/api/comunicados', equipe, require('./src/routes/comunicados'));
+
 // Portal do responsável — só os filhos vinculados ao usuário
 app.use('/api/portal', autenticar, carregarUsuario, exigirColegio, exigirPerfil('responsavel'), require('./src/routes/portal'));
 

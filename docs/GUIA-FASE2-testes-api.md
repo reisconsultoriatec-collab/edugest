@@ -21,6 +21,8 @@ Reis Tecnologia · API versão 1.1.0
 | `GET /api/colegios/atual/atividades` | equipe | Atividade recente |
 | `GET /api/usuarios` · `POST /vincular` · `/:id/aprovar` · `/:id/rejeitar` · `PUT /:id` · `DELETE /:id` | admin | Gestão de usuários |
 | `GET /api/seguranca/log` | admin | Log de segurança (sem opção de apagar) |
+| `GET /api/comunicados` · `/opcoes` · `/recentes` · `/:id` · `POST /` · `PUT /:id` · `DELETE /:id` | módulo comunicados | Comunicados: público (colégio todo, segmentos, turmas), fixar, ciência, leituras e WhatsApp. Professor: só as turmas dele |
+| `GET /api/portal/comunicados` · `/pendentes` · `POST /:id/lido` · `POST /:id/ciente` | responsável | Comunicados da família no portal, leitura e confirmação de ciência |
 
 Proteções: cadastro limitado a 10 tentativas por IP a cada 15 min; admin não altera nem remove o próprio acesso; o colégio nunca fica sem admin ativo; tudo filtrado pelo colégio atual.
 

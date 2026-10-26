@@ -8,6 +8,10 @@
  *  GET  /alunos/:id/frequencia?turmaId= por disciplina, por mês e as faltas
  *  GET  /alunos/:id/financeiro?ano=    mensalidades do ano
  *  POST /documentos                    link do PDF (cobrança/recibo, carnê, declaração)
+ *  GET  /comunicados                   comunicados para os filhos (não expirados)
+ *  GET  /comunicados/pendentes         não lidos, aguardando ciência e os últimos 3
+ *  POST /comunicados/:id/lido          registra a leitura
+ *  POST /comunicados/:id/ciente        confirma ciência (se o comunicado pedir)
  *
  *  Segurança: TODA consulta passa por meuFilho(), que só aceita alunos
  *  ligados a este usuário (responsavel_aluno) neste colégio.
@@ -16,12 +20,13 @@ const router = require('express').Router();
 const { query, queryUm } = require('../db');
 const { HttpErro, assincrono } = require('../middleware/erros');
 const v = require('../utils/validar');
-const { hojeSP } = require('../utils/datas');
+const { hojeSP, agoraSP } = require('../utils/datas');
 const f = require('../services/financeiro');
 const { arred1 } = require('../services/escopo');
 const { montarBoletim } = require('../services/boletim');
 const { assinar } = require('../utils/links');
 const { TIPOS, DocErro } = require('../services/documentos');
+const { visiveisParaResponsavel } = require('../services/comunicados');
 
 async function filhos(req) {
   return query(
@@ -276,6 +281,64 @@ router.post('/documentos', assincrono(async (req, res) => {
   }
   const { token, expira } = assinar(dados, 30 * 60);
   res.json({ url: `/api/publico/doc/${token}`, expira });
+}));
+
+/* ---------------- Comunicados ---------------- */
+const comunicadosDaFamilia = async (req) => visiveisParaResponsavel(req.colegioId, req.usuario.id, await filhos(req));
+
+/** Comunicado que este responsável pode ver, ou 404. */
+async function meuComunicado(req) {
+  const id = v.id(req.params.id);
+  const c = (await comunicadosDaFamilia(req)).find((x) => x.id === id);
+  if (!c) throw new HttpErro(404, 'Comunicado não encontrado', 'nao_encontrado');
+  return c;
+}
+
+async function minhaLeitura(req, comunicadoId) {
+  const l = await queryUm(
+    'SELECT lido_em, ciente_em FROM comunicado_leituras WHERE comunicado_id = ? AND usuario_id = ?',
+    [comunicadoId, req.usuario.id]
+  );
+  return { id: comunicadoId, lidoEm: l ? l.lido_em : null, cienteEm: l ? l.ciente_em : null };
+}
+
+router.get('/comunicados', assincrono(async (req, res) => {
+  res.json({ itens: await comunicadosDaFamilia(req) });
+}));
+
+router.get('/comunicados/pendentes', assincrono(async (req, res) => {
+  const itens = await comunicadosDaFamilia(req);
+  res.json({
+    // Pedem atenção: não lidos ou aguardando a confirmação de ciência
+    atencao: itens.filter((c) => !c.lidoEm || (c.exigeCiencia && !c.cienteEm)).length,
+    naoLidos: itens.filter((c) => !c.lidoEm).length,
+    aguardandoCiencia: itens.filter((c) => c.exigeCiencia && !c.cienteEm).length,
+    ultimos: itens.slice(0, 3).map(({ mensagem, ...c }) => ({ ...c, resumo: mensagem.length > 160 ? mensagem.slice(0, 157) + '...' : mensagem }))
+  });
+}));
+
+router.post('/comunicados/:id/lido', assincrono(async (req, res) => {
+  const c = await meuComunicado(req);
+  await query(
+    'INSERT IGNORE INTO comunicado_leituras (comunicado_id, usuario_id, colegio_id, lido_em) VALUES (?, ?, ?, ?)',
+    [c.id, req.usuario.id, req.colegioId, agoraSP()]
+  );
+  res.json(await minhaLeitura(req, c.id));
+}));
+
+router.post('/comunicados/:id/ciente', assincrono(async (req, res) => {
+  const c = await meuComunicado(req);
+  if (!c.exigeCiencia) throw new HttpErro(409, 'Este comunicado não pede confirmação de ciência', 'sem_ciencia');
+  const agora = agoraSP();
+  await query(
+    'INSERT IGNORE INTO comunicado_leituras (comunicado_id, usuario_id, colegio_id, lido_em) VALUES (?, ?, ?, ?)',
+    [c.id, req.usuario.id, req.colegioId, agora]
+  );
+  await query(
+    'UPDATE comunicado_leituras SET ciente_em = COALESCE(ciente_em, ?) WHERE comunicado_id = ? AND usuario_id = ?',
+    [agora, c.id, req.usuario.id]
+  );
+  res.json(await minhaLeitura(req, c.id));
 }));
 
 module.exports = router;
