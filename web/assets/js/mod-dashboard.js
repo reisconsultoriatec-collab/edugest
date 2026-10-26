@@ -5,11 +5,11 @@
     async render(el) {
       const e = EG.estado;
       const col = e.colegio;
-      const verComunicados = EG.pode('comunicados');
-      const [atividades, r, com] = await Promise.all([
+      const [atividades, r, com, agenda] = await Promise.all([
         EG.api('GET', '/colegios/atual/atividades?limite=15'),
         EG.api('GET', '/colegios/atual/resumo'),
-        verComunicados ? EG.api('GET', '/comunicados/recentes?limite=5').catch(() => null) : null
+        EG.pode('comunicados') ? EG.api('GET', '/comunicados/recentes?limite=5').catch(() => null) : null,
+        EG.pode('calendario') ? EG.api('GET', '/calendario/proximos?dias=30&limite=6').catch(() => null) : null
       ]);
       const nome = (e.me.usuario.nome || '').split(' ')[0];
       if (r.pendentes) EG.atualizarPendentes(r.pendentes.total);
@@ -41,23 +41,24 @@
           ${kpi('ti-alert-triangle', 'var(--erro-bg)', 'var(--erro)', 'Inadimplentes', r.inadimplentes, 'com mensalidade vencida', 'mensalidades', 'inadimplentes')}
         </div>
 
-        <div class="${com ? 'linha-2' : ''}" style="gap:20px;align-items:start">
-          <div class="card" style="${com ? 'margin:0' : ''}">
-            <div class="card-cab"><div class="card-titulo"><i class="ti ti-clock"></i> Atividade recente</div></div>
-            ${atividades.length ? `<ul class="lista-atividade">${atividades.map((a) => `
-              <li><i class="ti ti-point-filled" style="color:var(--amber);font-size:10px"></i>
-                <span>${a.autor ? `<strong style="color:var(--amber-d)">${EG.esc(a.autor)}</strong> · ` : ''}${EG.esc(a.acao)}</span>
-                <span class="quando">${EG.dataHora(a.data)}</span></li>`).join('')}</ul>`
-            : '<div class="vazio"><i class="ti ti-clock"></i>Nenhuma atividade ainda</div>'}
-          </div>
-          ${com ? cardComunicados(com.itens) : ''}
+        ${agenda || com ? `<div class="${agenda && com ? 'linha-2' : ''}" style="gap:20px;align-items:start;margin-bottom:20px">
+          ${agenda ? cardAgenda(agenda.itens, !!com) : ''}
+          ${com ? cardComunicados(com.itens, !!agenda) : ''}
+        </div>` : ''}
+        <div class="card">
+          <div class="card-cab"><div class="card-titulo"><i class="ti ti-clock"></i> Atividade recente</div></div>
+          ${atividades.length ? `<ul class="lista-atividade">${atividades.map((a) => `
+            <li><i class="ti ti-point-filled" style="color:var(--amber);font-size:10px"></i>
+              <span>${a.autor ? `<strong style="color:var(--amber-d)">${EG.esc(a.autor)}</strong> · ` : ''}${EG.esc(a.acao)}</span>
+              <span class="quando">${EG.dataHora(a.data)}</span></li>`).join('')}</ul>`
+          : '<div class="vazio"><i class="ti ti-clock"></i>Nenhuma atividade ainda</div>'}
         </div>`;
     }
   });
 
   /** Últimos comunicados no ar, com quantos responsáveis já leram. */
-  function cardComunicados(itens) {
-    return `<div class="card" style="margin:0">
+  function cardComunicados(itens, lado) {
+    return `<div class="card" style="${lado ? 'margin:0' : ''}">
       <div class="card-cab"><div class="card-titulo"><i class="ti ti-speakerphone"></i> Últimos comunicados</div>
         <button class="btn btn-secundario btn-pequeno" data-action="ir" data-pagina="comunicados">${itens.length ? 'Ver todos' : 'Publicar'}</button></div>
       ${itens.length ? `<ul class="lista-atividade">${itens.map((c) => `<li>
@@ -65,6 +66,19 @@
           <span>${EG.esc(c.titulo)}<br><small class="sub">${EG.esc(c.publico)}${c.leitura.destinatarios ? ` · lido por ${c.leitura.lidos} de ${c.leitura.destinatarios}` : ''}</small></span>
           <span class="quando">${EG.data(c.criadoEm)}</span></li>`).join('')}</ul>`
         : '<div class="vazio"><i class="ti ti-speakerphone"></i>Nenhum comunicado no ar</div>'}
+    </div>`;
+  }
+
+  /** Próximos eventos do calendário (30 dias). */
+  function cardAgenda(itens, lado) {
+    return `<div class="card" style="${lado ? 'margin:0' : ''}">
+      <div class="card-cab"><div class="card-titulo"><i class="ti ti-calendar-event"></i> Próximos eventos</div>
+        <button class="btn btn-secundario btn-pequeno" data-action="ir" data-pagina="calendario">Calendário</button></div>
+      ${itens.length ? `<ul class="lista-atividade">${itens.map((e) => `<li>
+          ${EG.cal.tag(e.tipo)}
+          <span>${EG.esc(e.titulo)}<br><small class="sub">${EG.esc(e.publico)}${e.lugar ? ' · ' + EG.esc(e.lugar) : ''}</small></span>
+          <span class="quando">${EG.data(e.data).slice(0, 5)}${e.dataFim ? ' a ' + EG.data(e.dataFim).slice(0, 5) : ''}${e.horaInicio ? ' · ' + e.horaInicio : ''}</span></li>`).join('')}</ul>`
+        : '<div class="vazio"><i class="ti ti-calendar"></i>Nada marcado para os próximos 30 dias</div>'}
     </div>`;
   }
 

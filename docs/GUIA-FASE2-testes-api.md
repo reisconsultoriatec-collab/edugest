@@ -23,6 +23,9 @@ Reis Tecnologia · API versão 1.1.0
 | `GET /api/seguranca/log` | admin | Log de segurança (sem opção de apagar) |
 | `GET /api/comunicados` · `/opcoes` · `/recentes` · `/:id` · `POST /` · `PUT /:id` · `DELETE /:id` | módulo comunicados | Comunicados: público (colégio todo, segmentos, turmas), fixar, ciência, leituras e WhatsApp. Professor: só as turmas dele |
 | `GET /api/portal/comunicados` · `/pendentes` · `POST /:id/lido` · `POST /:id/ciente` | responsável | Comunicados da família no portal, leitura e confirmação de ciência |
+| `GET /api/calendario` · `/opcoes` · `/proximos` · `/:id` · `POST /` · `PUT /:id` · `DELETE /:id` | módulo calendario | Eventos com público, horário e local. Professor: evento/prova/reunião só das turmas dele |
+| `GET/PUT /api/calendario/ano-letivo` · `GET/POST /api/calendario/feriados` | coordenação (não professor) | Bimestres e dias letivos (mínimo 200) · feriados nacionais do ano |
+| `GET /api/portal/calendario` · `/proximos` | responsável | Calendário da família (só eventos visíveis das turmas dos filhos) |
 
 Proteções: cadastro limitado a 10 tentativas por IP a cada 15 min; admin não altera nem remove o próprio acesso; o colégio nunca fica sem admin ativo; tudo filtrado pelo colégio atual.
 

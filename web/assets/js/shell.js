@@ -17,7 +17,7 @@
       { id: 'diario', rotulo: 'Diário de Classe', icone: 'ti-notebook', pronto: true },
       { id: 'notas', rotulo: 'Notas e Médias', icone: 'ti-list-numbers', pronto: true },
       { id: 'boletim', rotulo: 'Boletim', icone: 'ti-report', pronto: true },
-      { id: 'calendario', rotulo: 'Calendário Escolar', icone: 'ti-calendar-event' },
+      { id: 'calendario', rotulo: 'Calendário Escolar', icone: 'ti-calendar-event', pronto: true },
       { id: 'grade', rotulo: 'Grade Horária', icone: 'ti-clock-hour-3' },
       { id: 'documentos', rotulo: 'Documentos', icone: 'ti-file-certificate' }
     ] },
@@ -36,7 +36,8 @@
       { id: 'portal-boletim', modulo: 'portal', rotulo: 'Boletim', icone: 'ti-report', pronto: true },
       { id: 'portal-frequencia', modulo: 'portal', rotulo: 'Frequência', icone: 'ti-calendar-check', pronto: true },
       { id: 'portal-financeiro', modulo: 'portal', rotulo: 'Financeiro', icone: 'ti-receipt', pronto: true },
-      { id: 'portal-comunicados', modulo: 'portal', rotulo: 'Comunicados', icone: 'ti-speakerphone', pronto: true }
+      { id: 'portal-comunicados', modulo: 'portal', rotulo: 'Comunicados', icone: 'ti-speakerphone', pronto: true },
+      { id: 'portal-calendario', modulo: 'portal', rotulo: 'Calendário', icone: 'ti-calendar-event', pronto: true }
     ] },
     { secao: 'Sistema', itens: [
       { id: 'config', rotulo: 'Configurações', icone: 'ti-settings', pronto: true },

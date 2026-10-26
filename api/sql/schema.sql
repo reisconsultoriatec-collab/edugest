@@ -297,17 +297,49 @@ CREATE TABLE IF NOT EXISTS notas (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS eventos (
-  id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  colegio_id  INT UNSIGNED NOT NULL,
-  titulo      VARCHAR(150) NOT NULL,
-  data        DATE         NOT NULL,
-  data_fim    DATE         NULL,
-  tipo        ENUM('evento','feriado','reuniao','conselho','bimestre','prova','recesso') NOT NULL DEFAULT 'evento',
-  descricao   VARCHAR(500) NULL,
-  criado_em   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  id               INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  colegio_id       INT UNSIGNED NOT NULL,
+  titulo           VARCHAR(150) NOT NULL,
+  data             DATE         NOT NULL,
+  data_fim         DATE         NULL,
+  hora_inicio      TIME         NULL,
+  hora_fim         TIME         NULL,
+  lugar            VARCHAR(120) NULL,
+  tipo             ENUM('evento','feriado','recesso','prova','reuniao','conselho','bimestre','letivo') NOT NULL DEFAULT 'evento',
+  alcance          ENUM('todos','segmentos','turmas') NOT NULL DEFAULT 'todos',
+  segmentos        VARCHAR(80)  NULL,
+  visivel_familias TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '0 = só a equipe vê (ex.: conselho de classe)',
+  descricao        VARCHAR(1000) NULL,
+  criado_por       INT UNSIGNED NULL,
+  criado_em        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  atualizado_por   INT UNSIGNED NULL,
+  atualizado_em    DATETIME     NULL,
   PRIMARY KEY (id),
   KEY idx_eventos_data (colegio_id, data),
   CONSTRAINT fk_eventos_colegio FOREIGN KEY (colegio_id) REFERENCES colegios (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Turmas de um evento com alcance = 'turmas'
+CREATE TABLE IF NOT EXISTS evento_turmas (
+  evento_id  INT UNSIGNED NOT NULL,
+  turma_id   INT UNSIGNED NOT NULL,
+  PRIMARY KEY (evento_id, turma_id),
+  KEY idx_evt_turma (turma_id),
+  CONSTRAINT fk_evt_evento FOREIGN KEY (evento_id) REFERENCES eventos (id) ON DELETE CASCADE,
+  CONSTRAINT fk_evt_turma  FOREIGN KEY (turma_id)  REFERENCES turmas (id)  ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Início e fim de cada bimestre do ano letivo (dias letivos, bimestre atual)
+CREATE TABLE IF NOT EXISTS periodos_letivos (
+  colegio_id  INT UNSIGNED      NOT NULL,
+  ano         SMALLINT UNSIGNED NOT NULL,
+  bimestre    TINYINT UNSIGNED  NOT NULL COMMENT '1 a 4',
+  inicio      DATE              NOT NULL,
+  fim         DATE              NOT NULL,
+  PRIMARY KEY (colegio_id, ano, bimestre),
+  CONSTRAINT fk_periodo_colegio FOREIGN KEY (colegio_id) REFERENCES colegios (id) ON DELETE CASCADE,
+  CONSTRAINT ck_periodo_bimestre CHECK (bimestre BETWEEN 1 AND 4),
+  CONSTRAINT ck_periodo_datas CHECK (fim >= inicio)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ---------------------------------------------------------------------

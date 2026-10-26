@@ -11,6 +11,7 @@
   --aviso: #F59E0B; --aviso-bg: #FEF3C7; --aviso-tx: #92400E;
   --info: #3B82F6; --info-bg: #DBEAFE; --info-tx: #1E40AF;
   --roxo: #8B5CF6; --roxo-bg: #EDE9FE; --roxo-tx: #5B21B6;
+  --teal: #0D9488; --teal-bg: #CCFBF1; --teal-tx: #115E59;
   --sombra: 0 8px 24px rgba(15, 23, 42, .12);
 }
 [data-theme="dark"] {
@@ -21,6 +22,7 @@
   --aviso-bg: rgba(245, 158, 11, .15); --aviso-tx: #FCD34D;
   --info-bg: rgba(59, 130, 246, .15); --info-tx: #93C5FD;
   --roxo-bg: rgba(139, 92, 246, .15); --roxo-tx: #C4B5FD;
+  --teal-bg: rgba(20, 184, 166, .15); --teal-tx: #5EEAD4;
   --sombra: 0 8px 24px rgba(0, 0, 0, .4);
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -356,6 +358,67 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 .portal-alerta.aviso { background: var(--aviso-bg); color: var(--aviso-tx); }
 .portal-alerta.info { background: var(--info-bg); color: var(--info-tx); }
 
+/* ---------- Calendário ---------- */
+.cal-barra { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.cal-nav { display: flex; align-items: center; gap: 8px; }
+.cal-nav strong { font-family: 'Space Grotesk', sans-serif; font-size: 17px; min-width: 170px; text-align: center; }
+.cal-filtros { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.cal-filtros .select { width: auto; max-width: 200px; }
+.cal-grade { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.cal-semana { padding: 8px 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--muted); text-align: center;
+  background: var(--bg); border-bottom: 1px solid var(--border); }
+.cal-dia { min-height: 104px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 6px; display: flex;
+  flex-direction: column; gap: 3px; cursor: pointer; min-width: 0; background: var(--card); }
+.cal-dia:nth-child(7n) { border-right: 0; }
+.cal-dia.fds { background: var(--bg); }
+.cal-dia.fora { background: var(--bg); }
+.cal-dia.fora > * { opacity: .55; }
+.cal-dia.nao-letivo { background: var(--erro-bg); }
+.cal-dia:hover { box-shadow: inset 0 0 0 2px var(--amber); }
+.cal-num { font-size: 12px; font-weight: 600; color: var(--text-2); display: flex; justify-content: space-between; align-items: center; gap: 4px; }
+.cal-dia.hoje .cal-num b { background: var(--amber); color: var(--navy); border-radius: 10px; padding: 0 7px; }
+.cal-marco { font-size: 9px; color: var(--amber-d); font-weight: 700; text-transform: uppercase; letter-spacing: .3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-ev { display: block; width: 100%; text-align: left; border: 0; border-radius: 5px; padding: 2px 6px; font-size: 11px; line-height: 1.35;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; font-family: inherit; }
+.cal-ev.tag { display: inline-block; width: auto; cursor: default; font-weight: 600; }
+.cal-mais { font-size: 11px; color: var(--muted); padding-left: 4px; }
+.ev-evento { background: var(--info-bg); color: var(--info-tx); }
+.ev-prova { background: var(--roxo-bg); color: var(--roxo-tx); }
+.ev-reuniao { background: var(--ok-bg); color: var(--ok-tx); }
+.ev-conselho, .ev-bimestre { background: var(--bg); color: var(--text-2); box-shadow: inset 0 0 0 1px var(--border); }
+.ev-feriado { background: var(--erro-bg); color: var(--erro-tx); }
+.cal-dia.nao-letivo .ev-feriado { box-shadow: inset 0 0 0 1px var(--erro); }
+.ev-recesso { background: var(--aviso-bg); color: var(--aviso-tx); }
+.ev-letivo { background: var(--teal-bg); color: var(--teal-tx); }
+.cal-legenda { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+.cal-lista-dia { display: flex; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.cal-lista-dia:last-child { border-bottom: 0; }
+.cal-lista-data { width: 58px; text-align: center; flex-shrink: 0; }
+.cal-lista-data strong { font-family: 'Space Grotesk', sans-serif; font-size: 22px; display: block; line-height: 1.1; }
+.cal-lista-data small { color: var(--muted); text-transform: uppercase; font-size: 11px; }
+.cal-lista-itens { flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.cal-item { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; min-width: 0; }
+.cal-item .cal-ev { width: auto; flex-shrink: 0; }
+.cal-item > div { min-width: 0; }
+.cal-item strong { font-size: 14px; overflow-wrap: anywhere; }
+.bimestres { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.bimestre { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+.bimestre.atual { border-color: var(--amber); box-shadow: 0 0 0 3px rgba(245, 158, 11, .15); }
+.bimestre .dias { font-family: 'Space Grotesk', sans-serif; font-size: 26px; font-weight: 700; line-height: 1.2; }
+.bimestre small { display: block; color: var(--muted); font-size: 11px; }
+.linha-bim { display: grid; grid-template-columns: 110px 1fr 1fr; gap: 10px; align-items: center; margin-bottom: 10px; }
+.so-print-bloco { display: none; }
+@media (max-width: 900px) { .bimestres { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) {
+  .cal-dia { min-height: 56px; padding: 4px 3px; gap: 2px; }
+  .cal-dia .cal-ev { font-size: 0; padding: 0; height: 6px; border-radius: 3px; }
+  .cal-mais, .cal-marco { display: none; }
+  .cal-semana { font-size: 10px; padding: 6px 2px; }
+  .cal-nav strong { min-width: 0; font-size: 15px; }
+  .linha-bim { grid-template-columns: 1fr 1fr; }
+  .linha-bim > :first-child { grid-column: 1 / -1; }
+}
+
 /* ---------- Comunicados ---------- */
 .com-item { border: 1px solid var(--border); border-left: 4px solid var(--border); border-radius: 12px; padding: 14px 16px;
   background: var(--card); margin-bottom: 12px; }
@@ -399,6 +462,8 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
   .so-print { display: flex !important; }
   .medidor span, .medidor { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .card { break-inside: avoid; }
+  .so-print-bloco { display: block !important; }
+  .cal-print-mes { break-inside: avoid; margin-bottom: 14px; }
   .grade-kpi { grid-template-columns: repeat(4, 1fr); gap: 8px; }
   .kpi { padding: 10px; }
   .kpi-icone { display: none; }

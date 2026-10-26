@@ -1,7 +1,7 @@
 /* =====================================================================
  *  EduGest — Portal do Responsável
  *  Início · Boletim · Frequência · Financeiro, para cada filho vinculado,
- *  e os Comunicados do colégio para a família.
+ *  e os Comunicados e o Calendário do colégio para a família.
  *  A API só devolve dados dos alunos ligados a este usuário.
  * ===================================================================== */
 'use strict';
@@ -148,9 +148,10 @@
    *  Início
    * ===================================================================== */
   registrar('portal', async () => {
-    const [r, com] = await Promise.all([
+    const [r, com, agenda] = await Promise.all([
       EG.api('GET', `/portal/alunos/${est.alunoId}/resumo`),
-      EG.atualizarComunicadosPortal()
+      EG.atualizarComunicadosPortal(),
+      EG.api('GET', '/portal/calendario/proximos').catch(() => null)
     ]);
     const nome = (EG.estado.me.usuario.nome || '').split(' ')[0];
     const fr = r.frequencia; const nt = r.notas; const fi = r.financeiro;
@@ -197,6 +198,13 @@
           <span>${c.lidoEm ? EG.esc(c.titulo) : `<strong>${EG.esc(c.titulo)}</strong> <span class="selo selo-aviso">Novo</span>`}
             ${c.exigeCiencia && !c.cienteEm ? ' <span class="selo selo-erro">Confirme a ciência</span>' : ''}</span>
           <span class="quando">${EG.data(c.criadoEm)}</span></li>`).join('')}</ul>
+      </div>` : ''}
+      ${agenda && agenda.itens.length ? `<div class="card">
+        <div class="card-cab"><div class="card-titulo"><i class="ti ti-calendar-event"></i> Próximas datas</div>
+          <button class="btn btn-secundario btn-pequeno" data-action="ir" data-pagina="portal-calendario">Calendário</button></div>
+        <ul class="lista-atividade">${agenda.itens.slice(0, 4).map((e) => `<li>${EG.cal.tag(e.tipo)}
+          <span>${EG.esc(e.titulo)}${e.para.length ? `<br><small class="sub">${EG.esc(e.para.join(', '))}</small>` : ''}</span>
+          <span class="quando">${EG.data(e.data).slice(0, 5)}${e.dataFim ? ' a ' + EG.data(e.dataFim).slice(0, 5) : ''}${e.horaInicio ? ' · ' + e.horaInicio : ''}</span></li>`).join('')}</ul>
       </div>` : ''}
       <div class="linha-2" style="gap:20px">
         <div class="card" style="margin:0">
@@ -340,6 +348,62 @@
       <div class="com-texto ${aberto ? '' : 'resumo'}">${EG.esc(c.mensagem)}</div>
       <div class="com-acoes">${acoes}</div></div>`;
   }
+
+  /* =====================================================================
+   *  Calendário (eventos das turmas dos filhos que o colégio deixou visíveis)
+   * ===================================================================== */
+  const estCal = { mes: null };
+  EG.registrarModulo('portal-calendario', {
+    async render(el) {
+      await carregarPortal(false);
+      if (!portal.alunos.length) { el.innerHTML = semFilhos(); ligar(el, async () => EG.recarregarPagina()); return; }
+      if (!estCal.mes || estCal._chave !== EG.chaveSessao()) { estCal.mes = EG.hojeSP().slice(0, 7); estCal._chave = EG.chaveSessao(); }
+      const conhecidos = new Map();
+      let doMes = [];
+
+      async function desenhar() {
+        const { inicio, fim } = EG.cal.limitesGrade(estCal.mes);
+        const [r, prox] = await Promise.all([
+          EG.api('GET', `/portal/calendario?inicio=${inicio}&fim=${fim}`),
+          EG.api('GET', '/portal/calendario/proximos')
+        ]);
+        doMes = r.itens;
+        [...r.itens, ...prox.itens].forEach((e) => conhecidos.set(e.id, e));
+        const tipos = ['evento', 'prova', 'reuniao', 'feriado', 'recesso', 'letivo'];
+        el.innerHTML = `<div class="card">
+            <div class="card-cab"><div class="card-titulo"><i class="ti ti-calendar-event"></i> Calendário do ${EG.esc(portal.colegio.nome)}</div></div>
+            <div class="cal-barra"><div class="cal-nav">
+              <button class="btn-icone" data-nav="-1" title="Mês anterior"><i class="ti ti-chevron-left"></i></button>
+              <strong>${EG.cal.nomeMes(estCal.mes)}</strong>
+              <button class="btn-icone" data-nav="1" title="Próximo mês"><i class="ti ti-chevron-right"></i></button>
+              <button class="btn btn-secundario btn-pequeno" data-nav="hoje">Hoje</button></div></div>
+            ${EG.cal.grade(estCal.mes, doMes, [])}
+            <div class="cal-legenda">${tipos.map((t) => EG.cal.tag(t)).join('')}</div>
+          </div>
+          <div class="card"><div class="card-cab"><div class="card-titulo"><i class="ti ti-clock"></i> Próximas datas</div></div>
+            ${EG.cal.lista(prox.itens, 'Nenhuma data marcada para as próximas semanas')}</div>`;
+      }
+      function abrir(id) {
+        const e = conhecidos.get(id);
+        if (!e) return;
+        const m = EG.modal({ titulo: EG.cal.TIPOS[e.tipo] || 'Evento', largura: 520, corpo: EG.cal.detalhe(e),
+          botoes: [{ texto: 'Fechar', classe: 'btn-primario', acao: () => m.fechar() }] });
+      }
+      await desenhar();
+      el.onclick = (ev) => {
+        const nav = ev.target.closest('[data-nav]');
+        if (nav) {
+          estCal.mes = nav.dataset.nav === 'hoje' ? EG.hojeSP().slice(0, 7) : EG.cal.mesSeguinte(estCal.mes, Number(nav.dataset.nav));
+          desenhar().catch((e) => EG.toast(e.message, 'erro'));
+          return;
+        }
+        const evb = ev.target.closest('[data-ev]');
+        if (evb) { abrir(Number(evb.dataset.ev)); return; }
+        const dia = ev.target.closest('[data-dia]');
+        if (dia) EG.cal.modalDia(dia.dataset.dia, doMes, { aoEvento: abrir });
+      };
+    }
+  });
 
   EG.registrarModulo('portal-comunicados', {
     async render(el) {

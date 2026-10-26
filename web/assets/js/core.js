@@ -269,8 +269,21 @@ window.EG = window.EG || {};
   /** 'AAAA-MM-DD' de hoje no horário de São Paulo. */
   EG.hojeSP = () => fmtDiaSP.format(new Date());
   /** Bimestre provável pela data de hoje (fev–abr 1º, mai–jul 2º, ago–set 3º, out–dez 4º). */
+  /**
+   * Bimestre de hoje: pelas datas do calendário (Calendário › Definir
+   * bimestres); nas férias entre dois, o que acabou de terminar. Sem datas
+   * cadastradas, uma estimativa pelo mês.
+   */
   EG.bimestreAtual = () => {
-    const m = Number(EG.hojeSP().slice(5, 7));
+    const hoje = EG.hojeSP();
+    const ps = ((EG.estado.colegio && EG.estado.colegio.periodos) || []).slice().sort((a, b) => a.bimestre - b.bimestre);
+    if (ps.length) {
+      const dentro = ps.find((p) => p.inicio <= hoje && hoje <= p.fim);
+      if (dentro) return dentro.bimestre;
+      const passados = ps.filter((p) => p.fim < hoje);
+      return passados.length ? passados[passados.length - 1].bimestre : ps[0].bimestre;
+    }
+    const m = Number(hoje.slice(5, 7));
     return m <= 4 ? 1 : m <= 7 ? 2 : m <= 9 ? 3 : 4;
   };
   /** Mesmas regras da API: média das notas lançadas, 1 casa. */

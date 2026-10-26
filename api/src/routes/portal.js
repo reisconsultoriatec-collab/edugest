@@ -12,6 +12,8 @@
  *  GET  /comunicados/pendentes         não lidos, aguardando ciência e os últimos 3
  *  POST /comunicados/:id/lido          registra a leitura
  *  POST /comunicados/:id/ciente        confirma ciência (se o comunicado pedir)
+ *  GET  /calendario?inicio=&fim=       eventos visíveis às famílias dos filhos
+ *  GET  /calendario/proximos           próximas datas (Início)
  *
  *  Segurança: TODA consulta passa por meuFilho(), que só aceita alunos
  *  ligados a este usuário (responsavel_aluno) neste colégio.
@@ -20,13 +22,14 @@ const router = require('express').Router();
 const { query, queryUm } = require('../db');
 const { HttpErro, assincrono } = require('../middleware/erros');
 const v = require('../utils/validar');
-const { hojeSP, agoraSP } = require('../utils/datas');
+const { hojeSP, agoraSP, dataValida } = require('../utils/datas');
 const f = require('../services/financeiro');
 const { arred1 } = require('../services/escopo');
 const { montarBoletim } = require('../services/boletim');
 const { assinar } = require('../utils/links');
 const { TIPOS, DocErro } = require('../services/documentos');
 const { visiveisParaResponsavel } = require('../services/comunicados');
+const cal = require('../services/calendario');
 
 async function filhos(req) {
   return query(
@@ -339,6 +342,21 @@ router.post('/comunicados/:id/ciente', assincrono(async (req, res) => {
     [agora, c.id, req.usuario.id]
   );
   res.json(await minhaLeitura(req, c.id));
+}));
+
+/* ---------------- Calendário ---------------- */
+router.get('/calendario', assincrono(async (req, res) => {
+  const { inicio, fim } = req.query;
+  if (!dataValida(inicio) || !dataValida(fim) || fim < inicio || cal.diasEntre(inicio, fim) > 400) {
+    throw new HttpErro(400, 'Intervalo inválido', 'validacao');
+  }
+  res.json({ itens: await cal.eventosDaFamilia(req.colegioId, await filhos(req), inicio, fim) });
+}));
+
+router.get('/calendario/proximos', assincrono(async (req, res) => {
+  const hoje = hojeSP();
+  const itens = await cal.eventosDaFamilia(req.colegioId, await filhos(req), hoje, cal.somarDias(hoje, 45));
+  res.json({ itens: itens.slice(0, 5) });
 }));
 
 module.exports = router;

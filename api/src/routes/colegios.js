@@ -65,6 +65,10 @@ router.get('/atual', exigirColegio, assincrono(async (req, res) => {
     );
 
   const admin = req.perfil === 'admin';
+  // Bimestres do ano letivo (calendário): "bimestre atual" nas telas de notas
+  const periodos = c.ano_letivo
+    ? await query('SELECT bimestre, inicio, fim FROM periodos_letivos WHERE colegio_id = ? AND ano = ? ORDER BY bimestre', [req.colegioId, c.ano_letivo])
+    : [];
   res.json({
     id: c.id,
     nome: c.nome,
@@ -94,6 +98,7 @@ router.get('/atual', exigirColegio, assincrono(async (req, res) => {
       pixConfigurado: !!(c.pix_tipo && c.pix_chave && c.cidade)
     },
     disciplinas: disciplinas.map((d) => ({ id: d.id, nome: d.nome, ordem: d.ordem, ativo: !!d.ativo })),
+    periodos: periodos.map((p) => ({ bimestre: Number(p.bimestre), inicio: p.inicio, fim: p.fim })),
     pendentes: admin ? await contarPendentes(req.colegioId) : undefined,
     perfil: req.perfil,
     modulos: req.modulos
