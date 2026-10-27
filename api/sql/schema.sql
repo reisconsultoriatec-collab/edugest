@@ -728,7 +728,7 @@ CREATE TABLE IF NOT EXISTS log_seguranca (
   colegio_id   INT UNSIGNED    NULL,
   usuario_id   INT UNSIGNED    NULL,
   email        VARCHAR(160)    NULL,
-  tipo         ENUM('login_ok','login_falha','logout','timeout','cadastro','admin') NOT NULL,
+  tipo         ENUM('login_ok','login_falha','logout','timeout','cadastro','admin','senha_redefinida') NOT NULL,
   detalhes     VARCHAR(255)    NULL,
   ip           VARCHAR(45)     NULL,
   dispositivo  VARCHAR(120)    NULL,

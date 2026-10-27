@@ -12,7 +12,7 @@ const { query, queryUm } = require('../db');
 const { assincrono } = require('../middleware/erros');
 const v = require('../utils/validar');
 
-const TIPOS = ['login_ok', 'login_falha', 'logout', 'timeout', 'cadastro', 'admin'];
+const TIPOS = ['login_ok', 'login_falha', 'logout', 'timeout', 'cadastro', 'admin', 'senha_redefinida'];
 
 router.get('/log', assincrono(async (req, res) => {
   const tipo = v.umDe(req.query.tipo || null, TIPOS, 'Tipo', { obrigatorio: false });
