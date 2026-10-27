@@ -80,25 +80,31 @@ function rodape(doc, c, pagina, total) {
   if (total > 1) doc.texto(MR, y + 48, `Página ${pagina} de ${total}`, { tam: 6.8, cor: C.suave, alinhar: 'right' });
 }
 
-function assinaturas(doc, y, lista) {
-  const l = (lista || []).slice(0, 2);
+/** Assinaturas em linhas de duas (contrato: contratante, contratada e duas testemunhas). */
+function assinaturas(doc, y, lista, entreLinhas = 62) {
   const w = 200;
-  const centros = l.length === 1 ? [A4.larg / 2] : [A4.larg / 2 - 120, A4.larg / 2 + 120];
-  l.forEach((s, i) => {
-    const cx = centros[i];
-    doc.linha(cx - w / 2, y, cx + w / 2, y, { cor: C.texto, esp: 0.6 });
-    let yy = y + 13;
-    if (s.nome) { doc.texto(cx, yy, doc.cortar(s.nome, 9.5, w, true), { tam: 9.5, negrito: true, alinhar: 'center' }); yy += 12; }
-    doc.texto(cx, yy, s.cargo, { tam: 8.5, cor: C.suave, alinhar: 'center' }); yy += 11;
-    if (s.registro) doc.texto(cx, yy, doc.cortar(s.registro, 8, w), { tam: 8, cor: C.suave, alinhar: 'center' });
-  });
-  return y + 50;
+  const todas = lista || [];
+  for (let i = 0; i < todas.length; i += 2) {
+    const par = todas.slice(i, i + 2);
+    const centros = par.length === 1 ? [A4.larg / 2] : [A4.larg / 2 - 120, A4.larg / 2 + 120];
+    const yl = y + (i / 2) * entreLinhas;
+    par.forEach((s, j) => {
+      const cx = centros[j];
+      doc.linha(cx - w / 2, yl, cx + w / 2, yl, { cor: C.texto, esp: 0.6 });
+      let yy = yl + 13;
+      if (s.nome) { doc.texto(cx, yy, doc.cortar(s.nome, 9.5, w, true), { tam: 9.5, negrito: true, alinhar: 'center' }); yy += 12; }
+      doc.texto(cx, yy, s.cargo, { tam: 8.5, cor: C.suave, alinhar: 'center' }); yy += 11;
+      if (s.registro) doc.texto(cx, yy, doc.cortar(s.registro, 8, w), { tam: 8, cor: C.suave, alinhar: 'center' });
+    });
+  }
+  return y + Math.ceil(todas.length / 2) * entreLinhas;
 }
 
 /** Local, data e assinaturas; muda de página só se não couber (até a linha do rodapé). */
 function fechamento(doc, c, y, novaPagina, espaco = 72) {
-  if (y + espaco + 44 > LIMITE + 12) y = novaPagina();
-  doc.texto(MR, y, `${c.local ? `${c.local}, ` : ''}${c.data}.`, { tam: 11, alinhar: 'right' });
+  const linhasAss = Math.ceil((c.assinaturas || []).length / 2);
+  if (y + espaco + 44 + (linhasAss - 1) * 62 > LIMITE + 12) y = novaPagina();
+  doc.texto(MR, y, `${c.local ? `${c.local}, ` : ''}${c.data}.`, { tam: c.tipo === 'contrato' ? 10 : 11, alinhar: 'right' });
   return assinaturas(doc, y + espaco, c.assinaturas);
 }
 
@@ -120,14 +126,16 @@ function pdfDeclaracaoEscolar(c, { logo = null, cancelamento = null } = {}) {
   doc.pagina();
   let y = cabecalho(doc, c, logo);
   if (cancelamento) y = faixaCancelado(doc, y, cancelamento);
-  y += 56;
-  doc.texto(A4.larg / 2, y, c.titulo, { tam: 15, negrito: true, cor: C.tinta, alinhar: 'center' });
-  y += 46;
+  // Contrato: texto longo, letra menor e mais junto
+  const contrato = c.tipo === 'contrato';
+  y += contrato ? 34 : 56;
+  doc.texto(A4.larg / 2, y, c.titulo, { tam: contrato ? 13 : 15, negrito: true, cor: C.tinta, alinhar: 'center' });
+  y += contrato ? 30 : 46;
   (c.paragrafos || []).forEach((p) => {
-    y = doc.paragrafoRico(ML, y, p, { tam: 11.5, larg: LARG, entrelinha: 1.75, justificar: true, limite: LIMITE - 20, novaPagina });
-    y += 9;
+    y = doc.paragrafoRico(ML, y, p, { tam: contrato ? 10 : 11.5, larg: LARG, entrelinha: contrato ? 1.5 : 1.75, justificar: true, limite: LIMITE - 20, novaPagina });
+    y += contrato ? 5 : 9;
   });
-  fechamento(doc, c, y + 20, novaPagina);
+  fechamento(doc, c, y + (contrato ? 10 : 20), novaPagina, contrato ? 56 : 72);
   return finalizar(doc, c);
 }
 

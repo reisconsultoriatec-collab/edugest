@@ -91,6 +91,9 @@ app.use('/api/documentos', equipe, require('./src/routes/documentos')); // PDFs 
 app.use('/api/relatorios', equipe, require('./src/routes/relatorios'));
 app.use('/api/conciliacao', equipe, require('./src/routes/conciliacao'));
 
+// Captação — funil de matrículas (módulo funil)
+app.use('/api/funil', equipe, require('./src/routes/funil'));
+
 // Comunicação — cada rota confere o módulo
 app.use('/api/comunicados', equipe, require('./src/routes/comunicados'));
 app.use('/api/calendario', equipe, require('./src/routes/calendario'));

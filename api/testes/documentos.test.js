@@ -25,7 +25,13 @@ conf('parágrafos separados por linha em branco', S.paragrafos('A\nB\n\n  C  \n\
 const todos = Object.fromEntries(S.VARIAVEIS.map((v) => [v.chave, 'x']));
 const semDesconhecidas = Object.values(S.PADRAO).every((m) => !S.aplicarModelo(m.texto, todos).desconhecidas.length);
 conf('modelos padrão só usam variáveis conhecidas', semDesconhecidas, true);
-conf('5 modelos padrão, histórico por último', S.CHAVES, ['matricula', 'frequencia', 'transferencia', 'conclusao', 'historico']);
+conf('6 modelos padrão (com o contrato), histórico por último', S.CHAVES, ['matricula', 'frequencia', 'transferencia', 'conclusao', 'contrato', 'historico']);
+const vc = S.valores({ aluno: { nome: 'Ana', ra: '1', serie: '5º Ano', resp_nome: 'Maria' }, escola: { nome: 'Colégio X', cnpj: '1', diretor: {}, secretario: {}, valorMensalidade: 850, diaVencimento: 10 }, frequencia: null },
+  { valor: 1234.5, parcelas: 11 });
+conf('contrato: valores, anuidade e extenso', [vc.valor_mensalidade, vc.valor_anual, vc.parcelas, vc.dia_vencimento, vc.valor_mensalidade_extenso],
+  ['R$ 1.234,50', 'R$ 13.579,50', '11', '10', 'mil, duzentos e trinta e quatro reais e cinquenta centavos']);
+const vp = S.valores({ aluno: { nome: 'Ana', ra: '1' }, escola: { nome: 'Colégio X', diretor: {}, secretario: {}, valorMensalidade: 850, diaVencimento: 10 }, frequencia: null }, {});
+conf('contrato sem valores na emissão: padrão do colégio × 12', [vp.valor_mensalidade, vp.valor_anual, vp.parcelas], ['R$ 850,00', 'R$ 10.200,00', '12']);
 
 /* ---------- Negrito no PDF ---------- */
 conf('palavras com negrito colado na pontuação', palavrasRicas('que **Ana Souza**, RA 1').map((p) => p.map((q) => (q.b ? `[${q.t}]` : q.t)).join('')),

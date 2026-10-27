@@ -8,6 +8,9 @@
  *                    (ex.: mensalidade paga depois do envio → abre o recibo).
  *  GET /validar/:codigo  situação de um documento escolar (página
  *                    validar.html, aberta pelo QR Code do documento)
+ *  GET /funil/:token     dados do formulário de interesse do colégio
+ *  POST /funil/:token    interessado preenche o formulário (página
+ *                    interesse.html) e entra no funil de matrículas
  * ===================================================================== */
 const router = require('express').Router();
 const rateLimit = require('express-rate-limit');
@@ -15,6 +18,13 @@ const { ipCliente } = require('../utils/ip');
 const { verificar } = require('../utils/links');
 const { TIPOS, DocErro, carregarEscola } = require('../services/documentos');
 const { validarCodigo } = require('../services/secretaria');
+const { query, queryUm } = require('../db');
+const F = require('../services/funil');
+const v = require('../utils/validar');
+const { HttpErro } = require('../middleware/erros');
+const { agoraSP, hojeSP, dataValida } = require('../utils/datas');
+const { logoDoColegio } = require('../services/logo');
+const { paraDataUrl } = require('../utils/imagem');
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -100,6 +110,108 @@ router.get('/validar/:codigo', limiteValidacao, async (req, res) => {
   } catch (e) {
     console.error('[ERRO] validar documento', e);
     return res.status(500).json({ erro: 'Não foi possível consultar agora. Tente de novo em instantes.' });
+  }
+});
+
+/* ---------------- Formulário de interesse (funil) ---------------- */
+async function formularioAtivo(token) {
+  const t = String(token || '');
+  if (!/^[A-Za-z0-9_-]{16}$/.test(t)) return null;
+  return queryUm(
+    `SELECT f.colegio_id, f.titulo, f.mensagem, c.nome, cfg.ano_letivo
+       FROM funil_config f JOIN colegios c ON c.id = f.colegio_id AND c.ativo = 1
+       LEFT JOIN config_colegio cfg ON cfg.colegio_id = f.colegio_id
+      WHERE f.token = ? AND f.ativo = 1`,
+    [t]
+  );
+}
+
+const anosDoForm = (f) => { const a = Number(f.ano_letivo) || Number(hojeSP().slice(0, 4)); return [a, a + 1]; };
+
+router.get('/funil/:token', async (req, res) => {
+  res.set({ 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow' });
+  try {
+    const f = await formularioAtivo(req.params.token);
+    if (!f) return res.status(404).json({ erro: 'Este formulário não está disponível. Fale diretamente com o colégio.', codigo: 'indisponivel' });
+    const [turmas, logo] = await Promise.all([
+      query('SELECT DISTINCT serie FROM turmas WHERE colegio_id = ? AND ativo = 1', [f.colegio_id]),
+      logoDoColegio(f.colegio_id)
+    ]);
+    const doColegio = turmas.map((t) => t.serie).filter(Boolean);
+    const series = [...F.SERIES.filter((s) => doColegio.includes(s)), ...doColegio.filter((s) => !F.SERIES.includes(s))];
+    return res.json({
+      colegio: f.nome, logo: logo ? paraDataUrl(logo.dados) : null,
+      titulo: f.titulo || `Quero conhecer o ${f.nome}`,
+      mensagem: f.mensagem || 'Preencha seus dados e a nossa equipe entra em contato para apresentar a escola e agendar uma visita.',
+      series: series.length ? series : F.SERIES, anos: anosDoForm(f), turnos: F.TURNOS, origens: F.ORIGENS
+    });
+  } catch (e) {
+    console.error('[ERRO] formulário de interesse', e);
+    return res.status(500).json({ erro: 'Não foi possível abrir o formulário agora. Tente de novo em instantes.' });
+  }
+});
+
+// Envio: poucas tentativas por IP (evita robôs e cadastros em massa)
+const limiteEnvio = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 8,
+  keyGenerator: ipCliente,
+  validate: false,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { erro: 'Muitos envios seguidos. Aguarde alguns minutos e tente de novo.', codigo: 'limite' }
+});
+
+router.post('/funil/:token', limiteEnvio, async (req, res) => {
+  res.set({ 'Cache-Control': 'no-store' });
+  try {
+    const f = await formularioAtivo(req.params.token);
+    if (!f) return res.status(404).json({ erro: 'Este formulário não está disponível. Fale diretamente com o colégio.', codigo: 'indisponivel' });
+    const b = req.body || {};
+    // Campo isca: invisível para pessoas; robôs costumam preencher. Fingimos sucesso e não gravamos.
+    if (b.site) return res.status(201).json({ ok: true });
+    if (b.consentimento !== true) throw new HttpErro(400, 'Para enviar, autorize o colégio a entrar em contato', 'validacao');
+    const nascimento = b.nascimento ? String(b.nascimento).slice(0, 10) : null;
+    if (nascimento && (!dataValida(nascimento) || nascimento > hojeSP())) throw new HttpErro(400, 'Data de nascimento inválida', 'validacao');
+    const anos = anosDoForm(f);
+    const d = {
+      nome: v.texto(b.nomeAluno, 'Nome do(a) aluno(a)', { max: 100, min: 3, obrigatorio: true }),
+      nascimento,
+      serie: v.texto(b.serie, 'Série', { max: 40 }),
+      ano: b.ano ? v.umDe(Number(b.ano), anos, 'Ano letivo') : null,
+      turno: v.umDe(b.turno || null, Object.keys(F.TURNOS), 'Turno', { obrigatorio: false }),
+      responsavel: v.texto(b.responsavel, 'Nome do responsável', { max: 100, min: 3, obrigatorio: true }),
+      telefone: v.telefone(b.telefone, 'Telefone'),
+      email: v.email(b.email, 'E-mail'),
+      origem: b.origem ? v.umDe(b.origem, F.ORIGENS, 'Como conheceu o colégio') : null,
+      mensagem: v.texto(b.mensagem, 'Mensagem', { max: 500 })
+    };
+    if (!d.telefone) throw new HttpErro(400, 'Informe um telefone ou WhatsApp para contato', 'validacao');
+    const agora = agoraSP();
+    // Mesmo telefone + mesmo aluno nos últimos 30 dias, ainda em andamento: junta no cadastro existente
+    const recentes = await query(
+      `SELECT id, nome_aluno, telefone FROM leads
+        WHERE colegio_id = ? AND etapa IN ('lead','visita','proposta') AND criado_em >= ?`,
+      [f.colegio_id, `${new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)} 00:00:00`]
+    );
+    const igual = recentes.find((l) => F.digitos(l.telefone) === F.digitos(d.telefone) && F.semAcento(l.nome_aluno) === F.semAcento(d.nome));
+    if (igual) {
+      await query('UPDATE leads SET visto_em = NULL WHERE id = ?', [igual.id]);
+      await F.anotar(null, f.colegio_id, igual.id, 'sistema', `Novo envio pelo formulário de interesse${d.mensagem ? `: ${d.mensagem}` : ''}`, null);
+      return res.status(201).json({ ok: true });
+    }
+    const r = await query(
+      `INSERT INTO leads (colegio_id, nome_aluno, nascimento, serie_pretendida, ano_pretendido, turno_pretendido, responsavel, telefone, email,
+                          origem, obs, etapa, etapa_em, via_formulario, consentimento_em)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', ?, 1, ?)`,
+      [f.colegio_id, d.nome, d.nascimento, d.serie, d.ano, d.turno, d.responsavel, d.telefone, d.email, d.origem, d.mensagem, agora, agora]
+    );
+    await F.anotar(null, f.colegio_id, r.insertId, 'sistema', 'Cadastro pelo formulário de interesse (contato autorizado pelo responsável)', null);
+    return res.status(201).json({ ok: true });
+  } catch (e) {
+    if (e instanceof HttpErro || e.status === 400) return res.status(400).json({ erro: e.message, codigo: 'validacao' });
+    console.error('[ERRO] envio do formulário de interesse', e);
+    return res.status(500).json({ erro: 'Não foi possível enviar agora. Tente de novo em instantes.' });
   }
 });
 

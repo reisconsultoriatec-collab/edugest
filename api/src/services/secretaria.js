@@ -19,7 +19,7 @@ const crypto = require('crypto');
 const { query, queryUm } = require('../db');
 const { decifrar } = require('../utils/crypto');
 const { hojeSP, agoraSP } = require('../utils/datas');
-const { dataPorExtenso } = require('../utils/extenso');
+const { dataPorExtenso, valorPorExtenso } = require('../utils/extenso');
 const { montarBoletim } = require('./boletim');
 const { segmentoDaSerie } = require('./comunicados');
 const cal = require('./calendario');
@@ -56,6 +56,32 @@ const PADRAO = {
       + '[[, filho(a) de {filiacao}]], concluiu nesta instituição de ensino **{curso}** no ano letivo de **{ano_letivo}**, '
       + 'tendo cursado o(a) {serie} com aprovação.\n\nPor ser verdade, firmamos a presente declaração.'
   },
+  contrato: {
+    rotulo: 'Contrato de prestação de serviços',
+    titulo: 'CONTRATO DE PRESTAÇÃO DE SERVIÇOS EDUCACIONAIS',
+    texto: 'Pelo presente instrumento particular, de um lado **{escola}**[[, inscrita no CNPJ sob o nº {cnpj}]][[, com sede em {endereco_escola}]], '
+      + 'doravante denominada **CONTRATADA**, e de outro lado **{responsavel}**[[, CPF {responsavel_cpf}]][[, residente em {endereco}]], '
+      + 'doravante denominado(a) **CONTRATANTE**, responsável pelo(a) aluno(a) **{aluno}**[[, nascido(a) em {nascimento}]], '
+      + 'têm entre si justo e contratado o seguinte:'
+      + '\n\n**CLÁUSULA 1ª – DO OBJETO.** O presente contrato tem por objeto a prestação de serviços educacionais ao(à) aluno(a) acima '
+      + 'identificado(a) no ano letivo de **{ano_letivo}**, no(a) **{serie}**[[ ({segmento})]], turno {turno}, conforme o calendário escolar, '
+      + 'o projeto pedagógico e o regimento escolar da CONTRATADA, dos quais o(a) CONTRATANTE declara ter conhecimento.'
+      + '\n\n**CLÁUSULA 2ª – DO VALOR E DA FORMA DE PAGAMENTO.** Pelos serviços contratados, o(a) CONTRATANTE pagará à CONTRATADA a anuidade de '
+      + '**{valor_anual}** ({valor_anual_extenso}), dividida em **{parcelas}** parcelas mensais de **{valor_mensalidade}** '
+      + '({valor_mensalidade_extenso}), com vencimento no dia **{dia_vencimento}** de cada mês.'
+      + '\n\n**CLÁUSULA 3ª – DO ATRASO.** O pagamento feito após o vencimento estará sujeito a multa de 2% (dois por cento) e a juros de mora '
+      + 'de 1% (um por cento) ao mês.'
+      + '\n\n**CLÁUSULA 4ª – DAS OBRIGAÇÕES DA CONTRATADA.** Ministrar o ensino de acordo com a legislação vigente e o seu projeto pedagógico, '
+      + 'fornecer os documentos escolares do(a) aluno(a) e manter o(a) CONTRATANTE informado(a) sobre a frequência e o desempenho escolar.'
+      + '\n\n**CLÁUSULA 5ª – DAS OBRIGAÇÕES DO(A) CONTRATANTE.** Efetuar os pagamentos nas datas acordadas, zelar pela frequência e pela '
+      + 'pontualidade do(a) aluno(a), respeitar o regimento escolar e manter os seus dados atualizados na secretaria.'
+      + '\n\n**CLÁUSULA 6ª – DA RESCISÃO.** O(A) CONTRATANTE poderá rescindir este contrato a qualquer tempo, mediante pedido por escrito à '
+      + 'secretaria, ficando devidas as parcelas vencidas até o mês do pedido. Os documentos de transferência não serão retidos por '
+      + 'falta de pagamento (Lei nº 9.870/1999).'
+      + '\n\n**CLÁUSULA 7ª – DA VIGÊNCIA.** Este contrato vigora durante o ano letivo de {ano_letivo}.'
+      + '\n\n**CLÁUSULA 8ª – DO FORO.** Fica eleito o foro da comarca de {cidade} para resolver as questões deste contrato.'
+      + '\n\nE, por estarem de acordo, as partes assinam este instrumento em duas vias de igual teor, na presença das testemunhas abaixo.'
+  },
   historico: {
     rotulo: 'Histórico escolar',
     titulo: 'HISTÓRICO ESCOLAR',
@@ -81,7 +107,13 @@ const VARIAVEIS = [
   ['finalidade', 'Finalidade (padrão: os devidos fins)', 'emissao'],
   ['escola', 'Nome do colégio', 'config'], ['cnpj', 'CNPJ do colégio', 'config'], ['inep', 'Código INEP', 'config'],
   ['cidade', 'Cidade do colégio', 'config'], ['data', 'Data de hoje por extenso', 'auto'],
-  ['diretor', 'Nome do(a) diretor(a)', 'config'], ['secretario', 'Nome do(a) secretário(a)', 'config']
+  ['diretor', 'Nome do(a) diretor(a)', 'config'], ['secretario', 'Nome do(a) secretário(a)', 'config'],
+  ['endereco', 'Endereço do aluno', 'ficha'], ['endereco_escola', 'Endereço do colégio', 'config'],
+  ['responsavel_cpf', 'CPF do responsável', 'ficha'], ['responsavel_telefone', 'Telefone do responsável', 'ficha'],
+  ['responsavel_email', 'E-mail do responsável', 'ficha'],
+  ['valor_mensalidade', 'Valor da mensalidade', 'emissao'], ['valor_mensalidade_extenso', 'Mensalidade por extenso', 'emissao'],
+  ['parcelas', 'Número de parcelas', 'emissao'], ['dia_vencimento', 'Dia do vencimento', 'emissao'],
+  ['valor_anual', 'Valor anual (mensalidade × parcelas)', 'emissao'], ['valor_anual_extenso', 'Valor anual por extenso', 'emissao']
 ].map(([chave, rotulo, onde]) => ({ chave, rotulo, onde }));
 const ROTULO_VAR = Object.fromEntries(VARIAVEIS.map((v) => [v.chave, v]));
 
@@ -100,6 +132,7 @@ const RESULTADOS = ['Aprovado', 'Aprovado pelo Conselho de Classe', 'Promovido',
 const dataBR = (iso) => (iso ? String(iso).slice(0, 10).split('-').reverse().join('/') : '');
 const fmtCpf = (c) => { const d = String(c || '').replace(/\D/g, ''); return d.length === 11 ? d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : ''; };
 const pct = (n) => `${Number(n).toFixed(1).replace('.', ',')}%`;
+const moeda = (n) => `R$ ${Number(n).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.')}`;
 const fmtNota = (n) => (n === null || n === undefined || n === '' ? '' : typeof n === 'number' ? n.toFixed(1).replace('.', ',') : String(n));
 const semAcento = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 const limpar = (v) => String(v ?? '').replace(/\*/g, '').replace(/\s+/g, ' ').trim();
@@ -140,7 +173,7 @@ async function escolaDocumentos(colegioId) {
   const c = await queryUm(
     `SELECT c.nome, c.cnpj, c.telefone, c.email, c.endereco, c.inep, c.uf, c.ato_autorizacao,
             c.diretor_nome, c.diretor_registro, c.secretario_nome, c.secretario_registro,
-            cfg.cidade, cfg.ano_letivo
+            cfg.cidade, cfg.ano_letivo, cfg.valor_mensalidade, cfg.dia_vencimento
        FROM colegios c LEFT JOIN config_colegio cfg ON cfg.colegio_id = c.id WHERE c.id = ?`,
     [colegioId]
   );
@@ -148,6 +181,8 @@ async function escolaDocumentos(colegioId) {
   return {
     nome: c.nome, cnpj: c.cnpj, telefone: c.telefone, email: c.email, endereco: c.endereco,
     inep: c.inep, uf: c.uf, ato: c.ato_autorizacao, cidade: c.cidade, anoLetivo: c.ano_letivo,
+    valorMensalidade: c.valor_mensalidade === null || c.valor_mensalidade === undefined ? null : Number(c.valor_mensalidade),
+    diaVencimento: c.dia_vencimento ? Number(c.dia_vencimento) : null,
     diretor: { nome: c.diretor_nome, registro: c.diretor_registro },
     secretario: { nome: c.secretario_nome, registro: c.secretario_registro }
   };
@@ -247,7 +282,30 @@ function valores(ctx, campos = {}) {
     data_saida: dataBR(campos.dataSaida || a.data_saida), destino: campos.destino || '',
     finalidade: campos.finalidade || 'os devidos fins',
     escola: e.nome, cnpj: e.cnpj || '', inep: e.inep || '', cidade: e.cidade || '', data: dataPorExtenso(hojeSP()),
-    diretor: e.diretor.nome || '', secretario: e.secretario.nome || ''
+    diretor: e.diretor.nome || '', secretario: e.secretario.nome || '',
+    endereco: a.endereco || '', endereco_escola: enderecoEscola(e),
+    responsavel_cpf: fmtCpf(decifrar(a.resp_cpf_cript)), responsavel_telefone: a.resp_telefone || '', responsavel_email: a.resp_email || '',
+    ...valoresContrato(e, campos)
+  };
+}
+
+function enderecoEscola(e) {
+  const cid = [e.cidade, e.uf].filter(Boolean).join('/');
+  if (!e.endereco) return cid;
+  return cid && !semAcento(e.endereco).includes(semAcento(e.cidade)) ? `${e.endereco} – ${cid}` : e.endereco;
+}
+
+/** Valores do contrato: os da emissão ou, se não vierem, os padrões do colégio (12 parcelas). */
+function valoresContrato(e, campos) {
+  const valor = campos.valor !== undefined && campos.valor !== null ? Number(campos.valor) : e.valorMensalidade;
+  const parcelas = campos.parcelas ? Number(campos.parcelas) : 12;
+  const dia = campos.diaVencimento ? Number(campos.diaVencimento) : e.diaVencimento;
+  if (!valor) return { valor_mensalidade: '', valor_mensalidade_extenso: '', parcelas: String(parcelas), dia_vencimento: dia ? String(dia) : '', valor_anual: '', valor_anual_extenso: '' };
+  const anual = Math.round(valor * 100 * parcelas) / 100;
+  return {
+    valor_mensalidade: moeda(valor), valor_mensalidade_extenso: valorPorExtenso(valor),
+    parcelas: String(parcelas), dia_vencimento: dia ? String(dia) : '',
+    valor_anual: moeda(anual), valor_anual_extenso: valorPorExtenso(anual)
   };
 }
 
@@ -401,10 +459,17 @@ async function montarDeclaracao(colegioId, ctx, modelo, campos, { textoEditado, 
   const vals = valores(ctx, campos);
   const titulo = limpar(tituloEditado || modelo.titulo).toUpperCase().slice(0, 120) || modelo.titulo;
   const r = aplicarModelo(textoEditado !== undefined && textoEditado !== null ? textoEditado : modelo.texto, vals);
-  return {
-    titulo, texto: r.texto, faltando: r.faltando, desconhecidas: r.desconhecidas,
-    conteudo: { ...base(ctx, titulo), tipo: modelo.chave, paragrafos: paragrafos(r.texto) }
-  };
+  const conteudo = { ...base(ctx, titulo), tipo: modelo.chave, paragrafos: paragrafos(r.texto) };
+  if (modelo.chave === 'contrato') {
+    const e = ctx.escola;
+    conteudo.assinaturas = [
+      { nome: ctx.aluno.resp_nome || '', cargo: 'CONTRATANTE', registro: vals.responsavel_cpf ? `CPF ${vals.responsavel_cpf}` : '' },
+      { nome: e.nome, cargo: 'CONTRATADA', registro: e.cnpj ? `CNPJ ${e.cnpj}` : '' },
+      { nome: '', cargo: 'Testemunha', registro: 'Nome e CPF:' },
+      { nome: '', cargo: 'Testemunha', registro: 'Nome e CPF:' }
+    ];
+  }
+  return { titulo, texto: r.texto, faltando: r.faltando, desconhecidas: r.desconhecidas, conteudo };
 }
 
 async function montarHistorico(colegioId, ctx, modelo, { observacao, tituloEditado, textoEditado } = {}) {

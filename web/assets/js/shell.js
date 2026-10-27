@@ -29,7 +29,7 @@
       { id: 'relatorios', rotulo: 'Relatórios', icone: 'ti-report-analytics', pronto: true },
       { id: 'conciliacao', rotulo: 'Conciliação Bancária', icone: 'ti-arrows-exchange', pronto: true }
     ] },
-    { secao: 'Captação', itens: [{ id: 'funil', rotulo: 'Funil de Matrículas', icone: 'ti-filter' }] },
+    { secao: 'Captação', itens: [{ id: 'funil', rotulo: 'Funil de Matrículas', icone: 'ti-filter', pronto: true }] },
     { secao: 'Comunicação', itens: [{ id: 'comunicados', rotulo: 'Comunicados', icone: 'ti-speakerphone', pronto: true }] },
     { secao: 'Portal do Responsável', fixo: true, itens: [
       { id: 'portal', modulo: 'portal', rotulo: 'Início', icone: 'ti-home-heart', pronto: true },
@@ -80,6 +80,8 @@
     montarMenu();
     // Responsável: número de comunicados novos no menu
     if (col.perfil === 'responsavel' && EG.atualizarComunicadosPortal) EG.atualizarComunicadosPortal();
+    // Equipe com o funil: novos interessados e contatos do dia no menu
+    if (col.perfil !== 'responsavel' && EG.atualizarFunil) EG.atualizarFunil();
     EG.$('#telaAuth').hidden = true;
     EG.$('#app').hidden = false;
     EG.carregando(false);

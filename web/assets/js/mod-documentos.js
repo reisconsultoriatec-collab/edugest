@@ -6,13 +6,14 @@
  * ===================================================================== */
 'use strict';
 (function (EG) {
-  const TIPOS = { matricula: 'Matrícula', frequencia: 'Frequência', transferencia: 'Transferência', conclusao: 'Conclusão', historico: 'Histórico escolar', livre: 'Modelo do colégio' };
+  const TIPOS = { matricula: 'Matrícula', frequencia: 'Frequência', transferencia: 'Transferência', conclusao: 'Conclusão', contrato: 'Contrato', historico: 'Histórico escolar', livre: 'Modelo do colégio' };
   const ONDE = { ficha: 'ficha do aluno', turma: 'turma do aluno', diario: 'Diário de Classe', config: 'Configurações', emissao: 'campos da emissão', auto: '' };
   const est = {};
   let opcoes = null;
   let previa = null;       // última prévia (POST /previa)
   let textoProprio = null; // texto ajustado só para este documento (null = texto do modelo)
   let ultimo = null;       // último documento emitido nesta tela
+  let pendente = null;     // vindo de outra tela (ex.: matrícula no Funil): { alunoId, modelo }
   let espera = null;
 
   const semAcento = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -90,7 +91,12 @@
               ${m.chave === 'transferencia' ? `
               <div class="campo"><label>Data da transferência</label><input class="input" type="date" data-campo="dataSaida" max="${hoje}" value="${EG.esc(est.dataSaida || hoje)}"></div>
               <div class="campo"><label>Escola de destino (opcional)</label><input class="input" data-campo="destino" maxlength="120" value="${EG.esc(est.destino || '')}" placeholder="Ex.: E.E. Prof. João Silva"></div>` : ''}
-            </div>`}
+            </div>
+            ${m.chave === 'contrato' ? `<div class="linha-3">
+              <div class="campo"><label>Valor da mensalidade (R$)</label><input class="input" data-campo="valor" inputmode="decimal" value="${EG.esc(est.valor || EG.valorCampo(EG.estado.colegio.config.valorMensalidade))}"></div>
+              <div class="campo"><label>Nº de parcelas</label><input class="input" type="number" data-campo="parcelas" min="1" max="12" value="${EG.esc(est.parcelas || 12)}"></div>
+              <div class="campo"><label>Dia do vencimento</label><input class="input" type="number" data-campo="diaVencimento" min="1" max="28" value="${EG.esc(est.diaVencimento || EG.estado.colegio.config.diaVencimento || 10)}"></div>
+            </div>` : ''}`}
         </div>
         <div data-resultado>${ultimo ? blocoUltimo() : ''}</div>
         <div data-previa>${est.alunoId ? '' : '<div class="vazio"><i class="ti ti-file-search"></i>Escolha o aluno para ver o documento</div>'}</div>
@@ -102,6 +108,7 @@
     const c = {};
     EG.$$('[data-campo]', corpo).forEach((i) => { c[i.dataset.campo] = i.value.trim(); });
     est.finalidade = c.finalidade || ''; est.destino = c.destino || ''; est.dataSaida = c.dataSaida || ''; est.observacao = c.observacao || '';
+    if ('valor' in c) { est.valor = c.valor; est.parcelas = c.parcelas; est.diaVencimento = c.diaVencimento; }
     return c;
   }
 
@@ -109,7 +116,10 @@
     const c = lerCampos(corpo);
     return {
       modelo: est.modelo, alunoId: Number(est.alunoId),
-      campos: { finalidade: c.finalidade || null, destino: c.destino || null, dataSaida: c.dataSaida || null },
+      campos: {
+        finalidade: c.finalidade || null, destino: c.destino || null, dataSaida: c.dataSaida || null,
+        ...('valor' in c ? { valor: EG.lerDinheiro(c.valor), parcelas: c.parcelas || null, diaVencimento: c.diaVencimento || null } : {})
+      },
       observacao: c.observacao || null,
       texto: textoProprio === null ? undefined : textoProprio
     };
@@ -256,7 +266,7 @@
         EG.toast(`Documento nº ${emitido.numero} emitido`);
         if (emitido.efeitos && emitido.efeitos.transferido) opcoes = await EG.api('GET', '/secretaria/opcoes');
         // cada emissão é um pedido: limpa finalidade, destino, observação e texto ajustado
-        textoProprio = null; est.finalidade = ''; est.destino = ''; est.observacao = ''; est.dataSaida = '';
+        textoProprio = null; est.finalidade = ''; est.destino = ''; est.observacao = ''; est.dataSaida = ''; est.valor = ''; est.parcelas = ''; est.diaVencimento = '';
         desenharEmitir(corpo);
       }
     }
@@ -551,10 +561,20 @@
   /* =====================================================================
    *  Registro e eventos
    * ===================================================================== */
+  /** Abre Documentos → Emitir já com o aluno e o modelo escolhidos (ex.: contrato depois da matrícula). */
+  EG.abrirEmissao = function (alunoId, modelo, campos) {
+    pendente = { alunoId, modelo, campos: campos || {} };
+    EG.navegar('documentos');
+  };
+
   EG.registrarModulo('documentos', {
     async render(el) {
       EG.filtrosDaSessao(est, { aba: 'emitir', alunoId: '', modelo: 'matricula', ano: '', tipo: '', situacao: '', busca: '', histAlunoId: '', finalidade: '', destino: '', dataSaida: '', observacao: '' });
       previa = null; textoProprio = null; ultimo = null;
+      if (pendente) {
+        Object.assign(est, { aba: 'emitir', alunoId: String(pendente.alunoId), modelo: pendente.modelo, finalidade: '', valor: '', parcelas: '', diaVencimento: '' }, pendente.campos);
+        pendente = null;
+      }
       opcoes = await EG.api('GET', '/secretaria/opcoes');
       el.innerHTML = '<div data-topo></div><div data-abas></div><div data-corpo></div>';
       await desenhar(el);

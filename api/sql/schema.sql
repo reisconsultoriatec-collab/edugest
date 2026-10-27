@@ -518,18 +518,63 @@ CREATE TABLE IF NOT EXISTS leads (
   id                INT UNSIGNED NOT NULL AUTO_INCREMENT,
   colegio_id        INT UNSIGNED NOT NULL,
   nome_aluno        VARCHAR(100) NOT NULL,
-  serie_pretendida  VARCHAR(30)  NULL,
+  nascimento        DATE         NULL,
+  serie_pretendida  VARCHAR(40)  NULL,
+  ano_pretendido    SMALLINT UNSIGNED NULL,
+  turno_pretendido  VARCHAR(20)  NULL,
   responsavel       VARCHAR(100) NULL,
   telefone          VARCHAR(20)  NULL,
   email             VARCHAR(160) NULL,
-  origem            VARCHAR(30)  NULL,
+  origem            VARCHAR(40)  NULL,
   etapa             ENUM('lead','visita','proposta','matriculado','perdido') NOT NULL DEFAULT 'lead',
   obs               VARCHAR(500) NULL,
+  proximo_contato   DATE         NULL,
+  visita_em         DATETIME     NULL,
+  motivo_perda      VARCHAR(60)  NULL,
+  aluno_id          INT UNSIGNED NULL     COMMENT 'Aluno criado na matrícula',
+  via_formulario    TINYINT(1)   NOT NULL DEFAULT 0,
+  consentimento_em  DATETIME     NULL     COMMENT 'Aceite do contato no formulário público (LGPD)',
+  visto_em          DATETIME     NULL     COMMENT 'Quando a equipe abriu o cadastro',
+  etapa_em          DATETIME     NULL     COMMENT 'Desde quando está na etapa atual',
+  criado_por        INT UNSIGNED NULL,
+  atualizado_por    INT UNSIGNED NULL,
   criado_em         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   atualizado_em     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY idx_leads_etapa (colegio_id, etapa),
-  CONSTRAINT fk_leads_colegio FOREIGN KEY (colegio_id) REFERENCES colegios (id) ON DELETE CASCADE
+  KEY idx_leads_contato (colegio_id, proximo_contato),
+  CONSTRAINT fk_leads_colegio FOREIGN KEY (colegio_id) REFERENCES colegios (id) ON DELETE CASCADE,
+  CONSTRAINT fk_leads_aluno   FOREIGN KEY (aluno_id)   REFERENCES alunos (id)   ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ---------- histórico de contatos ----------
+CREATE TABLE IF NOT EXISTS lead_interacoes (
+  id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  colegio_id    INT UNSIGNED NOT NULL,
+  lead_id       INT UNSIGNED NOT NULL,
+  tipo          ENUM('nota','contato','etapa','sistema') NOT NULL DEFAULT 'nota',
+  texto         VARCHAR(600) NOT NULL,
+  usuario_id    INT UNSIGNED NULL,
+  usuario_nome  VARCHAR(100) NULL,
+  criado_em     DATETIME     NOT NULL,
+  PRIMARY KEY (id),
+  KEY idx_interacoes_lead (lead_id, criado_em),
+  CONSTRAINT fk_interacao_colegio FOREIGN KEY (colegio_id) REFERENCES colegios (id) ON DELETE CASCADE,
+  CONSTRAINT fk_interacao_lead    FOREIGN KEY (lead_id)    REFERENCES leads (id)    ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ---------- formulário público ----------
+CREATE TABLE IF NOT EXISTS funil_config (
+  colegio_id     INT UNSIGNED NOT NULL,
+  ativo          TINYINT(1)   NOT NULL DEFAULT 0,
+  token          CHAR(16)     NOT NULL COMMENT 'Parte do link público (trocar o link invalida o antigo)',
+  titulo         VARCHAR(120) NULL,
+  mensagem       VARCHAR(500) NULL,
+  atualizado_por INT UNSIGNED NULL,
+  atualizado_em  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (colegio_id),
+  UNIQUE KEY uk_funil_token (token),
+  CONSTRAINT fk_funil_colegio FOREIGN KEY (colegio_id) REFERENCES colegios (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS comunicados (

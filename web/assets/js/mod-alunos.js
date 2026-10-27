@@ -226,6 +226,8 @@
       + `Para acessar: entre em ${location.origin}, clique em *Sou responsável* e crie sua conta usando o código acima.`;
   }
 
+  EG.mensagemCodigoAluno = mensagemCodigo;
+
   /* ---------- Eventos ---------- */
   async function aoClicar(ev, el) {
     const b = ev.target.closest('[data-action]');

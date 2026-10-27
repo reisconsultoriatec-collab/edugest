@@ -6,12 +6,13 @@
       const e = EG.estado;
       const col = e.colegio;
       const ehProfessor = e.perfil === 'professor' && EG.pode('grade');
-      const [atividades, r, com, agenda, minha] = await Promise.all([
+      const [atividades, r, com, agenda, minha, funil] = await Promise.all([
         EG.api('GET', '/colegios/atual/atividades?limite=15'),
         EG.api('GET', '/colegios/atual/resumo'),
         EG.pode('comunicados') ? EG.api('GET', '/comunicados/recentes?limite=5').catch(() => null) : null,
         EG.pode('calendario') ? EG.api('GET', '/calendario/proximos?dias=30&limite=6').catch(() => null) : null,
-        ehProfessor ? EG.api('GET', '/grade/minha').catch(() => null) : null
+        ehProfessor ? EG.api('GET', '/grade/minha').catch(() => null) : null,
+        EG.pode('funil') && e.perfil !== 'professor' ? EG.api('GET', '/funil/resumo').catch(() => null) : null
       ]);
       const nome = (e.me.usuario.nome || '').split(' ')[0];
       if (r.pendentes) EG.atualizarPendentes(r.pendentes.total);
@@ -44,6 +45,7 @@
         </div>
 
         ${minha && minha.vinculado && minha.total ? cardAulasHoje(minha) : ''}
+        ${funil && (funil.novos || funil.contatosHoje || funil.atrasados || funil.visitasHoje) ? cardFunil(funil) : ''}
         ${agenda || com ? `<div class="${agenda && com ? 'linha-2' : ''}" style="gap:20px;align-items:start;margin-bottom:20px">
           ${agenda ? cardAgenda(agenda.itens, !!com) : ''}
           ${com ? cardComunicados(com.itens, !!agenda) : ''}
@@ -58,6 +60,21 @@
         </div>`;
     }
   });
+
+  /** Captação: o que pede atenção hoje no funil de matrículas. */
+  function cardFunil(f) {
+    const item = (n, rot, cor) => (n ? `<div class="funil-dash-item"><strong style="color:${cor}">${n}</strong><span>${rot}</span></div>` : '');
+    return `<div class="card">
+      <div class="card-cab"><div class="card-titulo"><i class="ti ti-filter"></i> Captação de alunos</div>
+        <button class="btn btn-secundario btn-pequeno" data-action="ir" data-pagina="funil">Abrir o funil</button></div>
+      <div class="funil-dash">
+        ${item(f.novos, 'novo(s) interessado(s)', 'var(--info)')}
+        ${item(f.contatosHoje, 'contato(s) para hoje', 'var(--amber-d)')}
+        ${item(f.atrasados, 'contato(s) atrasado(s)', 'var(--erro)')}
+        ${item(f.visitasHoje, 'visita(s) hoje', 'var(--roxo)')}
+        <div class="funil-dash-item"><strong>${f.ativos}</strong><span>em andamento</span></div>
+      </div></div>`;
+  }
 
   /** Últimos comunicados no ar, com quantos responsáveis já leram. */
   function cardComunicados(itens, lado) {

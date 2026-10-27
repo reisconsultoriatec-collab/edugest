@@ -31,9 +31,13 @@ Reis Tecnologia · API versão 1.1.0
 | `GET /api/portal/alunos/:id/grade` | responsável | Horário de aulas do filho |
 | `GET /api/secretaria/opcoes` · `POST /previa` · `POST /emitir` | módulo documentos | Declarações (matrícula, frequência, transferência, conclusão e modelos do colégio) e histórico escolar. Emitir grava número e código de validação; a transferência pode marcar o aluno e cancelar mensalidades futuras |
 | `GET /api/secretaria/emitidos` · `POST /emitidos/:id/link` · `POST /emitidos/:id/cancelar` | módulo documentos (cancelar: admin) | Livro de registro, 2ª via idêntica, envio por WhatsApp (link que expira) e cancelamento com motivo |
-| `GET/POST/PUT/DELETE /api/secretaria/modelos` | módulo documentos | Textos dos documentos ajustados pelo colégio ({variáveis}, **negrito**, [[trechos opcionais]]); DELETE volta ao padrão |
+| `GET/POST/PUT/DELETE /api/secretaria/modelos` | módulo documentos | Textos dos documentos (inclusive o contrato de prestação de serviços) ajustados pelo colégio ({variáveis}, **negrito**, [[trechos opcionais]]); DELETE volta ao padrão |
 | `GET /api/secretaria/historico/:alunoId` · `PUT …/turmas/:turmaId` · `POST/PUT/DELETE …/anos` | módulo documentos | Anos do histórico: os do EduGest (calculados, com ajustes) e os anteriores digitados |
 | `GET /api/secretaria/cabecalho` · `PUT` · `GET/PUT/DELETE /api/secretaria/logo` | módulo documentos (alterar: admin) | INEP, UF, ato de autorização, diretor(a), secretário(a) e logotipo (sai em todos os PDFs, inclusive cobranças) |
+| `GET /api/funil/opcoes` · `/resumo` · `GET/POST /leads` · `GET/PUT/DELETE /leads/:id` | módulo funil | Funil de matrículas: interessados, contatos para hoje e atrasados (menu e Dashboard) |
+| `POST /api/funil/leads/:id/etapa` · `/interacoes` · `/matricular` | módulo funil (matricular: + alunos; gerar mensalidades: + mensalidades) | Etapas (perdido pede motivo), histórico de contatos e matrícula: cria o aluno (ou vincula um já cadastrado) e gera as mensalidades do ano |
+| `GET /api/funil/indicadores` · `GET/PUT /api/funil/formulario` · `POST /formulario/novo-link` | módulo funil (formulário: admin) | Números da captação e o formulário público de interesse |
+| `GET/POST /api/publico/funil/:token` | público (envio: 8 a cada 15 min por IP) | Página `interesse.html`: o responsável preenche e entra no funil (aceite de contato, campo isca contra robôs, envios repetidos juntados) |
 | `GET /api/publico/validar/:codigo` | público (60 consultas a cada 15 min por IP) | Página `validar.html`, aberta pelo QR Code: documento válido ou cancelado, com o nome do aluno abreviado |
 
 Proteções: cadastro limitado a 10 tentativas por IP a cada 15 min; admin não altera nem remove o próprio acesso; o colégio nunca fica sem admin ativo; tudo filtrado pelo colégio atual.

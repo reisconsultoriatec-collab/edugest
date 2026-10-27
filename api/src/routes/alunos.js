@@ -25,10 +25,9 @@ const { HttpErro, assincrono } = require('../middleware/erros');
 const v = require('../utils/validar');
 const { atividade } = require('../utils/auditoria');
 const { cifrar, decifrar } = require('../utils/crypto');
-const { codigoAcessoAluno } = require('../utils/codigos');
+const { inserirAluno, lerAluno, STATUS } = require('../services/matricula');
 const { hojeSP, dataValida } = require('../utils/datas');
 
-const STATUS = ['ativo', 'inativo', 'transferido'];
 const MAX_AUTORIZADOS = 6;
 
 router.use(exigirModulo('alunos'));
@@ -71,28 +70,6 @@ async function gravarDocumentais(conn, colegioId, alunoId, docs) {
   );
 }
 
-function lerAluno(b) {
-  const nascimento = b.nascimento ? String(b.nascimento) : null;
-  if (nascimento && (!dataValida(nascimento) || nascimento > hojeSP())) {
-    throw new HttpErro(400, 'Data de nascimento inválida', 'validacao');
-  }
-  const turmaId = b.turmaId === '' || b.turmaId === null || b.turmaId === undefined
-    ? null : v.inteiro(b.turmaId, 'Turma', { min: 1 });
-  return {
-    nome: v.texto(b.nome, 'Nome do aluno', { max: 100, min: 3, obrigatorio: true }),
-    nascimento,
-    cpf: v.cpf(b.cpf, 'CPF do aluno'),
-    rg: v.texto(b.rg, 'RG', { max: 20 }),
-    endereco: v.texto(b.endereco, 'Endereço', { max: 200 }),
-    turma_id: turmaId,
-    status: v.umDe(b.status || 'ativo', STATUS, 'Status'),
-    resp_nome: v.texto(b.respNome, 'Nome do responsável', { max: 100 }),
-    resp_parentesco: v.texto(b.respParentesco, 'Parentesco', { max: 20 }),
-    resp_cpf: v.cpf(b.respCpf, 'CPF do responsável'),
-    resp_telefone: v.telefone(b.respTelefone, 'Telefone do responsável'),
-    resp_email: v.email(b.respEmail, 'E-mail do responsável')
-  };
-}
 
 /* Dados usados nos documentos (histórico, declarações). Só entram os campos
  * enviados — assim nenhuma tela antiga apaga o que a secretaria preencheu. */
@@ -215,15 +192,6 @@ router.get('/:id', assincrono(async (req, res) => {
 }));
 
 /* ---------------- Cadastrar ---------------- */
-async function proximoRA(conn, colegioId, ano) {
-  const [[r]] = await conn.query(
-    `SELECT MAX(CAST(SUBSTRING(ra, 5) AS UNSIGNED)) AS ultimo
-       FROM alunos WHERE colegio_id = ? AND ra REGEXP ? FOR UPDATE`,
-    [colegioId, `^${ano}[0-9]{4,}$`]
-  );
-  return `${ano}${String(Number(r.ultimo || 0) + 1).padStart(4, '0')}`;
-}
-
 router.post('/', assincrono(async (req, res) => {
   const a = lerAluno(req.body);
   const docs = lerDocumentais(req.body);
@@ -235,18 +203,9 @@ router.post('/', assincrono(async (req, res) => {
   for (let tentativa = 0; tentativa < 5 && !criado; tentativa++) {
     try {
       criado = await transacao(async (conn) => {
-        const ra = raInformado || await proximoRA(conn, req.colegioId, hojeSP().slice(0, 4));
-        const codigo = codigoAcessoAluno();
-        const [r] = await conn.query(
-          `INSERT INTO alunos (colegio_id, ra, nome, nascimento, cpf_cript, rg_cript, endereco, turma_id, status,
-                               codigo_acesso, resp_nome, resp_parentesco, resp_cpf_cript, resp_telefone, resp_email)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [req.colegioId, ra, a.nome, a.nascimento, cifrar(a.cpf), cifrar(a.rg), a.endereco, a.turma_id, a.status,
-            codigo, a.resp_nome, a.resp_parentesco, cifrar(a.resp_cpf), a.resp_telefone, a.resp_email]
-        );
-        await gravarDocumentais(conn, req.colegioId, r.insertId, docs);
-        await gravarAutorizados(conn, req.colegioId, r.insertId, autorizados);
-        return { id: r.insertId, ra, codigo };
+        const r = await inserirAluno(conn, req.colegioId, a, { ra: raInformado, docs });
+        await gravarAutorizados(conn, req.colegioId, r.id, autorizados);
+        return r;
       });
     } catch (e) {
       if (e.code !== 'ER_DUP_ENTRY') throw e;

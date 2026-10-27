@@ -65,7 +65,11 @@ function lerCampos(c) {
   return {
     finalidade: v.texto(c.finalidade, 'Finalidade', { max: 150 }),
     destino: v.texto(c.destino, 'Escola de destino', { max: 120 }),
-    dataSaida
+    dataSaida,
+    // contrato
+    valor: v.decimal(c.valor, 'Valor da mensalidade', { min: 0, max: 99999 }),
+    parcelas: v.inteiro(c.parcelas, 'Número de parcelas', { min: 1, max: 12 }),
+    diaVencimento: v.inteiro(c.diaVencimento, 'Dia do vencimento', { min: 1, max: 28 })
   };
 }
 
@@ -191,6 +195,10 @@ async function montar(req) {
   if (modelo.chave !== 'historico' && !a.turma_id) avisos.push('O aluno não está em nenhuma turma: série, turma e turno saem em branco.');
   if (['matricula', 'frequencia'].includes(modelo.chave) && a.status !== 'ativo') {
     avisos.push(`A situação do aluno é "${a.status}". Confira antes de declarar matrícula ou frequência.`);
+  }
+  if (modelo.chave === 'contrato') {
+    if (!modelo.personalizado) avisos.push('Este é o modelo de referência do sistema: revise o texto com o jurídico do colégio (na aba Modelos) antes de usar com as famílias.');
+    if (!a.resp_nome) avisos.push('A ficha do aluno não tem o nome do responsável: o contrato fica sem o CONTRATANTE.');
   }
   let transferencia = null;
   if (modelo.chave === 'transferencia') {
