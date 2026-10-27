@@ -13,11 +13,15 @@
  *    l  lote do mês (por turma ou todas), para imprimir
  *    d  declaração anual de pagamentos (IR)
  *    x  PDF de teste da chave PIX (R$ 1,00)
+ *    e  documento escolar já emitido (declaração ou histórico), a partir
+ *       do conteúdo gravado no livro de registro — 2ª via idêntica
  * ===================================================================== */
 const { query, queryUm } = require('../db');
 const { decifrar } = require('../utils/crypto');
 const { hojeSP, agoraSP } = require('../utils/datas');
 const L = require('../pdf/layouts');
+const { logoDoColegio } = require('./logo');
+const { pdfDeclaracaoEscolar, pdfHistoricoEscolar } = require('../pdf/escolares');
 
 class DocErro extends Error {
   constructor(mensagem, status = 410) {
@@ -44,7 +48,7 @@ async function carregarEscola(colegioId) {
   );
   if (!c) throw new DocErro('Colégio não encontrado.', 404);
   return {
-    escola: { nome: c.nome, cnpj: c.cnpj, telefone: c.telefone, email: c.email, endereco: c.endereco },
+    escola: { nome: c.nome, cnpj: c.cnpj, telefone: c.telefone, email: c.email, endereco: c.endereco, logo: await logoDoColegio(colegioId) },
     cobranca: {
       pix: c.pix_tipo && c.pix_chave && c.cidade
         ? { chave: c.pix_chave, beneficiario: c.pix_beneficiario || c.nome, cidade: c.cidade }
@@ -189,6 +193,28 @@ const TIPOS = {
     },
     gerar(d) {
       return { pdf: L.pdfDeclaracao({ ...d, emitidoEm: emitidoEm() }), nome: `declaracao-pagamentos-${d.ano}-${slug(d.aluno.nome)}.pdf` };
+    }
+  },
+
+  /* ---------- Documento escolar (secretaria) ---------- */
+  e: {
+    async carregar({ c, i }) {
+      const d = await queryUm(
+        'SELECT id, tipo, titulo, aluno_nome, conteudo, cancelado_em, motivo_cancelamento FROM documentos_emitidos WHERE id = ? AND colegio_id = ?',
+        [i, c]
+      );
+      if (!d) throw new DocErro('Documento não encontrado. Fale com o colégio.', 404);
+      let conteudo;
+      try { conteudo = JSON.parse(d.conteudo); } catch (e) { throw new DocErro('Não foi possível abrir este documento. Fale com o colégio.', 500); }
+      return { registro: d, conteudo, logo: await logoDoColegio(c) };
+    },
+    gerar(d) {
+      const r = d.registro;
+      const cancelamento = r.cancelado_em
+        ? { data: String(r.cancelado_em).slice(0, 10).split('-').reverse().join('/'), motivo: r.motivo_cancelamento }
+        : null;
+      const gerar = r.tipo === 'historico' ? pdfHistoricoEscolar : pdfDeclaracaoEscolar;
+      return { pdf: gerar(d.conteudo, { logo: d.logo, cancelamento }), nome: `${slug(r.titulo)}-${slug(r.aluno_nome)}.pdf` };
     }
   },
 

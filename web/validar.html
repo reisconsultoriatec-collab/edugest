@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Validar documento · EduGest</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231A2744'/%3E%3Cpath d='M16 7 4 13l12 6 12-6z' fill='%23F59E0B'/%3E%3Cpath d='M9 16v5c0 2 3.5 4 7 4s7-2 7-4v-5l-7 3.5z' fill='%23F59E0B' opacity='.85'/%3E%3C/svg%3E">
+<style>
+  :root { --navy: #1A2744; --amber: #F59E0B; --bg: #F1F5F9; --card: #fff; --text: #1E293B; --text2: #64748B; --border: #E2E8F0;
+    --ok: #065F46; --okbg: #D1FAE5; --erro: #991B1B; --errobg: #FEE2E2; --aviso: #92400E; --avisobg: #FEF3C7; }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; background: radial-gradient(circle at 20% 10%, rgba(245, 158, 11, .12), transparent 40%), var(--bg);
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--text); display: flex; justify-content: center; padding: 32px 16px; }
+  main { width: 100%; max-width: 480px; }
+  .marca { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 22px; color: var(--navy); margin-bottom: 18px; }
+  .marca span { color: var(--amber); }
+  .marca svg { width: 34px; height: 34px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 24px 22px; box-shadow: 0 8px 24px rgba(15, 23, 42, .06); }
+  h1 { font-size: 19px; margin: 0 0 6px; color: var(--navy); }
+  p.sub { margin: 0 0 18px; color: var(--text2); font-size: 14px; line-height: 1.5; }
+  form { display: flex; gap: 8px; }
+  input { flex: 1; min-width: 0; padding: 11px 12px; border: 1px solid var(--border); border-radius: 8px; font: inherit; font-size: 17px;
+    letter-spacing: 2px; text-transform: uppercase; font-variant-numeric: tabular-nums; }
+  input:focus { outline: none; border-color: var(--amber); box-shadow: 0 0 0 3px rgba(245, 158, 11, .18); }
+  button { padding: 11px 18px; border: 0; border-radius: 8px; background: var(--amber); color: var(--navy); font: inherit; font-weight: 700; cursor: pointer; }
+  button:disabled { opacity: .6; cursor: default; }
+  #res { margin-top: 18px; }
+  .r { border-radius: 10px; padding: 16px; }
+  .r h2 { margin: 0 0 10px; font-size: 17px; display: flex; align-items: center; gap: 8px; }
+  .r.ok { background: var(--okbg); color: var(--ok); }
+  .r.erro { background: var(--errobg); color: var(--erro); }
+  .r.aviso { background: var(--avisobg); color: var(--aviso); }
+  dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 14px; color: var(--text); }
+  dt { color: var(--text2); }
+  dd { margin: 0; font-weight: 600; word-break: break-word; }
+  .nota { margin: 12px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--text2); }
+  footer { text-align: center; margin-top: 18px; font-size: 12px; color: #94A3B8; }
+</style>
+</head>
+<body>
+<main>
+  <div class="marca"><svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="6" fill="#1A2744"/><path d="M16 7 4 13l12 6 12-6z" fill="#F59E0B"/><path d="M9 16v5c0 2 3.5 4 7 4s7-2 7-4v-5l-7 3.5z" fill="#F59E0B" opacity=".85"/></svg>Edu<span>Gest</span></div>
+  <div class="card">
+    <h1>Validar documento escolar</h1>
+    <p class="sub">Digite o código de validação impresso no rodapé do documento, ou leia o QR Code com a câmera do celular.</p>
+    <form id="form" autocomplete="off">
+      <input id="codigo" maxlength="14" placeholder="XXXX-XXXX-XXXX" aria-label="Código de validação" inputmode="text" autocapitalize="characters" spellcheck="false">
+      <button id="botao" type="submit">Validar</button>
+    </form>
+    <div id="res" aria-live="polite"></div>
+  </div>
+  <footer>EduGest · Reis Tecnologia</footer>
+</main>
+<script>
+(function () {
+  'use strict';
+  var campo = document.getElementById('codigo');
+  var botao = document.getElementById('botao');
+  var res = document.getElementById('res');
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var limpar = function (s) { return String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12); };
+  var formatar = function (s) { return limpar(s).replace(/(.{4})(?=.)/g, '$1-'); };
+
+  function mostrar(classe, titulo, corpo) {
+    res.innerHTML = '<div class="r ' + classe + '"><h2>' + titulo + '</h2>' + (corpo || '') + '</div>';
+  }
+
+  function validar() {
+    var c = limpar(campo.value);
+    if (c.length !== 12) { mostrar('aviso', 'Código incompleto', '<p class="nota" style="margin:0">O código tem 12 letras e números, no formato XXXX-XXXX-XXXX.</p>'); return; }
+    botao.disabled = true; botao.textContent = 'Consultando...';
+    fetch('/api/publico/validar/' + encodeURIComponent(c), { headers: { Accept: 'application/json' } })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { status: r.status, d: d }; }); })
+      .then(function (x) {
+        var d = x.d || {};
+        if (x.status === 200 && d.situacao) {
+          var linhas = '<dl><dt>Documento</dt><dd>' + esc(d.documento) + '</dd><dt>Número</dt><dd>' + esc(d.numero) + '</dd>'
+            + '<dt>Aluno(a)</dt><dd>' + esc(d.aluno) + '</dd><dt>Emitido em</dt><dd>' + esc(d.emitidoEm) + '</dd>'
+            + '<dt>Instituição</dt><dd>' + esc(d.escola) + '</dd><dt>Código</dt><dd>' + esc(d.codigo) + '</dd></dl>';
+          if (d.situacao === 'valido') {
+            mostrar('ok', '✓ Documento válido', linhas + '<p class="nota">Confira se os dados acima são os mesmos do documento que você tem em mãos. Por privacidade, o nome do aluno aparece abreviado.</p>');
+          } else {
+            mostrar('erro', '✕ Documento cancelado', linhas + '<p class="nota"><strong>Cancelado em ' + esc(d.canceladoEm) + '</strong>' + (d.motivo ? ': ' + esc(d.motivo) : '') + '. Este documento não tem validade; peça um novo à instituição.</p>');
+          }
+        } else if (x.status === 404) {
+          mostrar('aviso', 'Código não encontrado', '<p class="nota" style="margin:0">Confira se o código foi digitado corretamente. Se estiver certo, o documento não foi emitido pelo EduGest.</p>');
+        } else if (x.status === 429) {
+          mostrar('aviso', 'Muitas consultas', '<p class="nota" style="margin:0">Aguarde alguns minutos e tente de novo.</p>');
+        } else {
+          mostrar('erro', 'Não foi possível consultar', '<p class="nota" style="margin:0">' + esc(d.erro || 'Tente novamente em instantes.') + '</p>');
+        }
+      })
+      .catch(function () { mostrar('erro', 'Sem conexão', '<p class="nota" style="margin:0">Verifique a internet e tente de novo.</p>'); })
+      .then(function () { botao.disabled = false; botao.textContent = 'Validar'; });
+  }
+
+  campo.addEventListener('input', function () {
+    var fim = campo.selectionStart === campo.value.length;
+    campo.value = formatar(campo.value);
+    if (fim) campo.selectionStart = campo.selectionEnd = campo.value.length;
+  });
+  document.getElementById('form').addEventListener('submit', function (e) { e.preventDefault(); validar(); });
+  var inicial = new URLSearchParams(location.search).get('c');
+  if (inicial) { campo.value = formatar(inicial); validar(); } else campo.focus();
+})();
+</script>
+</body>
+</html>

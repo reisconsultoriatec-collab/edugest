@@ -1,6 +1,7 @@
 /* =====================================================================
  *  EduGest — Configurações do colégio  [admin]
- *  Dados cadastrais · Parâmetros · Cobrança e PIX · Disciplinas · Convite
+ *  Dados cadastrais · Logotipo e documentos oficiais · Parâmetros ·
+ *  Cobrança e PIX · Disciplinas · Convite
  * ===================================================================== */
 'use strict';
 (function (EG) {
@@ -49,6 +50,73 @@
       </div>`;
   }
 
+  /* ---------- Logotipo e documentos oficiais ---------- */
+  /** Arquivo escolhido → JPEG reduzido (até 600 × 300), fundo branco no lugar do transparente. */
+  async function prepararLogo(arquivo) {
+    if (!/^image\/(png|jpeg|webp)$/.test(arquivo.type)) throw EG.erro('Use uma imagem PNG, JPG ou WEBP');
+    if (arquivo.size > 8 * 1024 * 1024) throw EG.erro('Imagem muito grande (máximo 8 MB)');
+    const url = URL.createObjectURL(arquivo);
+    try {
+      const im = await new Promise((ok, falha) => {
+        const i = new Image();
+        i.onload = () => ok(i);
+        i.onerror = () => falha(EG.erro('Não foi possível ler esta imagem'));
+        i.src = url;
+      });
+      const k = Math.min(1, 600 / im.naturalWidth, 300 / im.naturalHeight);
+      const cv = document.createElement('canvas');
+      cv.width = Math.max(1, Math.round(im.naturalWidth * k));
+      cv.height = Math.max(1, Math.round(im.naturalHeight * k));
+      const cx = cv.getContext('2d');
+      cx.fillStyle = '#ffffff';
+      cx.fillRect(0, 0, cv.width, cv.height);
+      cx.drawImage(im, 0, 0, cv.width, cv.height);
+      let dados = cv.toDataURL('image/jpeg', 0.92);
+      if (dados.length > 500000) dados = cv.toDataURL('image/jpeg', 0.75);
+      return dados;
+    } finally { URL.revokeObjectURL(url); }
+  }
+
+  async function carregarBlocoDocumentos(el) {
+    const bloco = el.querySelector('[data-bloco="documentos"]');
+    if (!bloco) return;
+    const [c, logo] = await Promise.all([
+      EG.api('GET', '/secretaria/cabecalho'),
+      EG.api('GET', '/secretaria/logo').catch(() => null)
+    ]);
+    const v = (x) => `value="${EG.esc(x)}"`;
+    bloco.innerHTML = `
+      <div class="card-cab"><div class="card-titulo"><i class="ti ti-certificate"></i> Logotipo e documentos oficiais</div></div>
+      <p class="card-desc">Saem no cabeçalho e nas assinaturas das declarações e do histórico escolar (menu <strong>Documentos</strong>). O logotipo aparece também nas cobranças, recibos e carnês.</p>
+      <div class="logo-box">
+        <div class="logo-previa" data-logo-previa>${logo ? `<img src="${logo.imagem}" alt="Logotipo do colégio">` : '<span><i class="ti ti-photo"></i>Sem logotipo</span>'}</div>
+        <div>
+          <input type="file" accept="image/png,image/jpeg,image/webp" data-logo-arquivo hidden>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-secundario" data-action="logo-enviar"><i class="ti ti-upload"></i> ${logo ? 'Trocar logotipo' : 'Enviar logotipo'}</button>
+            ${logo ? '<button class="btn btn-secundario" data-action="logo-remover"><i class="ti ti-trash"></i> Remover</button>' : ''}
+          </div>
+          <small class="sub" style="display:block;margin-top:6px">PNG, JPG ou WEBP. A imagem é reduzida automaticamente; fundo transparente fica branco. Prefira o logotipo na horizontal ou quadrado.</small>
+        </div>
+      </div>
+      <div class="linha-2">
+        <div class="campo"><label>Código INEP</label><input class="input" name="inep" maxlength="8" inputmode="numeric" ${v(c.inep)} placeholder="8 números"></div>
+        <div class="campo"><label>UF do colégio</label><select class="select" name="uf"><option value="">—</option>${EG.UFS.map((u) => `<option ${c.uf === u ? 'selected' : ''}>${u}</option>`).join('')}</select></div>
+      </div>
+      <div class="campo"><label>Ato de autorização / credenciamento</label>
+        <textarea class="textarea" name="atoAutorizacao" rows="2" maxlength="300" placeholder="Ex.: Portaria da Diretoria de Ensino de 12/03/2010, publicada no DOE de 13/03/2010">${EG.esc(c.atoAutorizacao)}</textarea></div>
+      <div class="linha-2">
+        <div class="campo"><label>Diretor(a)</label><input class="input" name="diretorNome" maxlength="100" ${v(c.diretorNome)}></div>
+        <div class="campo"><label>Registro do(a) diretor(a)</label><input class="input" name="diretorRegistro" maxlength="40" ${v(c.diretorRegistro)} placeholder="Ex.: RG 12.345.678-9"></div>
+      </div>
+      <div class="linha-2">
+        <div class="campo"><label>Secretário(a) escolar</label><input class="input" name="secretarioNome" maxlength="100" ${v(c.secretarioNome)}></div>
+        <div class="campo"><label>Registro do(a) secretário(a)</label><input class="input" name="secretarioRegistro" maxlength="40" ${v(c.secretarioRegistro)} placeholder="Ex.: RG 98.765.432-1"></div>
+      </div>
+      <p class="sub" style="margin:-2px 0 12px">A cidade que sai na data dos documentos é a do bloco <strong>Cobrança e PIX</strong>${c.cidade ? ` (hoje: ${EG.esc(c.cidade)})` : ' — ainda não preenchida'}.</p>
+      <button class="btn btn-primario" data-action="salvar-documentos"><i class="ti ti-device-floppy"></i> Salvar dados dos documentos</button>`;
+  }
+
   function render(el, c) {
     const cfg = c.config;
     el.innerHTML = `
@@ -68,6 +136,8 @@
           <small>Quem se cadastrar pelo código do colégio poderá avisar este número para pedir aprovação.</small></div>
         <button class="btn btn-primario" data-action="salvar-dados"><i class="ti ti-device-floppy"></i> Salvar dados</button>
       </div>
+
+      <div class="card" data-bloco="documentos"><div class="vazio"><div class="spinner pequeno" style="margin:0 auto"></div></div></div>
 
       <div class="card" data-bloco="config">
         <div class="card-cab"><div class="card-titulo"><i class="ti ti-adjustments"></i> Parâmetros</div></div>
@@ -104,6 +174,10 @@
           <button class="btn btn-secundario btn-pequeno" data-action="regenerar-convite"><i class="ti ti-refresh"></i> Gerar novo</button>
         </div>
       </div>`;
+    carregarBlocoDocumentos(el).catch((e) => {
+      const b = el.querySelector('[data-bloco="documentos"]');
+      if (b) b.innerHTML = `<div class="msg-erro">Não foi possível carregar o logotipo e os dados dos documentos: ${EG.esc(e.message)}</div>`;
+    });
   }
 
   function linhaDisciplina(d) {
@@ -145,6 +219,17 @@
           await EG.api('PUT', '/colegios/atual/cobranca', d);
           render(el, await recarregarColegio());
           EG.toast(d.pixTipo ? 'Cobrança salva. Gere o PDF de teste para conferir o QR Code.' : 'Cobrança salva (sem PIX)');
+        } else if (acao === 'salvar-documentos') {
+          const r = await EG.api('PUT', '/secretaria/cabecalho', EG.lerForm(b.closest('[data-bloco]')));
+          await carregarBlocoDocumentos(el);
+          EG.toast(r.pendencias.length ? `Salvo. Ainda falta: ${r.pendencias.join(', ')}` : 'Dados dos documentos salvos');
+        } else if (acao === 'logo-enviar') {
+          EG.$('[data-logo-arquivo]', el).click();
+        } else if (acao === 'logo-remover') {
+          if (!(await EG.confirmar('Remover o logotipo? Os PDFs passam a sair sem ele.', { perigo: true, textoOk: 'Remover' }))) return;
+          await EG.api('DELETE', '/secretaria/logo');
+          await carregarBlocoDocumentos(el);
+          EG.toast('Logotipo removido');
         } else if (acao === 'teste-pix') {
           await EG.abrirDocumento({ tipo: 'teste' });
         } else if (acao === 'add-disciplina') {
@@ -188,7 +273,22 @@
     async render(el) {
       render(el, await recarregarColegio());
       el.onclick = (ev) => aoClicar(ev, el);
-      el.onchange = (ev) => {
+      el.onchange = async (ev) => {
+        if (ev.target.matches('[data-logo-arquivo]')) {
+          const arq = ev.target.files && ev.target.files[0];
+          ev.target.value = '';
+          if (!arq) return;
+          const btn = EG.$('[data-action="logo-enviar"]', el);
+          await EG.guarda(btn, async () => {
+            try {
+              const imagem = await prepararLogo(arq);
+              await EG.api('PUT', '/secretaria/logo', { imagem });
+              await carregarBlocoDocumentos(el);
+              EG.toast('Logotipo salvo. Ele já sai nos documentos e nas cobranças.');
+            } catch (e) { EG.toast(e.message, 'erro'); }
+          });
+          return;
+        }
         if (!ev.target.matches('[data-pix-tipo]')) return;
         const chave = EG.$('[name="pixChave"]', el);
         chave.disabled = !ev.target.value;

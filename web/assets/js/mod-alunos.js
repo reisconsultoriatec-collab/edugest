@@ -101,8 +101,10 @@
   }
 
   /* ---------- Ficha ---------- */
-  async function modalAluno(id, el) {
-    const a = id ? await EG.api('GET', `/alunos/${id}`) : { status: 'ativo', turmaId: filtro.turmaId && filtro.turmaId !== 'sem' ? Number(filtro.turmaId) : '' };
+  /** Ficha do aluno. Aberta de outra tela (ex.: Documentos): el = null e aoSalvar é chamado depois de salvar. */
+  async function modalAluno(id, el, aoSalvar) {
+    const a = id ? await EG.api('GET', `/alunos/${id}`) : { status: 'ativo', nacionalidade: 'Brasileira', turmaId: filtro.turmaId && filtro.turmaId !== 'sem' ? Number(filtro.turmaId) : '' };
+    const depois = async () => { if (el) { await carregarDados(); render(el); } else if (aoSalvar) await aoSalvar(); };
     const novo = !id;
     const m = EG.modal({
       titulo: novo ? 'Novo aluno' : a.nome,
@@ -123,6 +125,23 @@
           <div class="campo"><label>Status</label><select class="select" name="status">${EG.opcoes(Object.entries(STATUS).map(([k, r]) => ({ value: k, label: r })), a.status)}</select></div>
         </div>
         <div class="campo"><label>Endereço</label><input class="input" name="endereco" maxlength="200" value="${EG.esc(a.endereco)}"></div>
+
+        <div class="rotulo" style="margin:18px 0 4px;padding-top:14px;border-top:1px solid var(--border)"><i class="ti ti-file-certificate"></i> Dados para documentos</div>
+        <p class="sub" style="margin-bottom:10px">Saem no histórico escolar e nas declarações emitidas em <strong>Documentos</strong>.</p>
+        <div class="linha-2">
+          <div class="campo"><label>Nome da mãe</label><input class="input" name="maeNome" maxlength="100" value="${EG.esc(a.maeNome)}"></div>
+          <div class="campo"><label>Nome do pai</label><input class="input" name="paiNome" maxlength="100" value="${EG.esc(a.paiNome)}"></div>
+        </div>
+        <div class="linha-3">
+          <div class="campo"><label>Naturalidade (cidade)</label><input class="input" name="naturalidade" maxlength="60" value="${EG.esc(a.naturalidade)}" placeholder="Ex.: Itapevi"></div>
+          <div class="campo"><label>UF</label><select class="select" name="naturalidadeUf"><option value="">—</option>${EG.UFS.map((u) => `<option ${a.naturalidadeUf === u ? 'selected' : ''}>${u}</option>`).join('')}</select></div>
+          <div class="campo"><label>Nacionalidade</label><input class="input" name="nacionalidade" maxlength="40" value="${EG.esc(a.nacionalidade)}" placeholder="Brasileira"></div>
+        </div>
+        <div class="linha-2">
+          <div class="campo"><label>Data de matrícula</label><input class="input" type="date" name="dataMatricula" value="${EG.esc(a.dataMatricula)}"></div>
+          <div class="campo"><label>Data de saída</label><input class="input" type="date" name="dataSaida" value="${EG.esc(a.dataSaida)}">
+            <small>Preenchida ao emitir a declaração de transferência.</small></div>
+        </div>
 
         <div class="rotulo" style="margin:18px 0 10px;padding-top:14px;border-top:1px solid var(--border)"><i class="ti ti-user-heart"></i> Responsável</div>
         <div class="linha-2">
@@ -164,7 +183,7 @@
             m.fechar();
             EG.toast('Ficha atualizada');
           }
-          await carregarDados(); render(el);
+          await depois();
         } }
       ]
     });
@@ -195,7 +214,7 @@
           const r = await EG.api('POST', `/alunos/${id}/novo-codigo`);
           codigoEl.textContent = r.codigoAcesso;
           EG.toast('Novo código gerado');
-          await carregarDados(); render(el);
+          await depois();
         }
       } catch (e) { m.erro(e.message); }
     });
@@ -228,6 +247,12 @@
       }
     } catch (e) { EG.toast(e.message, 'erro'); }
   }
+
+  /** Abre a ficha a partir de outra tela (precisa do módulo alunos). */
+  EG.abrirFichaAluno = async function (id, aoSalvar) {
+    if (!turmas.length) turmas = await EG.api('GET', '/turmas');
+    return modalAluno(id, null, aoSalvar);
+  };
 
   EG.registrarModulo('alunos', {
     async render(el) {

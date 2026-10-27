@@ -6,12 +6,15 @@
  *                    declaração). O link vale até a data gravada nele e o
  *                    documento sempre reflete a situação ATUAL no banco
  *                    (ex.: mensalidade paga depois do envio → abre o recibo).
+ *  GET /validar/:codigo  situação de um documento escolar (página
+ *                    validar.html, aberta pelo QR Code do documento)
  * ===================================================================== */
 const router = require('express').Router();
 const rateLimit = require('express-rate-limit');
 const { ipCliente } = require('../utils/ip');
 const { verificar } = require('../utils/links');
 const { TIPOS, DocErro, carregarEscola } = require('../services/documentos');
+const { validarCodigo } = require('../services/secretaria');
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -74,6 +77,29 @@ router.get('/doc/:token', async (req, res) => {
     if (e instanceof DocErro) return pagina(res, e.status, 'Documento indisponível', e.message, await nomeEscola(d.c));
     console.error('[ERRO] documento', d.k, e);
     return pagina(res, 500, 'Não foi possível gerar o documento', 'Tente novamente em alguns instantes.');
+  }
+});
+
+// Validação: limite mais baixo (dificulta tentar códigos ao acaso)
+const limiteValidacao = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 60,
+  keyGenerator: ipCliente,
+  validate: false,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { erro: 'Muitas consultas. Aguarde alguns minutos e tente de novo.', codigo: 'limite' }
+});
+
+router.get('/validar/:codigo', limiteValidacao, async (req, res) => {
+  res.set({ 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow' });
+  try {
+    const r = await validarCodigo(req.params.codigo);
+    if (!r) return res.status(404).json({ erro: 'Nenhum documento encontrado com este código.', codigo: 'nao_encontrado' });
+    return res.json(r);
+  } catch (e) {
+    console.error('[ERRO] validar documento', e);
+    return res.status(500).json({ erro: 'Não foi possível consultar agora. Tente de novo em instantes.' });
   }
 });
 

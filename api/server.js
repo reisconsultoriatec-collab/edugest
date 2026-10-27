@@ -87,7 +87,7 @@ app.use('/api/bolsas', equipe, require('./src/routes/bolsas'));
 app.use('/api/contas', equipe, require('./src/routes/contas'));
 app.use('/api/fluxo', equipe, require('./src/routes/fluxo'));
 app.use('/api/financeiro', equipe, require('./src/routes/financeiro'));
-app.use('/api/documentos', equipe, require('./src/routes/documentos'));
+app.use('/api/documentos', equipe, require('./src/routes/documentos')); // PDFs financeiros
 app.use('/api/relatorios', equipe, require('./src/routes/relatorios'));
 app.use('/api/conciliacao', equipe, require('./src/routes/conciliacao'));
 
@@ -95,6 +95,9 @@ app.use('/api/conciliacao', equipe, require('./src/routes/conciliacao'));
 app.use('/api/comunicados', equipe, require('./src/routes/comunicados'));
 app.use('/api/calendario', equipe, require('./src/routes/calendario'));
 app.use('/api/grade', equipe, require('./src/routes/grade'));
+
+// Secretaria: declarações, histórico escolar, modelos e logotipo — módulo documentos
+app.use('/api/secretaria', equipe, require('./src/routes/secretaria'));
 
 // Portal do responsável — só os filhos vinculados ao usuário
 app.use('/api/portal', autenticar, carregarUsuario, exigirColegio, exigirPerfil('responsavel'), require('./src/routes/portal'));

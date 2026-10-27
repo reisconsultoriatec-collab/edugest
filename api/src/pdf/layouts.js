@@ -11,6 +11,7 @@ const { Documento, A4 } = require('./pdf');
 const { gerarQR } = require('./qr');
 const { payloadPix } = require('../utils/pix');
 const { valorPorExtenso, dataPorExtenso } = require('../utils/extenso');
+const { caber: caberImagem } = require('../utils/imagem');
 
 const C = {
   tinta: '#1A2744',
@@ -40,13 +41,19 @@ function rodape(doc, emitidoEm) {
 
 /** Cabeçalho de página inteira (recibo e declaração). Devolve o y livre. */
 function cabecalho(doc, escola, titulo, subtitulo) {
-  const x = 48; const dir = A4.larg - 48;
+  let x = 48; const dir = A4.larg - 48;
   doc.ret(0, 0, A4.larg, 6, { preencher: C.tinta });
-  doc.texto(x, 50, doc.cortar(escola.nome, 15, 300, true), { tam: 15, negrito: true, cor: C.tinta });
+  let larg = 300;
+  if (escola.logo) {
+    const { w, h } = caberImagem(escola.logo, 90, 48);
+    doc.imagem(x, 34 + (48 - h) / 2, w, h, escola.logo);
+    x += w + 12; larg -= w + 12;
+  }
+  doc.texto(x, 50, doc.cortar(escola.nome, 15, larg, true), { tam: 15, negrito: true, cor: C.tinta });
   let y = 64;
   const l1 = linhaEscola(escola);
-  if (l1) { doc.texto(x, y, doc.cortar(l1, 8, 320), { tam: 8, cor: C.suave }); y += 11; }
-  if (escola.endereco) { doc.texto(x, y, doc.cortar(escola.endereco, 8, 320), { tam: 8, cor: C.suave }); }
+  if (l1) { doc.texto(x, y, doc.cortar(l1, 8, larg + 20), { tam: 8, cor: C.suave }); y += 11; }
+  if (escola.endereco) { doc.texto(x, y, doc.cortar(escola.endereco, 8, larg + 20), { tam: 8, cor: C.suave }); }
   doc.texto(dir, 50, titulo, { tam: 17, negrito: true, cor: C.tinta, alinhar: 'right' });
   if (subtitulo) doc.texto(dir, 64, subtitulo, { tam: 8.5, cor: C.suave, alinhar: 'right' });
   doc.linha(x, 92, dir, 92, { cor: C.linha, esp: 0.8 });
@@ -94,9 +101,15 @@ function desenharParcela(doc, y0, { escola, cobranca, item, colegioId }) {
   doc.linha(sx, y0 + 232, sx + sw - 6, y0 + 232, { cor: C.suave, esp: 0.5 });
 
   /* ----- Parte do responsável ----- */
-  doc.texto(xm, y0 + 19, doc.cortar(escola.nome, 10.5, wm - 130, true), { tam: 10.5, negrito: true, cor: C.tinta });
+  let xn = xm;
+  if (escola.logo) {
+    const { w, h } = caberImagem(escola.logo, 56, 26);
+    doc.imagem(xm, y0 + 8 + (26 - h) / 2, w, h, escola.logo);
+    xn += w + 8;
+  }
+  doc.texto(xn, y0 + 19, doc.cortar(escola.nome, 10.5, wm - 130 - (xn - xm), true), { tam: 10.5, negrito: true, cor: C.tinta });
   const l1 = linhaEscola(escola);
-  if (l1) doc.texto(xm, y0 + 30, doc.cortar(l1, 6.8, wm - 130), { tam: 6.8, cor: C.suave });
+  if (l1) doc.texto(xn, y0 + 30, doc.cortar(l1, 6.8, wm - 130 - (xn - xm)), { tam: 6.8, cor: C.suave });
   doc.texto(dir, y0 + 17, 'MENSALIDADE', { tam: 6.3, negrito: true, cor: C.suave, alinhar: 'right' });
   doc.texto(dir, y0 + 31, nomeRef(item.referencia), { tam: 12, negrito: true, cor: C.tinta, alinhar: 'right' });
   doc.linha(xm, y0 + 39, dir, y0 + 39, { cor: '#e2e8f0' });

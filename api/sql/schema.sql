@@ -26,6 +26,13 @@ CREATE TABLE IF NOT EXISTS colegios (
   telefone          VARCHAR(20)  NULL,
   email             VARCHAR(120) NULL,
   endereco          VARCHAR(200) NULL,
+  inep              VARCHAR(12)  NULL,
+  uf                CHAR(2)      NULL,
+  ato_autorizacao   VARCHAR(300) NULL     COMMENT 'Ato de autorização/credenciamento (sai nos documentos)',
+  diretor_nome      VARCHAR(100) NULL,
+  diretor_registro  VARCHAR(40)  NULL,
+  secretario_nome   VARCHAR(100) NULL,
+  secretario_registro VARCHAR(40) NULL,
   codigo_convite    CHAR(10)     NOT NULL COMMENT 'Código para equipe se vincular ao colégio',
   whatsapp_notif    VARCHAR(20)  NULL     COMMENT 'Recebe aviso de novos cadastros',
   criado_por        INT UNSIGNED NULL     COMMENT 'usuarios.id (sem FK para evitar ciclo)',
@@ -159,6 +166,13 @@ CREATE TABLE IF NOT EXISTS alunos (
   cpf_cript        VARCHAR(255) NULL,
   rg_cript         VARCHAR(255) NULL,
   endereco         VARCHAR(200) NULL,
+  mae_nome         VARCHAR(100) NULL,
+  pai_nome         VARCHAR(100) NULL,
+  naturalidade     VARCHAR(60)  NULL,
+  naturalidade_uf  CHAR(2)      NULL,
+  nacionalidade    VARCHAR(40)  NULL,
+  data_matricula   DATE         NULL,
+  data_saida       DATE         NULL,
   turma_id         INT UNSIGNED NULL,
   status           ENUM('ativo','inativo','transferido') NOT NULL DEFAULT 'ativo',
   codigo_acesso    CHAR(9)      NOT NULL COMMENT 'PAI + 6 caracteres, para o responsável',
@@ -559,6 +573,93 @@ CREATE TABLE IF NOT EXISTS comunicado_leituras (
   KEY idx_coml_usuario (usuario_id, colegio_id),
   CONSTRAINT fk_coml_comunicado FOREIGN KEY (comunicado_id) REFERENCES comunicados (id) ON DELETE CASCADE,
   CONSTRAINT fk_coml_usuario    FOREIGN KEY (usuario_id)    REFERENCES usuarios (id)    ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ---------------------------------------------------------------------
+-- DOCUMENTOS ESCOLARES (secretaria)
+-- ---------------------------------------------------------------------
+
+-- ---------- logotipo ----------
+CREATE TABLE IF NOT EXISTS colegio_logos (
+  colegio_id     INT UNSIGNED      NOT NULL,
+  imagem         MEDIUMBLOB        NOT NULL COMMENT 'JPEG',
+  largura        SMALLINT UNSIGNED NOT NULL,
+  altura         SMALLINT UNSIGNED NOT NULL,
+  componentes    TINYINT UNSIGNED  NOT NULL DEFAULT 3 COMMENT '1 = tons de cinza, 3 = colorido',
+  atualizado_por INT UNSIGNED      NULL,
+  atualizado_em  DATETIME          NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (colegio_id),
+  CONSTRAINT fk_logo_colegio FOREIGN KEY (colegio_id) REFERENCES colegios (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ---------- modelos de texto ----------
+CREATE TABLE IF NOT EXISTS documento_modelos (
+  id             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  colegio_id     INT UNSIGNED NOT NULL,
+  chave          VARCHAR(20)  NOT NULL COMMENT 'matricula, frequencia, transferencia, conclusao, historico ou livre',
+  titulo         VARCHAR(120) NOT NULL,
+  texto          TEXT         NOT NULL,
+  atualizado_por INT UNSIGNED NULL,
+  atualizado_em  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_modelos_colegio (colegio_id, chave),
+  CONSTRAINT fk_modelo_colegio FOREIGN KEY (colegio_id) REFERENCES colegios (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ---------- histórico escolar ----------
+CREATE TABLE IF NOT EXISTS historico_anos (
+  id             INT UNSIGNED      NOT NULL AUTO_INCREMENT,
+  colegio_id     INT UNSIGNED      NOT NULL,
+  aluno_id       INT UNSIGNED      NOT NULL,
+  turma_id       INT UNSIGNED      NULL     COMMENT 'Preenchido = ajuste de um ano feito no EduGest',
+  ano            SMALLINT UNSIGNED NOT NULL,
+  serie          VARCHAR(40)       NOT NULL,
+  escola         VARCHAR(120)      NULL,
+  cidade         VARCHAR(60)       NULL,
+  uf             CHAR(2)           NULL,
+  dias_letivos   SMALLINT UNSIGNED NULL,
+  carga_horaria  SMALLINT UNSIGNED NULL     COMMENT 'Horas no ano',
+  frequencia     DECIMAL(5,2)      NULL     COMMENT 'Percentual',
+  resultado      VARCHAR(30)       NULL,
+  disciplinas    TEXT              NULL     COMMENT 'JSON [{nome, nota, ch}] dos anos digitados',
+  observacao     VARCHAR(300)      NULL,
+  atualizado_por INT UNSIGNED      NULL,
+  atualizado_em  DATETIME          NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_hist_turma (aluno_id, turma_id),
+  KEY idx_hist_aluno (aluno_id, ano),
+  CONSTRAINT fk_hist_colegio FOREIGN KEY (colegio_id) REFERENCES colegios (id) ON DELETE CASCADE,
+  CONSTRAINT fk_hist_aluno   FOREIGN KEY (aluno_id)   REFERENCES alunos (id)   ON DELETE CASCADE,
+  CONSTRAINT fk_hist_turma   FOREIGN KEY (turma_id)   REFERENCES turmas (id)   ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ---------- livro de registro ----------
+CREATE TABLE IF NOT EXISTS documentos_emitidos (
+  id                  INT UNSIGNED      NOT NULL AUTO_INCREMENT,
+  colegio_id          INT UNSIGNED      NOT NULL,
+  ano                 SMALLINT UNSIGNED NOT NULL,
+  numero              INT UNSIGNED      NOT NULL COMMENT 'Sequência por colégio e ano',
+  codigo              CHAR(12)          NOT NULL COMMENT 'Código de validação (QR Code)',
+  tipo                VARCHAR(20)       NOT NULL,
+  titulo              VARCHAR(120)      NOT NULL,
+  aluno_id            INT UNSIGNED      NULL,
+  aluno_nome          VARCHAR(100)      NOT NULL,
+  aluno_ra            VARCHAR(20)       NULL,
+  finalidade          VARCHAR(150)      NULL,
+  conteudo            MEDIUMTEXT        NOT NULL COMMENT 'JSON com o que foi impresso',
+  emitido_por         INT UNSIGNED      NULL,
+  emitido_por_nome    VARCHAR(100)      NULL,
+  emitido_em          DATETIME          NOT NULL,
+  cancelado_em        DATETIME          NULL,
+  cancelado_por_nome  VARCHAR(100)      NULL,
+  motivo_cancelamento VARCHAR(200)      NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_doc_numero (colegio_id, ano, numero),
+  UNIQUE KEY uk_doc_codigo (codigo),
+  KEY idx_doc_aluno (aluno_id),
+  KEY idx_doc_data (colegio_id, emitido_em),
+  CONSTRAINT fk_doc_colegio FOREIGN KEY (colegio_id) REFERENCES colegios (id) ON DELETE CASCADE,
+  CONSTRAINT fk_doc_aluno   FOREIGN KEY (aluno_id)   REFERENCES alunos (id)   ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ---------------------------------------------------------------------

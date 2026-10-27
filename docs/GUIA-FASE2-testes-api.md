@@ -29,6 +29,12 @@ Reis Tecnologia · API versão 1.1.0
 | `GET /api/grade/opcoes` · `/turmas/:id` · `/professores/:id` · `/minha` | módulo grade | Grade da turma, semana do professor (com carga horária) e "Suas aulas hoje". Professor: só consulta, e só a própria semana |
 | `GET /api/grade/horarios` · `PUT /horarios/:periodo` · `PUT /api/grade/turmas/:id` | coordenação (não professor) | Horários de cada turno (aulas e intervalos) · montar a grade; professor em duas turmas no mesmo horário é recusado (409) |
 | `GET /api/portal/alunos/:id/grade` | responsável | Horário de aulas do filho |
+| `GET /api/secretaria/opcoes` · `POST /previa` · `POST /emitir` | módulo documentos | Declarações (matrícula, frequência, transferência, conclusão e modelos do colégio) e histórico escolar. Emitir grava número e código de validação; a transferência pode marcar o aluno e cancelar mensalidades futuras |
+| `GET /api/secretaria/emitidos` · `POST /emitidos/:id/link` · `POST /emitidos/:id/cancelar` | módulo documentos (cancelar: admin) | Livro de registro, 2ª via idêntica, envio por WhatsApp (link que expira) e cancelamento com motivo |
+| `GET/POST/PUT/DELETE /api/secretaria/modelos` | módulo documentos | Textos dos documentos ajustados pelo colégio ({variáveis}, **negrito**, [[trechos opcionais]]); DELETE volta ao padrão |
+| `GET /api/secretaria/historico/:alunoId` · `PUT …/turmas/:turmaId` · `POST/PUT/DELETE …/anos` | módulo documentos | Anos do histórico: os do EduGest (calculados, com ajustes) e os anteriores digitados |
+| `GET /api/secretaria/cabecalho` · `PUT` · `GET/PUT/DELETE /api/secretaria/logo` | módulo documentos (alterar: admin) | INEP, UF, ato de autorização, diretor(a), secretário(a) e logotipo (sai em todos os PDFs, inclusive cobranças) |
+| `GET /api/publico/validar/:codigo` | público (60 consultas a cada 15 min por IP) | Página `validar.html`, aberta pelo QR Code: documento válido ou cancelado, com o nome do aluno abreviado |
 
 Proteções: cadastro limitado a 10 tentativas por IP a cada 15 min; admin não altera nem remove o próprio acesso; o colégio nunca fica sem admin ativo; tudo filtrado pelo colégio atual.
 

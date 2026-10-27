@@ -12,7 +12,11 @@
  *
  *  Exclusão: aluno com mensalidades não pode ser excluído (preserva o
  *  financeiro — use status Inativo/Transferido). Com notas ou frequência,
- *  pede confirmação (forcar=1).
+ *  pede confirmação (forcar=1). Documentos já emitidos continuam no livro
+ *  de registro da secretaria.
+ *
+ *  Campos para documentos (filiação, naturalidade, datas de matrícula e
+ *  saída) só são alterados quando vêm no corpo.
  * ===================================================================== */
 const router = require('express').Router();
 const { query, queryUm, transacao } = require('../db');
@@ -58,6 +62,15 @@ async function gravarAutorizados(conn, colegioId, alunoId, lista) {
   }
 }
 
+async function gravarDocumentais(conn, colegioId, alunoId, docs) {
+  const cols = Object.keys(docs);
+  if (!cols.length) return;
+  await conn.query(
+    `UPDATE alunos SET ${cols.map((c) => `${c} = ?`).join(', ')} WHERE id = ? AND colegio_id = ?`,
+    [...cols.map((c) => docs[c]), alunoId, colegioId]
+  );
+}
+
 function lerAluno(b) {
   const nascimento = b.nascimento ? String(b.nascimento) : null;
   if (nascimento && (!dataValida(nascimento) || nascimento > hojeSP())) {
@@ -79,6 +92,36 @@ function lerAluno(b) {
     resp_telefone: v.telefone(b.respTelefone, 'Telefone do responsável'),
     resp_email: v.email(b.respEmail, 'E-mail do responsável')
   };
+}
+
+/* Dados usados nos documentos (histórico, declarações). Só entram os campos
+ * enviados — assim nenhuma tela antiga apaga o que a secretaria preencheu. */
+const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
+const CAMPOS_DOC = {
+  maeNome: ['mae_nome', (x) => v.texto(x, 'Nome da mãe', { max: 100 })],
+  paiNome: ['pai_nome', (x) => v.texto(x, 'Nome do pai', { max: 100 })],
+  naturalidade: ['naturalidade', (x) => v.texto(x, 'Naturalidade', { max: 60 })],
+  naturalidadeUf: ['naturalidade_uf', (x) => {
+    const u = v.texto(x, 'UF da naturalidade', { max: 2 });
+    if (u && !UFS.includes(u.toUpperCase())) throw new HttpErro(400, 'UF da naturalidade inválida', 'validacao');
+    return u ? u.toUpperCase() : null;
+  }],
+  nacionalidade: ['nacionalidade', (x) => v.texto(x, 'Nacionalidade', { max: 40 })],
+  dataMatricula: ['data_matricula', (x) => dataOpcional(x, 'Data de matrícula')],
+  dataSaida: ['data_saida', (x) => dataOpcional(x, 'Data de saída')]
+};
+
+function dataOpcional(x, campo) {
+  if (x === undefined || x === null || x === '') return null;
+  if (!dataValida(String(x))) throw new HttpErro(400, `${campo} inválida`, 'validacao');
+  return String(x);
+}
+
+/** { coluna: valor } só dos campos de documento presentes no corpo. */
+function lerDocumentais(b) {
+  const r = {};
+  Object.entries(CAMPOS_DOC).forEach(([k, [col, ler]]) => { if (b[k] !== undefined) r[col] = ler(b[k]); });
+  return r;
 }
 
 async function conferirTurma(colegioId, turmaId) {
@@ -143,7 +186,11 @@ router.get('/:id', assincrono(async (req, res) => {
   const id = v.id(req.params.id);
   const a = await queryUm(`${SELECT_LISTA} WHERE a.id = ? AND a.colegio_id = ?`, [id, req.colegioId]);
   if (!a) throw new HttpErro(404, 'Aluno não encontrado', 'nao_encontrado');
-  const extra = await queryUm('SELECT cpf_cript, rg_cript, resp_cpf_cript, endereco FROM alunos WHERE id = ?', [id]);
+  const extra = await queryUm(
+    `SELECT cpf_cript, rg_cript, resp_cpf_cript, endereco, mae_nome, pai_nome, naturalidade, naturalidade_uf,
+            nacionalidade, data_matricula, data_saida FROM alunos WHERE id = ?`,
+    [id]
+  );
   const autorizados = await query(
     'SELECT id, nome, parentesco, documento_cript, telefone FROM autorizados_retirada WHERE aluno_id = ? AND colegio_id = ? ORDER BY id',
     [id, req.colegioId]
@@ -154,6 +201,13 @@ router.get('/:id', assincrono(async (req, res) => {
     rg: decifrar(extra.rg_cript),
     respCpf: decifrar(extra.resp_cpf_cript),
     endereco: extra.endereco,
+    maeNome: extra.mae_nome,
+    paiNome: extra.pai_nome,
+    naturalidade: extra.naturalidade,
+    naturalidadeUf: extra.naturalidade_uf,
+    nacionalidade: extra.nacionalidade,
+    dataMatricula: extra.data_matricula,
+    dataSaida: extra.data_saida,
     autorizados: autorizados.map((p) => ({
       id: p.id, nome: p.nome, parentesco: p.parentesco, documento: decifrar(p.documento_cript), telefone: p.telefone
     }))
@@ -172,6 +226,7 @@ async function proximoRA(conn, colegioId, ano) {
 
 router.post('/', assincrono(async (req, res) => {
   const a = lerAluno(req.body);
+  const docs = lerDocumentais(req.body);
   const autorizados = lerAutorizados(req.body.autorizados) || [];
   await conferirTurma(req.colegioId, a.turma_id);
   const raInformado = v.texto(req.body.ra, 'RA', { max: 20 });
@@ -189,6 +244,7 @@ router.post('/', assincrono(async (req, res) => {
           [req.colegioId, ra, a.nome, a.nascimento, cifrar(a.cpf), cifrar(a.rg), a.endereco, a.turma_id, a.status,
             codigo, a.resp_nome, a.resp_parentesco, cifrar(a.resp_cpf), a.resp_telefone, a.resp_email]
         );
+        await gravarDocumentais(conn, req.colegioId, r.insertId, docs);
         await gravarAutorizados(conn, req.colegioId, r.insertId, autorizados);
         return { id: r.insertId, ra, codigo };
       });
@@ -209,6 +265,7 @@ router.put('/:id', assincrono(async (req, res) => {
   const atual = await queryUm('SELECT ra FROM alunos WHERE id = ? AND colegio_id = ?', [id, req.colegioId]);
   if (!atual) throw new HttpErro(404, 'Aluno não encontrado', 'nao_encontrado');
   const a = lerAluno(req.body);
+  const docs = lerDocumentais(req.body);
   const autorizados = lerAutorizados(req.body.autorizados);
   await conferirTurma(req.colegioId, a.turma_id);
   const ra = v.texto(req.body.ra, 'RA', { max: 20 }) || atual.ra;
@@ -224,6 +281,7 @@ router.put('/:id', assincrono(async (req, res) => {
       if (e.code === 'ER_DUP_ENTRY') throw new HttpErro(409, `Já existe um aluno com o RA ${ra}`, 'duplicado');
       throw e;
     });
+    await gravarDocumentais(conn, req.colegioId, id, docs);
     if (autorizados !== undefined) await gravarAutorizados(conn, req.colegioId, id, autorizados);
   });
   await atividade(req.colegioId, req.usuario.id, `Aluno atualizado: ${a.nome}`);
@@ -259,8 +317,9 @@ router.delete('/:id', assincrono(async (req, res) => {
     `SELECT (SELECT COUNT(*) FROM mensalidades WHERE aluno_id = ?) AS mensalidades,
             (SELECT COUNT(*) FROM notas WHERE aluno_id = ?) AS notas,
             (SELECT COUNT(*) FROM frequencias WHERE aluno_id = ?) AS frequencias,
-            (SELECT COUNT(*) FROM responsavel_aluno WHERE aluno_id = ?) AS responsaveis`,
-    [id, id, id, id]
+            (SELECT COUNT(*) FROM responsavel_aluno WHERE aluno_id = ?) AS responsaveis,
+            (SELECT COUNT(*) FROM historico_anos WHERE aluno_id = ? AND turma_id IS NULL) AS historico`,
+    [id, id, id, id, id]
   );
   if (uso.mensalidades > 0) {
     throw new HttpErro(409, `${a.nome} tem ${uso.mensalidades} mensalidade(s). Para preservar o histórico financeiro, altere o status para Inativo ou Transferido.`, 'tem_financeiro');
@@ -269,6 +328,7 @@ router.delete('/:id', assincrono(async (req, res) => {
   if (uso.notas) deps.push(`${uso.notas} lançamento(s) de notas`);
   if (uso.frequencias) deps.push(`${uso.frequencias} registro(s) de frequência`);
   if (uso.responsaveis) deps.push(`${uso.responsaveis} acesso(s) de responsável ao portal`);
+  if (uso.historico) deps.push(`${uso.historico} ano(s) digitado(s) no histórico escolar`);
   if (deps.length && req.query.forcar !== '1') {
     throw new HttpErro(409, `${a.nome} tem ${deps.join(', ')}. Tudo isso será apagado junto com o aluno.`, 'tem_vinculos');
   }

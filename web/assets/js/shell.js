@@ -19,7 +19,7 @@
       { id: 'boletim', rotulo: 'Boletim', icone: 'ti-report', pronto: true },
       { id: 'calendario', rotulo: 'Calendário Escolar', icone: 'ti-calendar-event', pronto: true },
       { id: 'grade', rotulo: 'Grade Horária', icone: 'ti-clock-hour-3', pronto: true },
-      { id: 'documentos', rotulo: 'Documentos', icone: 'ti-file-certificate' }
+      { id: 'documentos', rotulo: 'Documentos', icone: 'ti-file-certificate', pronto: true }
     ] },
     { secao: 'Financeiro', itens: [
       { id: 'mensalidades', rotulo: 'Mensalidades', icone: 'ti-receipt', pronto: true },

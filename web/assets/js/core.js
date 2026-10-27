@@ -159,7 +159,8 @@ window.EG = window.EG || {};
     fundo._fechar = m.fechar;
     EG.$('#modais').appendChild(fundo);
     const primeiro = fundo.querySelector('.modal-corpo input, .modal-corpo select');
-    if (primeiro) setTimeout(() => primeiro.focus(), 50);
+    // foco no 1º campo — a não ser que a pessoa já tenha clicado em outro campo da janela
+    if (primeiro) setTimeout(() => { if (!fundo.contains(document.activeElement)) primeiro.focus(); }, 50);
     return m;
   };
 
@@ -362,6 +363,7 @@ window.EG = window.EG || {};
     '1º Ano', '2º Ano', '3º Ano', '4º Ano', '5º Ano', '6º Ano', '7º Ano', '8º Ano', '9º Ano',
     '1ª Série EM', '2ª Série EM', '3ª Série EM', 'EJA', 'Outra'];
   EG.PERIODOS = { matutino: 'Matutino', vespertino: 'Vespertino', integral: 'Integral', noturno: 'Noturno' };
+  EG.UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
 
   // Mostrar/ocultar senha
   document.addEventListener('click', (e) => {

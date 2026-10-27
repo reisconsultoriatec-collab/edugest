@@ -2,8 +2,9 @@
 /* =====================================================================
  *  Gerador de PDF mínimo, sem dependências (só zlib do Node).
  *  Página A4, fontes padrão Helvetica / Helvetica-Bold (WinAnsi, com
- *  acentos do português), texto, parágrafos com quebra, linhas,
- *  retângulos (com cantos arredondados) e QR Code vetorial.
+ *  acentos do português), texto, parágrafos com quebra (inclusive com
+ *  trechos em **negrito** e justificados), linhas, retângulos (com cantos
+ *  arredondados), imagens JPEG (logotipo) e QR Code vetorial.
  *
  *  Coordenadas em pontos (1 pt = 1/72"), com origem no CANTO SUPERIOR
  *  ESQUERDO; o "y" do texto é a linha de base.
@@ -50,12 +51,29 @@ function textoPdf(s) {
   return '<FEFF' + Buffer.from(String(s), 'utf16le').swap16().toString('hex').toUpperCase() + '>';
 }
 
+/** Divide "texto com **negrito**" em palavras; cada palavra é uma lista de pedaços { t, b }. */
+function palavrasRicas(texto) {
+  const palavras = [];
+  let atual = [];
+  String(texto ?? '').split('**').forEach((trecho, i) => {
+    const b = i % 2 === 1;
+    trecho.split(/(\s+)/).forEach((p) => {
+      if (!p) return;
+      if (/^\s+$/.test(p)) { if (atual.length) palavras.push(atual); atual = []; return; }
+      atual.push({ t: p, b });
+    });
+  });
+  if (atual.length) palavras.push(atual);
+  return palavras;
+}
+
 class Documento {
   constructor({ titulo = 'Documento', autor = 'EduGest' } = {}) {
     this.titulo = titulo;
     this.autor = autor;
     this.paginas = [];
     this.ops = null;
+    this.imagens = []; // { dados (JPEG), largura, altura, componentes }
   }
 
   pagina() {
@@ -128,6 +146,59 @@ class Documento {
     return y + linhas.length * tam * entrelinha;
   }
 
+  /**
+   * Parágrafo com trechos em **negrito**, justificado (menos a última linha)
+   * ou alinhado à esquerda. Linhas que passarem de "limite" chamam
+   * novaPagina(), que devolve o "y" de continuação.
+   */
+  paragrafoRico(x, y, texto, { tam = 11, larg = 400, entrelinha = 1.5, justificar = true, cor: c = '#1f2937', limite = Infinity, novaPagina = null } = {}) {
+    const espaco = this.largura(' ', tam);
+    const largPalavra = (p) => p.reduce((s, q) => s + this.largura(q.t, tam, q.b), 0);
+    String(texto ?? '').split('\n').forEach((linhaFonte) => {
+      const palavras = palavrasRicas(linhaFonte).flatMap((p) => {
+        // palavra maior que a linha (raro): corta por caractere
+        if (largPalavra(p) <= larg || p.length > 1) return [p];
+        const partes = []; let resto = p[0].t;
+        while (resto) {
+          let n = resto.length;
+          while (n > 1 && this.largura(resto.slice(0, n), tam, p[0].b) > larg) n--;
+          partes.push([{ t: resto.slice(0, n), b: p[0].b }]); resto = resto.slice(n);
+        }
+        return partes;
+      });
+      const linhas = [];
+      let atual = []; let w = 0;
+      palavras.forEach((p) => {
+        const lp = largPalavra(p);
+        if (atual.length && w + espaco + lp > larg) { linhas.push({ palavras: atual, w }); atual = []; w = 0; }
+        w += (atual.length ? espaco : 0) + lp;
+        atual.push(p);
+      });
+      linhas.push({ palavras: atual, w });
+      linhas.forEach((l, i) => {
+        if (y > limite && novaPagina) y = novaPagina();
+        const ultima = i === linhas.length - 1;
+        const extra = justificar && !ultima && l.palavras.length > 1 ? (larg - l.w) / (l.palavras.length - 1) : 0;
+        let px = x;
+        l.palavras.forEach((p) => {
+          p.forEach((q) => { this.texto(px, y, q.t, { tam, negrito: q.b, cor: c }); px += this.largura(q.t, tam, q.b); });
+          px += espaco + extra;
+        });
+        y += tam * entrelinha;
+      });
+    });
+    return y;
+  }
+
+  /** Imagem JPEG em (x, y) com largura w e altura h (y = topo). */
+  imagem(x, y, w, h, img) {
+    if (!img || !img.dados) return this;
+    let i = this.imagens.indexOf(img);
+    if (i < 0) { this.imagens.push(img); i = this.imagens.length - 1; }
+    this.ops.push(`q ${num(w)} 0 0 ${num(h)} ${num(x)} ${num(A4.alt - y - h)} cm /Im${i + 1} Do Q`);
+    return this;
+  }
+
   linha(x1, y1, x2, y2, { cor: c = '#cbd5e1', esp = 0.6, tracejado = null } = {}) {
     this.ops.push(`q ${cor(c)} RG ${num(esp)} w ${tracejado ? `[${tracejado.join(' ')}] 0 d` : ''} `
       + `${num(x1)} ${num(A4.alt - y1)} m ${num(x2)} ${num(A4.alt - y2)} l S Q`);
@@ -193,12 +264,24 @@ class Documento {
     const dataPdf = `D:${agora.getUTCFullYear()}${d(agora.getUTCMonth() + 1)}${d(agora.getUTCDate())}${d(agora.getUTCHours())}${d(agora.getUTCMinutes())}${d(agora.getUTCSeconds())}Z`;
     const info = add(`<< /Title ${textoPdf(this.titulo)} /Author ${textoPdf(this.autor)} /Producer (EduGest - Reis Tecnologia) /CreationDate (${dataPdf}) >>`);
 
+    const espacos = { 1: '/DeviceGray', 3: '/DeviceRGB', 4: '/DeviceCMYK' };
+    const imgs = this.imagens.map((img, i) => {
+      const n = add({
+        dict: `<< /Type /XObject /Subtype /Image /Width ${img.largura} /Height ${img.altura} `
+          + `/ColorSpace ${espacos[img.componentes] || '/DeviceRGB'} /BitsPerComponent 8 /Filter /DCTDecode`
+          + `${img.componentes === 4 ? ' /Decode [1 0 1 0 1 0 1 0]' : ''} /Length ${img.dados.length} >>`,
+        stream: img.dados
+      });
+      return `/Im${i + 1} ${n} 0 R`;
+    });
+    const xobj = imgs.length ? ` /XObject << ${imgs.join(' ')} >>` : '';
+
     const kids = [];
     this.paginas.forEach((ops) => {
       const dados = zlib.deflateSync(Buffer.from(ops.join('\n'), 'latin1'));
       const conteudo = add({ dict: `<< /Length ${dados.length} /Filter /FlateDecode >>`, stream: dados });
       kids.push(add(`<< /Type /Page /Parent ${paginasObj} 0 R /MediaBox [0 0 ${A4.larg} ${A4.alt}] `
-        + `/Resources << /Font << /F1 ${f1} 0 R /F2 ${f2} 0 R >> >> /Contents ${conteudo} 0 R >>`));
+        + `/Resources << /Font << /F1 ${f1} 0 R /F2 ${f2} 0 R >>${xobj} >> /Contents ${conteudo} 0 R >>`));
     });
     objetos[catalogo - 1] = `<< /Type /Catalog /Pages ${paginasObj} 0 R >>`;
     objetos[paginasObj - 1] = `<< /Type /Pages /Kids [${kids.map((k) => `${k} 0 R`).join(' ')}] /Count ${kids.length} >>`;
@@ -221,4 +304,4 @@ class Documento {
   }
 }
 
-module.exports = { Documento, A4, winAnsi };
+module.exports = { Documento, A4, winAnsi, palavrasRicas };
