@@ -67,6 +67,18 @@ No [console do Firebase](https://console.firebase.google.com/), projeto **eduges
 
 > O URL de ação vale para todos os modelos de e-mail (redefinição de senha e confirmação de e-mail). A página nova trata os dois.
 
+### Se o console der "Ocorreu um erro ao atualizar o URL acionável"
+
+Salve o remetente, o assunto e a mensagem normalmente (botão **Salvar** do modelo) e deixe o URL de ação como está. Depois, no servidor:
+
+```bash
+cd ~/edugest-api
+node scripts/url-acao.js ver       # mostra como está agora
+node scripts/url-acao.js ligar     # passa a usar a página do EduGest
+```
+
+O script altera só esse campo, pelo serviço oficial do Firebase e com a chave do próprio servidor. Antes de ligar, ele confere se `conta.html` está no ar e guarda o valor atual em `~/.edugest-url-acao-anterior`. Se o Firebase recusar, ele mostra o motivo exato.
+
 ## 4. Testar
 
 1. Na tela de acesso, digite o e-mail de uma conta de teste e clique em **Esqueci minha senha**.
@@ -78,7 +90,15 @@ No [console do Firebase](https://console.firebase.google.com/), projeto **eduges
 
 ## 5. Voltar como estava (se algo der errado)
 
-**Para todos os usuários (2 minutos, sem mexer no servidor):**
+**Para todos os usuários, pelo servidor (se ligou pelo script):**
+
+```bash
+cd ~/edugest-api && node scripts/url-acao.js desligar
+```
+
+Volta exatamente ao valor guardado antes de ligar.
+
+**Para todos os usuários, pelo console (2 minutos):**
 
 1. Console do Firebase → **Authentication → Templates → Redefinição de senha → lápis → Personalizar URL de ação**.
 2. Apague o endereço e salve. Se o console não aceitar o campo vazio, coloque o padrão `https://edugest-80e0f.firebaseapp.com/__/auth/action`.
