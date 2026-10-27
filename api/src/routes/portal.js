@@ -20,6 +20,7 @@
  *  ligados a este usuário (responsavel_aluno) neste colégio.
  * ===================================================================== */
 const router = require('express').Router();
+const { SQL_TURMAS_DA_VIRADA } = require('../services/virada');
 const { query, queryUm } = require('../db');
 const { HttpErro, assincrono } = require('../middleware/erros');
 const v = require('../utils/validar');
@@ -63,9 +64,10 @@ async function turmasDoAluno(req, a) {
       WHERE t.colegio_id = ?
         AND (t.id = ?
           OR t.id IN (SELECT n.turma_id FROM notas n WHERE n.aluno_id = ?)
-          OR t.id IN (SELECT d.turma_id FROM frequencias fr JOIN diarios d ON d.id = fr.diario_id WHERE fr.aluno_id = ?))
+          OR t.id IN (SELECT d.turma_id FROM frequencias fr JOIN diarios d ON d.id = fr.diario_id WHERE fr.aluno_id = ?)
+          OR t.id IN (${SQL_TURMAS_DA_VIRADA}))
       ORDER BY t.ano_letivo DESC, t.nome`,
-    [req.colegioId, a.turma_id || 0, a.id, a.id]
+    [req.colegioId, a.turma_id || 0, a.id, a.id, a.id]
   );
 }
 

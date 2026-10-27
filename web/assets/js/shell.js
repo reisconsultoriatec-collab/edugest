@@ -43,6 +43,7 @@
     { secao: 'Sistema', itens: [
       { id: 'config', rotulo: 'Configurações', icone: 'ti-settings', pronto: true },
       { id: 'usuarios', rotulo: 'Usuários', icone: 'ti-users-group', pronto: true },
+      { id: 'virada', rotulo: 'Virada do ano letivo', icone: 'ti-calendar-repeat', pronto: true, soAdmin: true },
       { id: 'seguranca', rotulo: 'Log de Segurança', icone: 'ti-shield-lock', pronto: true, soAdmin: true },
       // Só o proprietário do sistema (PROPRIETARIO_EMAILS no .env da API)
       { id: 'colegios', rotulo: 'Gestão de Colégios', icone: 'ti-building-community', pronto: true, soProprietario: true }

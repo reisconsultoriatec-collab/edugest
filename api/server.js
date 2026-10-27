@@ -102,6 +102,9 @@ app.use('/api/grade', equipe, require('./src/routes/grade'));
 // Secretaria: declarações, histórico escolar, modelos e logotipo — módulo documentos
 app.use('/api/secretaria', equipe, require('./src/routes/secretaria'));
 
+// Virada do ano letivo (rematrícula): só o administrador do colégio
+app.use('/api/virada', autenticar, carregarUsuario, exigirColegio, exigirPerfil('admin'), require('./src/routes/virada'));
+
 // Portal do responsável — só os filhos vinculados ao usuário
 app.use('/api/portal', autenticar, carregarUsuario, exigirColegio, exigirPerfil('responsavel'), require('./src/routes/portal'));
 

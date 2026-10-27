@@ -14,7 +14,7 @@
   const sel = { turmaId: '', data: '', disciplinaId: '' };
 
   const turmaSel = () => op.turmas.find((t) => t.id === Number(sel.turmaId));
-  const STATUS_ALUNO = { inativo: 'inativo', transferido: 'transferido' };
+  const STATUS_ALUNO = { inativo: 'inativo', transferido: 'transferido', concluido: 'concluiu' };
 
   function render(el) {
     if (!op.turmas.some((t) => t.ativo)) { el.innerHTML = EG.semTurmas(op); return; }

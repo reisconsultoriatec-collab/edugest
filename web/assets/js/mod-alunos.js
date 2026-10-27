@@ -5,8 +5,8 @@
  * ===================================================================== */
 'use strict';
 (function (EG) {
-  const STATUS = { ativo: 'Ativo', inativo: 'Inativo', transferido: 'Transferido' };
-  const SELO = { ativo: 'selo-ok', inativo: 'selo-neutro', transferido: 'selo-roxo' };
+  const STATUS = { ativo: 'Ativo', inativo: 'Inativo', transferido: 'Transferido', concluido: 'Concluído' };
+  const SELO = { ativo: 'selo-ok', inativo: 'selo-neutro', transferido: 'selo-roxo', concluido: 'selo-info' };
   const PARENTESCOS = ['Mãe', 'Pai', 'Avó/Avô', 'Tio(a)', 'Irmão(ã)', 'Responsável legal', 'Outro'];
   const PARENTESCOS_RETIRADA = ['Pai', 'Mãe', 'Avó/Avô', 'Tio(a)', 'Irmão(ã)', 'Padrasto/Madrasta', 'Transporte escolar', 'Vizinho(a)', 'Outro'];
   const MAX_AUTORIZADOS = 6;
@@ -70,7 +70,9 @@
       <div class="card">
         <div class="card-cab">
           <div class="card-titulo"><i class="ti ti-users"></i> Alunos</div>
-          ${podeEditar ? '<button class="btn btn-primario" data-action="novo"><i class="ti ti-user-plus"></i> Novo aluno</button>' : ''}
+          ${podeEditar ? `<div class="cab-acoes">
+            <button class="btn btn-secundario" data-action="importar" title="Cadastrar vários alunos de uma vez a partir de uma planilha do Excel ou CSV"><i class="ti ti-file-spreadsheet"></i> Importar planilha</button>
+            <button class="btn btn-primario" data-action="novo"><i class="ti ti-user-plus"></i> Novo aluno</button></div>` : ''}
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
           <input class="input" data-filtro="busca" placeholder="Buscar por nome, RA, código ou responsável..." value="${EG.esc(filtro.busca)}" style="flex:1;min-width:220px">
@@ -237,6 +239,9 @@
     try {
       switch (b.dataset.action) {
         case 'novo': await modalAluno(null, el); break;
+        case 'importar':
+          EG.importarAlunos(async () => { await carregarDados(); render(el); });
+          break;
         case 'editar': await modalAluno(a.id, el); break;
         case 'copiar-codigo': EG.copiar(a.codigoAcesso, 'Código copiado!'); break;
         case 'status': filtro.status = b.dataset.status; render(el); break;

@@ -174,7 +174,8 @@ CREATE TABLE IF NOT EXISTS alunos (
   data_matricula   DATE         NULL,
   data_saida       DATE         NULL,
   turma_id         INT UNSIGNED NULL,
-  status           ENUM('ativo','inativo','transferido') NOT NULL DEFAULT 'ativo',
+  status           ENUM('ativo','inativo','transferido','concluido') NOT NULL DEFAULT 'ativo',
+  importacao_id    INT UNSIGNED NULL     COMMENT 'Planilha de onde veio o cadastro (desfazer importação)',
   codigo_acesso    CHAR(9)      NOT NULL COMMENT 'PAI + 6 caracteres, para o responsável',
   resp_nome        VARCHAR(100) NULL,
   resp_parentesco  VARCHAR(20)  NULL,
@@ -188,6 +189,7 @@ CREATE TABLE IF NOT EXISTS alunos (
   UNIQUE KEY uk_alunos_codigo (codigo_acesso),
   KEY idx_alunos_turma (turma_id, status),
   KEY idx_alunos_nome (colegio_id, nome),
+  KEY idx_alunos_importacao (importacao_id),
   CONSTRAINT fk_alunos_colegio FOREIGN KEY (colegio_id) REFERENCES colegios (id) ON DELETE CASCADE,
   CONSTRAINT fk_alunos_turma   FOREIGN KEY (turma_id)   REFERENCES turmas (id)   ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -404,6 +406,7 @@ CREATE TABLE IF NOT EXISTS mensalidades (
   desconto         DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   valor            DECIMAL(10,2) NOT NULL COMMENT 'valor_bruto - desconto',
   bolsa_id         INT UNSIGNED  NULL,
+  virada_id        INT UNSIGNED  NULL COMMENT 'Gerada pela virada do ano (desfazer)',
   status           ENUM('pendente','pago','cancelado') NOT NULL DEFAULT 'pendente',
   data_pagamento   DATE          NULL,
   valor_pago       DECIMAL(10,2) NULL COMMENT 'Valor recebido na baixa (juros, multa ou acordo)',
@@ -416,6 +419,7 @@ CREATE TABLE IF NOT EXISTS mensalidades (
   KEY idx_mens_colegio_status (colegio_id, status, vencimento),
   KEY idx_mens_referencia (colegio_id, referencia),
   KEY idx_mens_pagamento (colegio_id, data_pagamento),
+  KEY idx_mens_virada (virada_id),
   CONSTRAINT fk_mens_colegio FOREIGN KEY (colegio_id) REFERENCES colegios (id) ON DELETE CASCADE,
   CONSTRAINT fk_mens_aluno   FOREIGN KEY (aluno_id)   REFERENCES alunos (id)   ON DELETE RESTRICT,
   CONSTRAINT fk_mens_bolsa   FOREIGN KEY (bolsa_id)   REFERENCES bolsas (id)   ON DELETE SET NULL,
@@ -739,4 +743,69 @@ CREATE TABLE IF NOT EXISTS log_seguranca (
   KEY idx_log_email (email, criado_em),
   CONSTRAINT fk_log_colegio FOREIGN KEY (colegio_id) REFERENCES colegios (id) ON DELETE CASCADE,
   CONSTRAINT fk_log_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ---------------------------------------------------------------------
+-- Importação de alunos e virada do ano letivo (migração 012)
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS importacoes_alunos (
+  id           INT UNSIGNED      NOT NULL AUTO_INCREMENT,
+  colegio_id   INT UNSIGNED      NOT NULL,
+  arquivo      VARCHAR(160)      NULL,
+  total        SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+  feita_por    INT UNSIGNED      NULL,
+  feita_em     DATETIME          NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  desfeita_em  DATETIME          NULL,
+  desfeita_por INT UNSIGNED      NULL,
+  PRIMARY KEY (id),
+  KEY idx_impal_colegio (colegio_id, feita_em),
+  CONSTRAINT fk_impal_colegio FOREIGN KEY (colegio_id) REFERENCES colegios (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS viradas (
+  id                  INT UNSIGNED      NOT NULL AUTO_INCREMENT,
+  colegio_id          INT UNSIGNED      NOT NULL,
+  ano_de              SMALLINT UNSIGNED NOT NULL,
+  ano_para            SMALLINT UNSIGNED NOT NULL,
+  ano_letivo_anterior SMALLINT UNSIGNED NOT NULL COMMENT 'Configuração antes da virada (para desfazer)',
+  valor_anterior      DECIMAL(10,2)     NULL,
+  valor_novo          DECIMAL(10,2)     NULL,
+  resumo              TEXT              NULL     COMMENT 'JSON com os totais',
+  feita_por           INT UNSIGNED      NULL,
+  feita_em            DATETIME          NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  desfeita_em         DATETIME          NULL,
+  desfeita_por        INT UNSIGNED      NULL,
+  PRIMARY KEY (id),
+  KEY idx_viradas_colegio (colegio_id, feita_em),
+  CONSTRAINT fk_viradas_colegio FOREIGN KEY (colegio_id) REFERENCES colegios (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS virada_turmas (
+  virada_id        INT UNSIGNED NOT NULL,
+  turma_id         INT UNSIGNED NOT NULL,
+  turma_origem_id  INT UNSIGNED NULL,
+  criada           TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '1 = criada pela virada (desfazer apaga)',
+  PRIMARY KEY (virada_id, turma_id),
+  CONSTRAINT fk_vturmas_virada FOREIGN KEY (virada_id) REFERENCES viradas (id) ON DELETE CASCADE,
+  CONSTRAINT fk_vturmas_turma  FOREIGN KEY (turma_id)  REFERENCES turmas (id)  ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS virada_alunos (
+  virada_id          INT UNSIGNED NOT NULL,
+  aluno_id           INT UNSIGNED NOT NULL,
+  acao               ENUM('promover','reter','concluir','sair','enturmar') NOT NULL,
+  turma_origem_id    INT UNSIGNED NULL,
+  turma_destino_id   INT UNSIGNED NULL,
+  status_origem      VARCHAR(20)  NOT NULL,
+  status_destino     VARCHAR(20)  NOT NULL,
+  data_saida_origem  DATE         NULL,
+  situacao           VARCHAR(30)  NULL     COMMENT 'Situação calculada pelas notas e frequência',
+  resultado          VARCHAR(40)  NULL     COMMENT 'Resultado do ano (vai para o histórico)',
+  PRIMARY KEY (virada_id, aluno_id),
+  KEY idx_valunos_aluno (aluno_id),
+  KEY idx_valunos_origem (turma_origem_id),
+  CONSTRAINT fk_valunos_virada  FOREIGN KEY (virada_id)        REFERENCES viradas (id) ON DELETE CASCADE,
+  CONSTRAINT fk_valunos_aluno   FOREIGN KEY (aluno_id)         REFERENCES alunos (id)  ON DELETE CASCADE,
+  CONSTRAINT fk_valunos_origem  FOREIGN KEY (turma_origem_id)  REFERENCES turmas (id)  ON DELETE SET NULL,
+  CONSTRAINT fk_valunos_destino FOREIGN KEY (turma_destino_id) REFERENCES turmas (id)  ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

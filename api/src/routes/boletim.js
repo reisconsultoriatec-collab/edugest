@@ -2,7 +2,7 @@
 /* =====================================================================
  *  /api/boletim — Boletim escolar   [módulo boletim]
  *
- *  GET /alunos?turmaId=          alunos da turma (atuais e com notas nela)
+ *  GET /alunos?turmaId=          alunos da turma (atuais, com notas nela ou que saíram dela na virada do ano)
  *  GET /:alunoId?turmaId=        boletim do aluno naquela turma
  *
  *  Regras em services/boletim.js (as mesmas do portal do responsável).
@@ -30,9 +30,11 @@ router.get('/alunos', assincrono(async (req, res) => {
     `SELECT a.id, a.nome, a.ra, a.status
        FROM alunos a
       WHERE a.colegio_id = ?
-        AND (a.turma_id = ? OR EXISTS (SELECT 1 FROM notas n WHERE n.aluno_id = a.id AND n.turma_id = ?))
+        AND (a.turma_id = ? OR EXISTS (SELECT 1 FROM notas n WHERE n.aluno_id = a.id AND n.turma_id = ?)
+             OR EXISTS (SELECT 1 FROM virada_alunos va JOIN viradas vv ON vv.id = va.virada_id
+                         WHERE va.aluno_id = a.id AND va.turma_origem_id = ? AND vv.desfeita_em IS NULL))
       ORDER BY a.nome`,
-    [req.colegioId, turma.id, turma.id]
+    [req.colegioId, turma.id, turma.id, turma.id]
   );
   res.json(alunos.map((a) => ({ id: a.id, nome: a.nome, ra: a.ra, status: a.status })));
 }));

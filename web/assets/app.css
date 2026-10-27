@@ -907,3 +907,116 @@ a.btn { text-decoration: none; }
   .auth-recursos { gap: 13px; }
 }
 @media (min-width: 961px) and (max-height: 640px) { .auth-recursos small { display: none; } }
+
+/* ---------- Passos (importar planilha e virada do ano) ---------- */
+.cab-acoes { display: flex; gap: 8px; flex-wrap: wrap; }
+.imp-passos { list-style: none; display: flex; gap: 6px 8px; flex-wrap: wrap; margin: 0 0 18px; padding: 0; }
+.imp-passos li { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); padding: 4px 12px 4px 4px;
+  border-radius: 20px; border: 1px solid var(--border); background: var(--card); }
+.imp-passos li button { display: inline-flex; align-items: center; gap: 8px; background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; }
+.imp-passos li > span, .imp-passos li button > span { width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 12px; border: 1px solid var(--border); color: var(--text-2); flex-shrink: 0; }
+.imp-passos li.atual { color: var(--text); border-color: var(--amber); font-weight: 600; }
+.imp-passos li.atual span { background: var(--amber); border-color: var(--amber); color: var(--navy); }
+.imp-passos li.feito { color: var(--text-2); }
+.imp-passos li.feito span { background: var(--ok-bg); border-color: transparent; color: var(--ok-tx); }
+.imp-passos li button:focus-visible { outline: 2px solid var(--amber); outline-offset: 4px; border-radius: 14px; }
+
+/* ---------- Importar alunos por planilha ---------- */
+.imp-rodape { position: sticky; bottom: -20px; display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap;
+  margin: 18px -20px -20px; padding: 14px 20px; background: var(--card); border-top: 1px solid var(--border); }
+.imp-mapa td { vertical-align: middle; }
+.imp-mapa .select { padding: 6px 10px; font-size: 13px; min-width: 200px; }
+.imp-mapa td.sub { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.imp-resumo { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
+.imp-num { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
+.imp-num strong { font-family: 'Space Grotesk', sans-serif; font-size: 24px; line-height: 1; }
+.imp-num span { font-size: 12px; color: var(--text-2); }
+.imp-num.ok strong { color: var(--ok); }
+.imp-num.aviso strong { color: var(--amber-d); }
+.imp-num.erro strong { color: var(--erro); }
+.imp-lista { max-height: 46vh; overflow: auto; border: 1px solid var(--border); border-radius: 8px; }
+.imp-lista thead th { position: sticky; top: 0; background: var(--card); z-index: 1; }
+.imp-historico { display: flex; flex-direction: column; gap: 6px; }
+.imp-hist-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; }
+.imp-hist-item small { color: var(--text-2); }
+.zona-arquivo strong { color: var(--text); }
+.zona-arquivo.lendo { opacity: .7; pointer-events: none; }
+.link-sutil i { vertical-align: -2px; }
+
+/* ---------- Virada do ano letivo ---------- */
+.virada-anos { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-family: 'Space Grotesk', sans-serif; }
+.virada-anos .ano { font-size: 30px; font-weight: 700; line-height: 1; color: var(--text-2); }
+.virada-anos .ano.novo { color: var(--amber-d); }
+.virada-anos > i { font-size: 22px; color: var(--muted); }
+.virada-desc { margin-top: 10px; max-width: 920px; line-height: 1.55; font-size: 13px; }
+.virada-hist { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--border); }
+.virada-hist summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-2); display: inline-flex; align-items: center; gap: 6px; }
+.virada-hist summary:hover { color: var(--text); }
+.virada-hist-item { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px dashed var(--border); font-size: 13px; }
+.virada-hist-item:last-child { border-bottom: 0; }
+.virada-hist-item small { color: var(--text-2); }
+.virada-hist-item.desfeita { opacity: .65; }
+.virada-passos { scroll-margin-top: 76px; }
+.virada-corpo { margin-bottom: 14px; }
+.virada-titulo { margin-bottom: 16px; }
+.virada-titulo h3 { font-family: 'Space Grotesk', sans-serif; font-size: 17px; margin-bottom: 4px; }
+.virada-titulo .sub { line-height: 1.55; max-width: 920px; }
+.vt-lista { display: flex; flex-direction: column; gap: 10px; }
+.vt-linha { display: grid; grid-template-columns: minmax(150px, 220px) 24px minmax(0, 1fr); gap: 12px; align-items: start;
+  padding: 14px; border: 1px solid var(--border); border-radius: 10px; }
+.vt-de { display: flex; flex-direction: column; gap: 2px; padding-top: 2px; }
+.vt-de small { color: var(--text-2); font-size: 12px; }
+.vt-seta { color: var(--muted); font-size: 20px; padding-top: 8px; text-align: center; }
+.vt-acao { max-width: 320px; }
+.vt-campos { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr) minmax(0, 1fr) 90px; gap: 10px; margin-top: 10px; }
+.vt-campos.unico { grid-template-columns: minmax(0, 420px); }
+.vt-campo { display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 600; color: var(--text-2); }
+.vt-copiar { margin: 10px 0 0; font-size: 12.5px; color: var(--text-2); }
+.vt-nota { margin-top: 10px; font-size: 12.5px; color: var(--text-2); display: flex; gap: 6px; line-height: 1.5; }
+.vt-nota i { color: var(--info); margin-top: 2px; }
+.va-secao { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 14px; overflow: hidden; }
+.va-cab { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 14px;
+  background: var(--bg); border-bottom: 1px solid var(--border); }
+.va-cab-txt small { display: block; color: var(--text-2); font-size: 12px; margin-top: 3px; }
+.va-cab-txt i { color: var(--muted); margin: 0 4px; vertical-align: -2px; }
+.va-todos { width: auto; min-width: 190px; padding: 6px 10px; font-size: 12.5px; }
+.va-tabela td { vertical-align: top; }
+.va-tabela .select { min-width: 170px; padding: 7px 10px; font-size: 13px; }
+.va-dica { display: block; color: var(--muted); font-size: 11px; margin-top: 3px; }
+.va-dica:empty { display: none; }
+.va-aberto { margin-top: 4px; display: inline-flex; gap: 4px; align-items: center; }
+.va-avisos { margin: 6px 0 0 18px; }
+.va-avisos li { margin: 2px 0; }
+.select.invalido { border-color: var(--erro); }
+.vf-campos { border: 0; padding: 0; margin: 0; min-width: 0; }
+.vf-campos:disabled { opacity: .5; }
+.vf-grade { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; max-width: 840px; margin-top: 6px; }
+.virada-rodape { position: sticky; bottom: 0; z-index: 6; margin-bottom: 20px; padding: 12px 16px; background: var(--card);
+  border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 -10px 24px -14px rgba(15, 23, 42, .3); }
+.virada-rodape .msg-erro { margin-bottom: 10px; }
+.virada-rodape-linha { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.virada-rodape-info { font-size: 12.5px; color: var(--text-2); }
+.virada-rodape-botoes { display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+.virada-feita .auth-status { margin: 6px 0 18px; }
+.virada-acoes-fim { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 4px; }
+@media (max-width: 760px) {
+  .vt-linha { grid-template-columns: 1fr; gap: 8px; }
+  .vt-seta { display: none; }
+  .vt-acao { max-width: none; }
+  .vt-campos { grid-template-columns: 1fr 1fr; }
+  .vf-grade { grid-template-columns: 1fr 1fr; }
+  .virada-anos .ano { font-size: 24px; }
+  .virada-rodape-botoes { width: 100%; }
+  .virada-rodape-botoes .btn { flex: 1; }
+  .imp-num { padding: 10px; }
+  .imp-num strong { font-size: 20px; }
+  .imp-num span { font-size: 11px; }
+}
+@media print { .virada-rodape, .virada-passos { display: none !important; } }
+.virada-kpis { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+.va-tabela { table-layout: fixed; min-width: 760px; }
+.va-tabela th:nth-child(1) { width: 25%; }
+.va-tabela th:nth-child(2) { width: 27%; }
+.va-tabela th:nth-child(3) { width: 22%; }
+.va-tabela .select { min-width: 0; }

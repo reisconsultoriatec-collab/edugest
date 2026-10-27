@@ -175,6 +175,8 @@
     async render(el) {
       filtroPeriodo = '';
       if (chave !== EG.chaveSessao()) { chave = EG.chaveSessao(); filtroAno = null; }
+      // Vindo da virada do ano letivo: abre no ano novo
+      if (EG.anoInicialTurmas) { filtroAno = EG.anoInicialTurmas; EG.anoInicialTurmas = null; }
       await carregar(el);
       el.onclick = (ev) => aoClicar(ev, el);
       el.onchange = (ev) => {

@@ -9,6 +9,9 @@
  *  PUT    /:id                          edita
  *  POST   /:id/novo-codigo              gera novo código PAI
  *  DELETE /:id?forcar=1                 exclui
+ *  POST   /importar                     importa a planilha (simular: true só confere)
+ *  GET    /importacoes                  importações feitas
+ *  POST   /importacoes/:id/desfazer     apaga os alunos de uma importação sem movimento
  *
  *  Exclusão: aluno com mensalidades não pode ser excluído (preserva o
  *  financeiro — use status Inativo/Transferido). Com notas ou frequência,
@@ -26,6 +29,7 @@ const v = require('../utils/validar');
 const { atividade } = require('../utils/auditoria');
 const { cifrar, decifrar } = require('../utils/crypto');
 const { inserirAluno, lerAluno, STATUS } = require('../services/matricula');
+const importacao = require('../services/importacao');
 const { hojeSP, dataValida } = require('../utils/datas');
 
 const MAX_AUTORIZADOS = 6;
@@ -156,6 +160,27 @@ router.get('/', assincrono(async (req, res) => {
 
   const linhas = await query(`${SELECT_LISTA} WHERE ${cond.join(' AND ')} ORDER BY a.nome LIMIT 3000`, params);
   res.json(linhas.map(formatarLista));
+}));
+
+/* ---------------- Importação por planilha ---------------- */
+// simular: true → confere cada linha sem gravar; sem simular → grava só as linhas sem erro
+router.post('/importar', assincrono(async (req, res) => {
+  const b = req.body || {};
+  if (b.simular) return res.json(await importacao.simular(req.colegioId, b.linhas));
+  const arquivo = v.texto(b.arquivo, 'Arquivo', { max: 160 });
+  const r = await importacao.importar(req.colegioId, req.usuario.id, arquivo, b.linhas);
+  await atividade(req.colegioId, req.usuario.id, `Importação de alunos: ${r.importados} cadastrado(s)${arquivo ? ` — ${arquivo}` : ''}`);
+  res.status(201).json(r);
+}));
+
+router.get('/importacoes', assincrono(async (req, res) => {
+  res.json(await importacao.listar(req.colegioId));
+}));
+
+router.post('/importacoes/:id/desfazer', assincrono(async (req, res) => {
+  const r = await importacao.desfazer(req.colegioId, req.usuario.id, v.id(req.params.id));
+  await atividade(req.colegioId, req.usuario.id, `Importação de alunos desfeita: ${r.removidos} cadastro(s) removido(s)`);
+  res.json(r);
 }));
 
 /* ---------------- Ficha ---------------- */

@@ -21,6 +21,7 @@ const { decifrar } = require('../utils/crypto');
 const { hojeSP, agoraSP } = require('../utils/datas');
 const { dataPorExtenso, valorPorExtenso } = require('../utils/extenso');
 const { montarBoletim } = require('./boletim');
+const { SQL_TURMAS_DA_VIRADA } = require('./virada');
 const { segmentoDaSerie } = require('./comunicados');
 const cal = require('./calendario');
 const { minutos } = require('./grade');
@@ -378,16 +379,24 @@ const lerDisciplinas = (txt) => {
  * origem 'manual' : ano anterior digitado pela secretaria
  */
 async function anosDoHistorico(colegioId, aluno, escola) {
-  const [turmas, linhas] = await Promise.all([
+  const [turmas, linhas, daVirada] = await Promise.all([
     query(
       `SELECT t.id, t.nome, t.serie, t.periodo, t.ano_letivo FROM turmas t
         WHERE t.colegio_id = ? AND (t.id = ?
            OR t.id IN (SELECT n.turma_id FROM notas n WHERE n.aluno_id = ?)
-           OR t.id IN (SELECT d.turma_id FROM frequencias f JOIN diarios d ON d.id = f.diario_id WHERE f.aluno_id = ?))`,
-      [colegioId, aluno.turma_id || 0, aluno.id, aluno.id]
+           OR t.id IN (SELECT d.turma_id FROM frequencias f JOIN diarios d ON d.id = f.diario_id WHERE f.aluno_id = ?)
+           OR t.id IN (${SQL_TURMAS_DA_VIRADA}))`,
+      [colegioId, aluno.turma_id || 0, aluno.id, aluno.id, aluno.id]
     ),
-    query('SELECT * FROM historico_anos WHERE aluno_id = ? AND colegio_id = ? ORDER BY ano, id', [aluno.id, colegioId])
+    query('SELECT * FROM historico_anos WHERE aluno_id = ? AND colegio_id = ? ORDER BY ano, id', [aluno.id, colegioId]),
+    // Resultado decidido na virada do ano (promovido, retido, concluiu…)
+    query(
+      `SELECT va.turma_origem_id, va.resultado FROM virada_alunos va JOIN viradas vv ON vv.id = va.virada_id
+        WHERE va.aluno_id = ? AND vv.desfeita_em IS NULL AND va.resultado IS NOT NULL`,
+      [aluno.id]
+    )
   ]);
+  const resultadoVirada = new Map(daVirada.map((x) => [x.turma_origem_id, x.resultado]));
   const cache = new Map();
   const sistema = [];
   for (const t of turmas) {
@@ -396,7 +405,7 @@ async function anosDoHistorico(colegioId, aluno, escola) {
     const dias = await diasLetivosDoAno(colegioId, t.ano_letivo, cache);
     const min = await minutosSemanais(t.id);
     const ch = dias && min ? Math.round((min * (dias / 5)) / 60) : null;
-    let resultado = RESULTADO_AUTO[b.situacaoGeral] || 'Cursando';
+    let resultado = resultadoVirada.get(t.id) || RESULTADO_AUTO[b.situacaoGeral] || 'Cursando';
     if (resultado === 'Cursando' && aluno.status === 'transferido' && t.id === aluno.turma_id) resultado = 'Transferido';
     sistema.push({
       origem: 'sistema', turmaId: t.id, turma: t.nome, ano: Number(t.ano_letivo), serie: t.serie,

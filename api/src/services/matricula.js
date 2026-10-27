@@ -11,7 +11,7 @@ const { hojeSP, dataValida } = require('../utils/datas');
 const { HttpErro } = require('../middleware/erros');
 const v = require('../utils/validar');
 
-const STATUS = ['ativo', 'inativo', 'transferido'];
+const STATUS = ['ativo', 'inativo', 'transferido', 'concluido'];
 
 /** Dados do aluno vindos do formulário (validados). */
 function lerAluno(b) {
