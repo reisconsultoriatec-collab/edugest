@@ -86,18 +86,10 @@
   EG.mostrarErroAuth = mostrarErro;
 
   /* ---------- Formulários ---------- */
-  /** E-mail de quem acabou de criar uma senha nova (conta.html): já vem preenchido uma vez. */
-  function emailLembrado() {
-    try {
-      const e = sessionStorage.getItem('edugest_email_login') || '';
-      sessionStorage.removeItem('edugest_email_login');
-      return e;
-    } catch (e) { return ''; }
-  }
   const formLogin = () => `
     <form data-form="login" novalidate>
       <div class="campo"><label for="lEmail">E-mail</label>
-        <input class="input" type="email" name="email" id="lEmail" autocomplete="username" maxlength="160" placeholder="seu@email.com" value="${EG.esc(emailLembrado())}"></div>
+        <input class="input" type="email" name="email" id="lEmail" autocomplete="username" maxlength="160" placeholder="seu@email.com"></div>
       <div class="campo"><label for="lSenha">Senha</label>${EG.campoSenha('senha', 'lSenha', 'current-password', 'Digite sua senha')}</div>
       <button class="btn btn-primario btn-bloco" type="submit"><i class="ti ti-login"></i> Entrar</button>
       <button class="auth-link" type="button" data-action="esqueci"><i class="ti ti-key"></i> Esqueci minha senha</button>
@@ -234,9 +226,8 @@
         </div>`);
     }
     if (extra.erro) mostrarErro(extra.erro);
-    // foco no primeiro campo ainda vazio (com o e-mail já preenchido, vai direto para a senha)
-    const vazio = EG.$$('input:not([type=hidden])', tela()).find((c) => !c.value);
-    if (vazio) vazio.focus();
+    const primeiro = EG.$('input:not([type=hidden])', tela());
+    if (primeiro && !primeiro.value) primeiro.focus();
   };
 
   /* ---------- Sessão ---------- */

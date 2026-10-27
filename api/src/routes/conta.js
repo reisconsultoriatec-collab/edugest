@@ -8,7 +8,7 @@
  *                               acesso com o código do colégio (pendente)
  *  POST /registrar-responsavel  responsável pelo código PAI do aluno (pendente)
  *  POST /falha-login            público: registra senha errada no log
- *  POST /evento                 login_ok | logout | timeout | senha_redefinida no log
+ *  POST /evento                 login_ok | logout | timeout no log
  *
  *  Fluxo no front: createUserWithEmailAndPassword → POST /registrar.
  *  Se o código for inválido, nada é gravado no MySQL e o usuário pode
@@ -252,10 +252,7 @@ router.post('/falha-login', limiteFalha, assincrono(async (req, res) => {
 const DETALHE_EVENTO = {
   login_ok: 'Login',
   logout: 'Logout manual',
-  timeout: 'Sessão encerrada por inatividade',
-  // Página conta.html: depois de criar a senha nova pelo link do e-mail, a
-  // pessoa entra com ela e só então o registro é feito (sempre autenticado)
-  senha_redefinida: 'Senha redefinida pelo link enviado ao e-mail'
+  timeout: 'Sessão encerrada por inatividade'
 };
 
 router.post('/evento', autenticar, carregarUsuario, assincrono(async (req, res) => {

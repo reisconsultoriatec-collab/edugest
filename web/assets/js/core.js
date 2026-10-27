@@ -20,7 +20,7 @@ window.EG = window.EG || {};
   EG.auth.languageCode = 'pt';
 
   EG.API_BASE = '/api';
-  EG.VERSAO = '1.17.0';
+  EG.VERSAO = '1.16.0';
 
   /** Marca do EduGest (capelo âmbar). classe: 'clara' (fundo escuro) ou 'grande'. */
   EG.logo = (classe) => `<span class="marca ${classe || ''}" aria-hidden="true"><svg viewBox="0 0 32 32">
