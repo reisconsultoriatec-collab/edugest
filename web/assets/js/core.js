@@ -20,7 +20,7 @@ window.EG = window.EG || {};
   EG.auth.languageCode = 'pt';
 
   EG.API_BASE = '/api';
-  EG.VERSAO = '1.16.0';
+  EG.VERSAO = '1.18.0';
 
   /** Marca do EduGest (capelo âmbar). classe: 'clara' (fundo escuro) ou 'grande'. */
   EG.logo = (classe) => `<span class="marca ${classe || ''}" aria-hidden="true"><svg viewBox="0 0 32 32">
@@ -91,8 +91,15 @@ window.EG = window.EG || {};
           body: corpo !== undefined ? JSON.stringify(corpo) : undefined
         });
       } catch (e) {
+        if (EG.suspeitarConexao) EG.suspeitarConexao();
         throw EG.erro('Sem conexão com o servidor. Verifique sua internet.', 'rede', 0);
       }
+      // Indicador do topo: 502/503/504 pode ser o servidor fora do ar (o topo confere
+      // antes de avisar); qualquer outra resposta mostra que a conexão está de pé
+      if (resp.status >= 502 && resp.status <= 504) { if (EG.suspeitarConexao) EG.suspeitarConexao(); }
+      else if (EG.avisarConexao) EG.avisarConexao(true);
+      // Gravou algo com sucesso: a tela deixa de ter alterações pendentes
+      if (resp.ok && metodo !== 'GET' && EG.limparAlteracoes) EG.limparAlteracoes();
       if (resp.status === 204) return null;
       try { dados = await resp.json(); } catch (e) { dados = null; }
     } finally {

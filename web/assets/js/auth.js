@@ -238,6 +238,7 @@
     EG.fecharModais();
     if (!user) {
       if (EG.pararSessao) EG.pararSessao();
+      if (EG.pararTopo) EG.pararTopo();
       EG.estado.me = null; EG.estado.colegioId = null; EG.estado.colegio = null;
       EG.mostrarAuth('login');
       return;

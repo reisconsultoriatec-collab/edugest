@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
-<link rel="stylesheet" href="assets/app.css?v=1.16.0">
+<link rel="stylesheet" href="assets/app.css?v=1.18.0">
 </head>
 <body>
 
@@ -53,14 +53,20 @@
       <button class="btn-menu" data-action="menu-abrir" aria-label="Abrir menu"><i class="ti ti-menu-2"></i></button>
       <h1 class="topo-titulo" id="titulo">Dashboard</h1>
       <div class="topo-direita">
+        <button class="status-conexao" id="statusConexao" type="button" data-action="status-conexao" hidden>
+          <span class="ponto" aria-hidden="true"></span><span class="status-texto"></span>
+        </button>
+        <button class="btn-redondo" data-action="atualizar-tela" title="Atualizar esta tela" aria-label="Atualizar esta tela"><i class="ti ti-refresh"></i></button>
         <button class="btn-redondo" data-action="tema" title="Tema claro/escuro"><i class="ti ti-moon" id="iconeTema"></i></button>
         <div class="usuario-menu">
           <button class="usuario-botao" data-action="menu-usuario">
             <span class="avatar" id="avatar">?</span>
             <span class="usuario-info"><strong id="usuarioNome">—</strong><small id="usuarioPerfil">—</small></span>
-            <i class="ti ti-chevron-down"></i>
+            <i class="ti ti-chevron-down seta-usuario"></i>
           </button>
           <div class="usuario-dropdown" id="usuarioDropdown" hidden>
+            <button data-action="tema" class="so-celular"><i class="ti ti-contrast-2"></i> Tema claro/escuro</button>
+            <button data-action="recarregar-sistema"><i class="ti ti-reload"></i> Recarregar o sistema</button>
             <button data-action="sair"><i class="ti ti-logout"></i> Sair</button>
           </div>
         </div>
@@ -74,35 +80,42 @@
 <!-- Camadas de modal e toast -->
 <div id="modais"></div>
 <div id="toasts" class="toasts" aria-live="polite"></div>
+<div class="aviso-versao" id="avisoVersao" role="status" hidden>
+  <i class="ti ti-sparkles" aria-hidden="true"></i>
+  <span>Há uma nova versão do EduGest.</span>
+  <button class="btn btn-primario" data-action="versao-atualizar"><i class="ti ti-refresh"></i> Atualizar agora</button>
+  <button class="aviso-versao-fechar" data-action="versao-depois" title="Lembrar depois" aria-label="Lembrar depois"><i class="ti ti-x"></i></button>
+</div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="assets/js/core.js?v=1.16.0"></script>
-<script src="assets/js/auth.js?v=1.16.0"></script>
-<script src="assets/js/shell.js?v=1.16.0"></script>
-<script src="assets/js/mod-dashboard.js?v=1.16.0"></script>
-<script src="assets/js/mod-turmas.js?v=1.16.0"></script>
-<script src="assets/js/mod-alunos.js?v=1.16.0"></script>
-<script src="assets/js/mod-professores.js?v=1.16.0"></script>
-<script src="assets/js/mod-diario.js?v=1.16.0"></script>
-<script src="assets/js/mod-notas.js?v=1.16.0"></script>
-<script src="assets/js/mod-boletim.js?v=1.16.0"></script>
-<script src="assets/js/mod-mensalidades.js?v=1.16.0"></script>
-<script src="assets/js/mod-bolsas.js?v=1.16.0"></script>
-<script src="assets/js/mod-contas.js?v=1.16.0"></script>
-<script src="assets/js/mod-fluxo.js?v=1.16.0"></script>
-<script src="assets/js/mod-relatorios.js?v=1.16.0"></script>
-<script src="assets/js/mod-conciliacao.js?v=1.16.0"></script>
-<script src="assets/js/mod-comunicados.js?v=1.16.0"></script>
-<script src="assets/js/mod-calendario.js?v=1.16.0"></script>
-<script src="assets/js/mod-grade.js?v=1.16.0"></script>
-<script src="assets/js/mod-documentos.js?v=1.16.0"></script>
-<script src="assets/js/mod-funil.js?v=1.16.0"></script>
-<script src="assets/js/mod-portal.js?v=1.16.0"></script>
-<script src="assets/js/mod-config.js?v=1.16.0"></script>
-<script src="assets/js/mod-usuarios.js?v=1.16.0"></script>
-<script src="assets/js/mod-seguranca.js?v=1.16.0"></script>
-<script src="assets/js/mod-colegios.js?v=1.16.0"></script>
+<script src="assets/js/core.js?v=1.18.0"></script>
+<script src="assets/js/auth.js?v=1.18.0"></script>
+<script src="assets/js/shell.js?v=1.18.0"></script>
+<script src="assets/js/topo.js?v=1.18.0"></script>
+<script src="assets/js/mod-dashboard.js?v=1.18.0"></script>
+<script src="assets/js/mod-turmas.js?v=1.18.0"></script>
+<script src="assets/js/mod-alunos.js?v=1.18.0"></script>
+<script src="assets/js/mod-professores.js?v=1.18.0"></script>
+<script src="assets/js/mod-diario.js?v=1.18.0"></script>
+<script src="assets/js/mod-notas.js?v=1.18.0"></script>
+<script src="assets/js/mod-boletim.js?v=1.18.0"></script>
+<script src="assets/js/mod-mensalidades.js?v=1.18.0"></script>
+<script src="assets/js/mod-bolsas.js?v=1.18.0"></script>
+<script src="assets/js/mod-contas.js?v=1.18.0"></script>
+<script src="assets/js/mod-fluxo.js?v=1.18.0"></script>
+<script src="assets/js/mod-relatorios.js?v=1.18.0"></script>
+<script src="assets/js/mod-conciliacao.js?v=1.18.0"></script>
+<script src="assets/js/mod-comunicados.js?v=1.18.0"></script>
+<script src="assets/js/mod-calendario.js?v=1.18.0"></script>
+<script src="assets/js/mod-grade.js?v=1.18.0"></script>
+<script src="assets/js/mod-documentos.js?v=1.18.0"></script>
+<script src="assets/js/mod-funil.js?v=1.18.0"></script>
+<script src="assets/js/mod-portal.js?v=1.18.0"></script>
+<script src="assets/js/mod-config.js?v=1.18.0"></script>
+<script src="assets/js/mod-usuarios.js?v=1.18.0"></script>
+<script src="assets/js/mod-seguranca.js?v=1.18.0"></script>
+<script src="assets/js/mod-colegios.js?v=1.18.0"></script>
 <script>EG.iniciar();</script>
 </body>
 </html>

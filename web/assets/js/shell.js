@@ -86,6 +86,7 @@
     EG.$('#telaAuth').hidden = true;
     EG.$('#app').hidden = false;
     iniciarSessao(col.config ? col.config.timeoutSessaoMin : 15);
+    if (EG.iniciarTopo) EG.iniciarTopo(); // conexão, tempo conectado e aviso de nova versão
     // A tela de carregamento só sai quando a primeira página estiver pronta (no máximo 6 s)
     EG.carregando(true, 'Preparando o seu painel...', 80);
     await Promise.race([navegarPelaUrl(), new Promise((ok) => setTimeout(ok, 6000))]);
@@ -222,17 +223,22 @@
     }
     fecharMenuMobile();
 
-    const el = EG.$('#conteudo');
-    el.onclick = null; // cada módulo registra os próprios eventos
-    el.onkeydown = null;
-    el.onchange = null;
-    el.oninput = null;
+    if (EG.limparAlteracoes) EG.limparAlteracoes(true); // tela nova: nada pendente
+    // Cada abertura de tela ganha uma área própria: se a pessoa trocar de tela antes da
+    // anterior terminar de carregar, a resposta atrasada cai na área antiga (já fora da
+    // página) e não sobrescreve a nova. Os eventos de cada módulo também ficam nela.
+    const conteudo = EG.$('#conteudo');
+    conteudo.onclick = null; conteudo.onkeydown = null; conteudo.onchange = null; conteudo.oninput = null;
+    const el = document.createElement('div');
+    el.className = 'pagina';
+    el.dataset.pagina = id;
+    conteudo.replaceChildren(el);
     const mod = EG.modulos[id];
     if (item.pronto && mod) {
       el.innerHTML = EG.esqueleto(true);
       let render;
       try { render = Promise.resolve(mod.render(el)); } catch (e) { render = Promise.reject(e); }
-      return animarEntrada(el, render.catch((e) => {
+      return animarEntrada(conteudo, render.catch((e) => {
         el.innerHTML = `<div class="card"><div class="msg-erro">${EG.esc(e.message)}</div>
           <button class="btn btn-secundario" data-action="ir" data-pagina="${id}"><i class="ti ti-refresh"></i> Tentar novamente</button></div>`;
       }));
@@ -298,7 +304,13 @@
   };
   EG.iniciarSessao = iniciarSessao; // usado ao salvar a configuração
 
+  let ultimaAtividade = Date.now();
+  /** Milissegundos até o encerramento por inatividade (null = desativado). Usado no topo. */
+  EG.sessaoRestante = () => (limiteMs ? Math.max(0, limiteMs - (Date.now() - ultimaAtividade)) : null);
+  EG.sessaoLimiteMin = () => limiteMs / 60000;
+
   function agendar() {
+    ultimaAtividade = Date.now();
     clearTimeout(tAviso);
     tAviso = setTimeout(avisar, Math.max(limiteMs - AVISO_SEG * 1000, 1000));
   }
