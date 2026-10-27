@@ -45,14 +45,14 @@ No [console do Firebase](https://console.firebase.google.com/), projeto **eduges
 
 ## 3. Ligar a página nova
 
-1. **Authentication → Settings → Domínios autorizados**: confira se `edugest.reisconsultoriatec.com` está na lista. Se não estiver, adicione.
+1. **Authentication → Configurações → Domínios autorizados**: adicione `edugest.reisconsultoriatec.com` (só o domínio, sem `https://` e sem barra no fim). **Faça isto antes do passo 3**: sem o domínio na lista, o Firebase não aceita salvar o URL de ação.
 2. **Configurações do projeto → Geral → Nome público**: `EduGest`. É o nome que aparece no e-mail.
 3. **Authentication → Templates → Redefinição de senha → lápis**:
    - **Nome do remetente**: `EduGest`
    - **Assunto**: `Crie uma nova senha no EduGest`
-   - **Mensagem** (pode colar):
+   - **Mensagem** (copie só as linhas que começam com `<p>`):
 
-     ```html
+     ```
      <p>Olá,</p>
      <p>Recebemos um pedido para criar uma nova senha no EduGest para a conta <b>%EMAIL%</b>.</p>
      <p><a href="%LINK%">Criar nova senha</a></p>
