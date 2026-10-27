@@ -45,7 +45,7 @@ No [console do Firebase](https://console.firebase.google.com/), projeto **eduges
 
 ## 3. Ligar a página nova
 
-1. **Authentication → Configurações → Domínios autorizados**: adicione `edugest.reisconsultoriatec.com` (só o domínio, sem `https://` e sem barra no fim). **Faça isto antes do passo 3**: sem o domínio na lista, o Firebase não aceita salvar o URL de ação.
+1. **Authentication → Configurações → Domínios autorizados**: adicione `edugest.reisconsultoriatec.com` (só o domínio, sem `https://` e sem barra no fim). **Faça isto antes do passo 3**: o URL de ação precisa usar um domínio que o projeto reconhece.
 2. **Configurações do projeto → Geral → Nome público**: `EduGest`. É o nome que aparece no e-mail.
 3. **Authentication → Templates → Redefinição de senha → lápis**:
    - **Nome do remetente**: `EduGest`
