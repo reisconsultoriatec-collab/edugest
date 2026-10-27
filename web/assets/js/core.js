@@ -20,6 +20,12 @@ window.EG = window.EG || {};
   EG.auth.languageCode = 'pt';
 
   EG.API_BASE = '/api';
+  EG.VERSAO = '1.16.0';
+
+  /** Marca do EduGest (capelo âmbar). classe: 'clara' (fundo escuro) ou 'grande'. */
+  EG.logo = (classe) => `<span class="marca ${classe || ''}" aria-hidden="true"><svg viewBox="0 0 32 32">
+    <path d="M16 7 4 13l12 6 12-6z" fill="#F59E0B"/><path d="M9 16v5c0 2 3.5 4 7 4s7-2 7-4v-5l-7 3.5z" fill="#F59E0B" opacity=".85"/>
+    <path d="M26.5 14v6.2" stroke="#F59E0B" stroke-width="1.6" stroke-linecap="round"/></svg></span>`;
 
   EG.estado = {
     me: null,          // resposta de GET /api/me
@@ -75,18 +81,23 @@ window.EG = window.EG || {};
     if (corpo !== undefined) headers['Content-Type'] = 'application/json';
 
     let resp;
-    try {
-      resp = await fetch(EG.API_BASE + caminho, {
-        method: metodo,
-        headers,
-        body: corpo !== undefined ? JSON.stringify(corpo) : undefined
-      });
-    } catch (e) {
-      throw EG.erro('Sem conexão com o servidor. Verifique sua internet.', 'rede', 0);
-    }
-    if (resp.status === 204) return null;
     let dados = null;
-    try { dados = await resp.json(); } catch (e) { dados = null; }
+    atividade(1);
+    try {
+      try {
+        resp = await fetch(EG.API_BASE + caminho, {
+          method: metodo,
+          headers,
+          body: corpo !== undefined ? JSON.stringify(corpo) : undefined
+        });
+      } catch (e) {
+        throw EG.erro('Sem conexão com o servidor. Verifique sua internet.', 'rede', 0);
+      }
+      if (resp.status === 204) return null;
+      try { dados = await resp.json(); } catch (e) { dados = null; }
+    } finally {
+      atividade(-1);
+    }
     if (!resp.ok) {
       if (resp.status === 401 && u) {
         // Token expirado ou sessão inválida: volta ao login
@@ -97,10 +108,75 @@ window.EG = window.EG || {};
     return dados;
   };
 
-  /* ---------- Carregando ---------- */
-  EG.carregando = function (ativo, msg) {
-    EG.$('#carregandoMsg').textContent = msg || 'Carregando...';
-    EG.$('#carregando').classList.toggle('aberto', !!ativo);
+  /* ---------- Barra de atividade (linha sob o topo enquanto a API trabalha) ---------- */
+  let emVoo = 0, tAtividade = null;
+  function atividade(delta) {
+    emVoo = Math.max(0, emVoo + delta);
+    const b = document.getElementById('progressoTopo');
+    if (!b) return;
+    clearTimeout(tAtividade);
+    // só aparece se a resposta demorar; some um instante depois para não piscar entre chamadas seguidas
+    tAtividade = emVoo ? setTimeout(() => b.classList.add('ativo'), 180) : setTimeout(() => b.classList.remove('ativo'), 120);
+  }
+
+  /* ---------- Carregando (tela cheia com a marca) ---------- */
+  /**
+   * EG.carregando(true, 'Mensagem', 40) → abre com a barra em 40%.
+   * Sem o número, a barra fica em movimento contínuo. EG.carregando(false) → some suavemente.
+   * Fica pelo menos MIN_MS na tela para a animação não "piscar".
+   */
+  const MIN_MS = 700;
+  let tCarregando = null, abertoEm = 0;
+  EG.carregando = function (ativo, msg, progresso) {
+    const el = EG.$('#carregando');
+    const txt = EG.$('#carregandoMsg');
+    const barra = EG.$('#carregandoBarra');
+    clearTimeout(tCarregando);
+    if (ativo) {
+      if (!el.classList.contains('aberto') || el.classList.contains('saindo')) abertoEm = Date.now();
+      el.classList.remove('saindo');
+      el.classList.add('aberto');
+      const novo = msg || 'Carregando...';
+      if (txt.textContent !== novo) {
+        txt.textContent = novo;
+        txt.classList.remove('troca'); void txt.offsetWidth; txt.classList.add('troca');
+      }
+      const fixa = typeof progresso === 'number';
+      barra.classList.toggle('indeterminada', !fixa);
+      barra.firstElementChild.style.width = fixa ? Math.max(4, Math.min(100, progresso)) + '%' : '';
+      return;
+    }
+    if (!el.classList.contains('aberto') || el.classList.contains('saindo')) return;
+    const espera = Math.max(0, MIN_MS - (Date.now() - (abertoEm || performance.timeOrigin || 0)));
+    tCarregando = setTimeout(() => {
+      el.classList.add('saindo');
+      tCarregando = setTimeout(() => el.classList.remove('aberto', 'saindo'), 340);
+    }, espera);
+  };
+
+  /** Esqueleto animado enquanto os dados chegam. pagina=true inclui a fileira de indicadores. */
+  EG.esqueleto = (pagina) => `<div class="esqueleto" aria-busy="true" aria-label="Carregando">
+      ${pagina ? `<div class="esq-kpis">${'<div class="esq esq-kpi"><span class="brilho esq-ico"></span><span class="esq-txt"><i class="brilho"></i><i class="brilho"></i></span></div>'.repeat(4)}</div>` : ''}
+      <div class="esq esq-card"><i class="brilho esq-titulo"></i>${'<i class="brilho"></i>'.repeat(pagina ? 6 : 4)}</div>
+    </div>`;
+
+  /**
+   * Mostra "Gerando..." sobre um bloco enquanto fn() trabalha (relatórios, gráficos).
+   * Aparece só se demorar mais que um instante. Devolve o resultado de fn().
+   */
+  EG.gerando = async function (alvo, msg, fn, icone) {
+    if (!alvo) return fn();
+    const camada = document.createElement('div');
+    camada.className = 'gerando-camada';
+    camada.setAttribute('role', 'status');
+    camada.innerHTML = `<div class="gerando-caixa"><span class="gerando-icone"><i class="ti ${icone || 'ti-chart-bar'}"></i></span><span></span></div>`;
+    camada.querySelector('span:last-child').textContent = msg || 'Gerando relatório...';
+    alvo.classList.add('gerando-alvo');
+    alvo.appendChild(camada);
+    try { return await fn(); } finally {
+      camada.remove();
+      alvo.classList.remove('gerando-alvo');
+    }
   };
 
   /* ---------- Toast ---------- */
@@ -374,9 +450,17 @@ window.EG = window.EG || {};
     b.querySelector('i').className = 'ti ' + (inp.type === 'password' ? 'ti-eye' : 'ti-eye-off');
   });
 
-  EG.campoSenha = (nome, id, autocomplete) => `
-    <div class="senha"><input class="input" type="password" name="${nome}" id="${id}" autocomplete="${autocomplete}" maxlength="128">
-    <button type="button" data-action="ver-senha" tabindex="-1" aria-label="Mostrar senha"><i class="ti ti-eye"></i></button></div>`;
+  EG.campoSenha = (nome, id, autocomplete, placeholder) => `
+    <div class="senha"><input class="input" type="password" name="${nome}" id="${id}" autocomplete="${autocomplete}" maxlength="128"${placeholder ? ` placeholder="${EG.esc(placeholder)}"` : ''}>
+    <button type="button" data-action="ver-senha" tabindex="-1" aria-label="Mostrar senha"><i class="ti ti-eye"></i></button></div>
+    <small class="caps-lock" hidden><i class="ti ti-alert-triangle"></i> Caps Lock ligado</small>`;
+  // Aviso de Caps Lock ao digitar a senha
+  ['keydown', 'keyup'].forEach((tipo) => document.addEventListener(tipo, (e) => {
+    const t = e.target;
+    if (!t.matches || !t.matches('.senha input') || typeof e.getModifierState !== 'function') return;
+    const aviso = t.closest('.senha').nextElementSibling;
+    if (aviso && aviso.classList.contains('caps-lock')) aviso.hidden = !e.getModifierState('CapsLock');
+  }));
 
   /* ---------- Tema ---------- */
   EG.aplicarTema = function (tema) {
@@ -402,6 +486,24 @@ window.EG = window.EG || {};
     window.open(EG.urlWhatsApp(telefone, texto), '_blank', 'noopener');
   };
 
+  /** Página da aba nova enquanto o PDF é gerado (estilos embutidos: a aba não tem o CSS do sistema). */
+  function paginaEspera(rotulo) {
+    const whats = /whats/i.test(rotulo || '');
+    return `<style>
+      body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:Inter,system-ui,sans-serif;
+        background:linear-gradient(135deg,#0E1730,#1A2744 50%,#22355E);color:#fff}
+      .c{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;padding:24px}
+      .f{position:relative;width:72px;height:88px;border-radius:10px;background:#fff;box-shadow:0 20px 40px -12px rgba(0,0,0,.5);overflow:hidden}
+      .f i{position:absolute;left:12px;right:12px;height:6px;border-radius:3px;background:#E2E8F0;animation:l 1.6s ease-in-out infinite}
+      .f i:nth-child(1){top:16px;right:30px;background:#F59E0B}.f i:nth-child(2){top:30px;animation-delay:.15s}
+      .f i:nth-child(3){top:42px;animation-delay:.3s}.f i:nth-child(4){top:54px;right:24px;animation-delay:.45s}.f i:nth-child(5){top:66px;animation-delay:.6s}
+      @keyframes l{0%,100%{opacity:.35}50%{opacity:1}}
+      strong{font-size:17px;font-weight:600}span{font-size:13px;color:rgba(255,255,255,.65)}
+      @media (prefers-reduced-motion:reduce){.f i{animation:none}}
+    </style><div class="c"><div class="f"><i></i><i></i><i></i><i></i><i></i></div>
+      <strong>${whats ? 'Preparando a mensagem...' : 'Gerando o documento...'}</strong><span>Isso leva só alguns segundos.</span></div>`;
+  }
+
   /**
    * Abre uma nova aba cujo endereço só fica pronto depois de uma chamada à API.
    * A aba é aberta já no clique (senão o navegador bloqueia como pop-up) e
@@ -412,8 +514,8 @@ window.EG = window.EG || {};
     const aba = window.open('', '_blank');
     if (aba) {
       try {
-        aba.document.title = 'Abrindo...';
-        aba.document.body.innerHTML = '<p style="font-family:system-ui,sans-serif;color:#64748b;padding:24px">Preparando o documento...</p>';
+        aba.document.title = 'Gerando o documento...';
+        aba.document.body.innerHTML = paginaEspera(rotulo);
       } catch (e) { /* aba de outra origem */ }
     }
     let url;

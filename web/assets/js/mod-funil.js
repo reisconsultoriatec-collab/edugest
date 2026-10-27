@@ -179,7 +179,7 @@
   }
 
   async function desenharNumeros(corpo) {
-    corpo.innerHTML = '<div class="card"><div class="vazio"><div class="spinner pequeno" style="margin:0 auto"></div></div></div>';
+    corpo.innerHTML = EG.esqueleto();
     const q = est.ano ? `?ano=${est.ano}` : '';
     const r = await EG.api('GET', `/funil/indicadores${q}`);
     const anos = [...new Set([opcoes.anoLetivo, opcoes.anoLetivo + 1, ...leads.map((l) => l.ano).filter(Boolean)])].sort((a, b) => b - a);

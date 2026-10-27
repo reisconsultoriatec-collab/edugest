@@ -58,7 +58,7 @@
     el.querySelector('[data-topo]').innerHTML = avisoTopo();
     el.querySelector('[data-abas]').innerHTML = abas();
     const corpo = el.querySelector('[data-corpo]');
-    corpo.innerHTML = '<div class="card"><div class="vazio"><div class="spinner pequeno" style="margin:0 auto"></div></div></div>';
+    corpo.innerHTML = EG.esqueleto();
     if (est.aba === 'emitir') desenharEmitir(corpo);
     else if (est.aba === 'emitidos') await desenharEmitidos(corpo);
     else if (est.aba === 'historico') await desenharHistorico(corpo);

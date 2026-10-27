@@ -266,7 +266,7 @@
           <button class="btn btn-secundario" data-action="imprimir"><i class="ti ti-printer"></i> Imprimir / PDF</button>
         </div>
       </div>
-      ${rel.html()}`;
+      <div class="relatorio-corpo" data-relatorio>${rel.html()}</div>`;
   }
 
   EG.registrarModulo('relatorios', {
@@ -275,7 +275,10 @@
       [turmas] = await Promise.all([EG.api('GET', '/turmas').catch(() => []), carregar()]);
       render(el);
       const recarregar = async () => {
-        try { await carregar(); render(el); } catch (e) { EG.toast(e.message, 'erro'); }
+        try {
+          await EG.gerando(el.querySelector('[data-relatorio]'), 'Gerando relatório...', carregar);
+          render(el);
+        } catch (e) { EG.toast(e.message, 'erro'); }
       };
       el.onclick = async (ev) => {
         const b = ev.target.closest('[data-action]');

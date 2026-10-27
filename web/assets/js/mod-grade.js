@@ -87,7 +87,7 @@
     edicao = null;
     el.querySelector('[data-abas]').innerHTML = abas();
     const corpo = el.querySelector('[data-corpo]');
-    corpo.innerHTML = '<div class="card"><div class="vazio"><div class="spinner pequeno" style="margin:0 auto"></div></div></div>';
+    corpo.innerHTML = EG.esqueleto();
     if (est.aba === 'turmas') await abaTurmas(el, corpo);
     else if (est.aba === 'professores') await abaProfessores(el, corpo, false);
     else if (est.aba === 'minha') await abaProfessores(el, corpo, true);

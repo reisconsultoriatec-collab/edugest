@@ -27,15 +27,55 @@
   }
   function exigir(valor, msg) { if (!valor) throw EG.erro(msg); }
 
-  /* ---------- Moldura das telas ---------- */
+  /* ---------- Moldura das telas ----------
+   * Painel do colégio à esquerda (some no celular) e cartão de acesso à direita.
+   * O painel é montado uma vez; trocar de aba só troca o conteúdo do cartão. */
+  const RECURSOS = [
+    ['ti-notebook', 'Sala de aula em dia', 'Chamada, notas, boletim e grade horária lançados pelo próprio professor.'],
+    ['ti-receipt', 'Financeiro sem planilha', 'Mensalidades com PIX, carnê, conciliação bancária e relatórios.'],
+    ['ti-file-certificate', 'Secretaria digital', 'Declarações, histórico escolar e contrato com QR Code de validação.'],
+    ['ti-home-heart', 'Família por perto', 'Portal do responsável com boletim, comunicados e cobranças.']
+  ];
+  function estrutura() {
+    return `
+      <section class="auth-lado">
+        <div class="auth-lado-marca">${EG.logo('clara')}<span>EduGest</span></div>
+        <div class="auth-lado-texto">
+          <h1>Seu colégio organizado, da matrícula ao boletim.</h1>
+          <p>Gestão escolar completa para a secretaria, a sala de aula, o financeiro e as famílias.</p>
+          <ul class="auth-recursos">${RECURSOS.map(([i, t, d]) => `
+            <li><span class="auth-recurso-icone"><i class="ti ${i}"></i></span><div><strong>${t}</strong><small>${d}</small></div></li>`).join('')}
+          </ul>
+        </div>
+        <div class="auth-lado-rodape">Reis Tecnologia</div>
+      </section>
+      <div class="auth-direita"><div class="auth-card" id="authCard"></div></div>`;
+  }
   function moldura(conteudo) {
     return `
-      <div class="auth-card">
-        <div class="auth-marca"><i class="ti ti-school"></i><h2>EduGest</h2><p>Gestão Educacional Multi-Colégio</p></div>
-        <div class="msg-erro" id="authErro" hidden></div>
-        ${conteudo}
-        <div class="auth-rodape">Reis Tecnologia</div>
-      </div>`;
+      <div class="auth-card-marca">
+        <div class="auth-card-nome">${EG.logo()}<span>EduGest</span></div>
+        <p>Gestão Educacional</p>
+      </div>
+      <div class="msg-erro" id="authErro" hidden></div>
+      ${conteudo}
+      <div class="auth-seguro"><i class="ti ti-lock"></i> Conexão segura e dados protegidos</div>
+      <div class="auth-rodape">v${EG.VERSAO.split('.').slice(0, 2).join('.')} Reis Tecnologia © ${new Date().getFullYear()}</div>`;
+  }
+  /** Coloca o conteúdo no cartão. Na 1ª vez (ou voltando do sistema) monta a tela inteira, com a entrada animada. */
+  function preencher(html) {
+    const t = tela();
+    let card = EG.$('#authCard', t);
+    if (!card) {
+      t.innerHTML = estrutura();
+      t.classList.remove('entrando'); void t.offsetWidth; t.classList.add('entrando');
+      clearTimeout(preencher._t);
+      preencher._t = setTimeout(() => t.classList.remove('entrando'), 1400);
+      card = EG.$('#authCard', t);
+    } else {
+      card.classList.remove('troca'); void card.offsetWidth; card.classList.add('troca');
+    }
+    card.innerHTML = moldura(html);
   }
   function mostrarErro(msg) {
     const el = EG.$('#authErro');
@@ -49,10 +89,10 @@
   const formLogin = () => `
     <form data-form="login" novalidate>
       <div class="campo"><label for="lEmail">E-mail</label>
-        <input class="input" type="email" name="email" id="lEmail" autocomplete="username" maxlength="160"></div>
-      <div class="campo"><label for="lSenha">Senha</label>${EG.campoSenha('senha', 'lSenha', 'current-password')}</div>
+        <input class="input" type="email" name="email" id="lEmail" autocomplete="username" maxlength="160" placeholder="seu@email.com"></div>
+      <div class="campo"><label for="lSenha">Senha</label>${EG.campoSenha('senha', 'lSenha', 'current-password', 'Digite sua senha')}</div>
       <button class="btn btn-primario btn-bloco" type="submit"><i class="ti ti-login"></i> Entrar</button>
-      <button class="auth-link" type="button" data-action="esqueci">Esqueci minha senha</button>
+      <button class="auth-link" type="button" data-action="esqueci"><i class="ti ti-key"></i> Esqueci minha senha</button>
     </form>`;
 
   /* Equipe entra sempre pelo código do colégio. Colégio novo só o
@@ -95,7 +135,7 @@
 
   const camposConta = (prefixo) => `
     <div class="campo"><label>Seu nome completo</label><input class="input" name="nome" maxlength="100" autocomplete="name"></div>
-    <div class="campo"><label>E-mail</label><input class="input" type="email" name="email" maxlength="160" autocomplete="username"></div>
+    <div class="campo"><label>E-mail</label><input class="input" type="email" name="email" maxlength="160" autocomplete="username" placeholder="seu@email.com"></div>
     <div class="campo"><label for="${prefixo}Senha">Senha</label>${EG.campoSenha('senha', prefixo + 'Senha', 'new-password')}
       <small>Mínimo de 8 caracteres, com uma letra maiúscula e um número.</small></div>`;
 
@@ -103,11 +143,12 @@
   EG.mostrarAuth = function (qual, extra) {
     extra = extra || {};
     EG.$('#app').hidden = true;
+    if (tela().hidden) tela().innerHTML = ''; // voltando do sistema: monta de novo, com a entrada animada
     tela().hidden = false;
     EG.carregando(false);
 
     if (qual === 'login' || qual === 'cadastro' || qual === 'responsavel') {
-      tela().innerHTML = moldura(`
+      preencher(`
         <div class="abas">
           <button class="aba ${qual === 'login' ? 'ativa' : ''}" data-action="aba" data-aba="login">Entrar</button>
           <button class="aba ${qual === 'cadastro' ? 'ativa' : ''}" data-action="aba" data-aba="cadastro">Criar conta</button>
@@ -121,7 +162,7 @@
     } else if (qual === 'completar') {
       const nome = (extra.dados && extra.dados.nome) || (EG.auth.currentUser && EG.auth.currentUser.displayName) || '';
       const tipo = tipoValido(extra.tipo);
-      tela().innerHTML = moldura(`
+      preencher(`
         <p style="color:var(--text-2);font-size:13px;margin-bottom:14px;text-align:center">
           Conta <strong>${EG.esc(EG.auth.currentUser ? EG.auth.currentUser.email : '')}</strong> criada. Falta concluir o cadastro no EduGest.</p>
         ${avisoDono()}${abasTipo('completar', tipo)}
@@ -141,7 +182,7 @@
       const c = extra.colegio || {};
       let wa = null;
       try { wa = sessionStorage.getItem('edugest_wa_' + c.id); } catch (e) { wa = null; }
-      tela().innerHTML = moldura(`
+      preencher(`
         <div class="auth-status">
           <div class="icone-grande" style="background:var(--aviso-bg);color:var(--aviso)"><i class="ti ti-clock-pause"></i></div>
           <h3>Aguardando aprovação</h3>
@@ -152,7 +193,7 @@
         </div>`);
     } else if (qual === 'bloqueado') {
       const c = extra.colegio || {};
-      tela().innerHTML = moldura(`
+      preencher(`
         <div class="auth-status">
           <div class="icone-grande" style="background:var(--erro-bg);color:var(--erro)"><i class="ti ti-lock"></i></div>
           <h3>Acesso bloqueado</h3>
@@ -162,7 +203,7 @@
     } else if (qual === 'sem-colegio') {
       // Já tem cadastro, mas nenhum colégio ativo (acesso removido/recusado ou colégio desativado)
       const tipo = tipoValido(extra.tipo);
-      tela().innerHTML = moldura(`
+      preencher(`
         <div class="auth-status" style="margin-bottom:6px">
           <div class="icone-grande" style="background:var(--info-bg);color:var(--info)"><i class="ti ti-building"></i></div>
           <h3>Nenhum colégio vinculado</h3>
@@ -175,7 +216,7 @@
         </form>
         <button class="auth-link" data-action="sair">Sair</button>`);
     } else if (qual === 'erro') {
-      tela().innerHTML = moldura(`
+      preencher(`
         <div class="auth-status">
           <div class="icone-grande" style="background:var(--erro-bg);color:var(--erro)"><i class="ti ti-plug-connected-x"></i></div>
           <h3>Não foi possível carregar</h3>
@@ -206,7 +247,7 @@
 
   /** Lê /me, escolhe o colégio e decide a tela. */
   EG.carregarSessao = async function (preferirId) {
-    EG.carregando(true, 'Carregando...');
+    EG.carregando(true, 'Verificando o seu acesso...', 22);
     try {
       const me = await EG.api('GET', '/me');
       EG.estado.me = me;

@@ -45,6 +45,13 @@
     selecionados.clear();
   }
 
+  /** Recarrega mostrando "Gerando..." sobre o quadro da aba (relatórios e listas). */
+  function recarregarComAviso(el) {
+    const quadros = EG.$$(':scope > .card', el);
+    const msg = estado.aba === 'resumo' ? 'Gerando relatório...' : 'Carregando lançamentos...';
+    return EG.gerando(quadros[quadros.length - 1], msg, carregar, estado.aba === 'resumo' ? 'ti-chart-bar' : 'ti-list-search');
+  }
+
   /* ---------- Tela ---------- */
   function render(el) {
     if (!contas.length) {
@@ -486,7 +493,7 @@
       switch (b.dataset.action) {
         case 'aba':
           estado.aba = b.dataset.aba; estado.busca = ''; estado.tipo = '';
-          await EG.guarda(b, async () => { await carregar(); render(el); });
+          await EG.guarda(b, async () => { await recarregarComAviso(el); render(el); });
           break;
         case 'nova-conta': modalConta(null, el); break;
         case 'contas': modalContas(el); break;
@@ -593,7 +600,7 @@
         if (f === 'tipo') estado.tipo = t.value;
         if (f === 'mes') estado.mes = t.value;
         if (f === 'ano') estado.ano = Number(t.value);
-        try { await carregar(); render(el); } catch (e) { EG.toast(e.message, 'erro'); }
+        try { await recarregarComAviso(el); render(el); } catch (e) { EG.toast(e.message, 'erro'); }
       };
       let espera = null;
       el.oninput = (ev) => {

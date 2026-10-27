@@ -61,6 +61,7 @@
   /* ---------- Entrar no app ---------- */
   EG.entrarApp = async function (vinculo) {
     EG.estado.colegioId = vinculo.id;
+    EG.carregando(true, 'Carregando os dados do colégio...', 50);
     const col = await EG.api('GET', '/colegios/atual');
     EG.estado.colegio = col;
     EG.estado.perfil = col.perfil;
@@ -84,9 +85,13 @@
     if (col.perfil !== 'responsavel' && EG.atualizarFunil) EG.atualizarFunil();
     EG.$('#telaAuth').hidden = true;
     EG.$('#app').hidden = false;
-    EG.carregando(false);
     iniciarSessao(col.config ? col.config.timeoutSessaoMin : 15);
-    navegarPelaUrl();
+    // A tela de carregamento só sai quando a primeira página estiver pronta (no máximo 6 s)
+    EG.carregando(true, 'Preparando o seu painel...', 80);
+    await Promise.race([navegarPelaUrl(), new Promise((ok) => setTimeout(ok, 6000))]);
+    EG.carregando(true, 'Tudo pronto!', 100);
+    await new Promise((ok) => setTimeout(ok, 200));
+    EG.carregando(false);
   };
 
   function montarSeletor() {
@@ -186,7 +191,17 @@
 
   function navegarPelaUrl() {
     const id = (location.hash.match(/^#\/([\w-]+)/) || [])[1];
-    EG.navegar(id || paginaInicial(), true);
+    return EG.navegar(id || paginaInicial(), true);
+  }
+
+  /* Conteúdo novo entra suave; a classe sai depois que a página terminou de montar. */
+  let tEntrada = null, navAtual = 0;
+  function animarEntrada(el, render) {
+    const minha = ++navAtual;
+    clearTimeout(tEntrada);
+    el.classList.remove('entrando'); void el.offsetWidth; el.classList.add('entrando');
+    const fim = () => { if (minha === navAtual) tEntrada = setTimeout(() => el.classList.remove('entrando'), 700); };
+    return render.then(fim, fim);
   }
 
   EG.navegar = function (id, semHistorico) {
@@ -200,7 +215,11 @@
     if (!semHistorico || location.hash !== '#/' + id) history.replaceState(null, '', '#/' + id);
     EG.$$('.menu-item').forEach((m) => m.classList.toggle('ativo', m.dataset.pagina === id));
     marcarGrupo(id);
-    EG.$('#titulo').textContent = item.rotulo;
+    const titulo = EG.$('#titulo');
+    if (titulo.textContent !== item.rotulo) {
+      titulo.textContent = item.rotulo;
+      titulo.classList.remove('troca'); void titulo.offsetWidth; titulo.classList.add('troca');
+    }
     fecharMenuMobile();
 
     const el = EG.$('#conteudo');
@@ -210,15 +229,17 @@
     el.oninput = null;
     const mod = EG.modulos[id];
     if (item.pronto && mod) {
-      el.innerHTML = '<div class="vazio"><div class="spinner pequeno" style="margin:0 auto"></div></div>';
-      Promise.resolve(mod.render(el)).catch((e) => {
+      el.innerHTML = EG.esqueleto(true);
+      let render;
+      try { render = Promise.resolve(mod.render(el)); } catch (e) { render = Promise.reject(e); }
+      return animarEntrada(el, render.catch((e) => {
         el.innerHTML = `<div class="card"><div class="msg-erro">${EG.esc(e.message)}</div>
           <button class="btn btn-secundario" data-action="ir" data-pagina="${id}"><i class="ti ti-refresh"></i> Tentar novamente</button></div>`;
-      });
-    } else {
-      el.innerHTML = `<div class="card em-breve"><i class="ti ${item.icone}"></i><h2>${EG.esc(item.rotulo)}</h2>
-        <p>Este módulo está sendo migrado para a nova versão do EduGest e será liberado nas próximas etapas.</p></div>`;
+      }));
     }
+    el.innerHTML = `<div class="card em-breve"><i class="ti ${item.icone}"></i><h2>${EG.esc(item.rotulo)}</h2>
+      <p>Este módulo está sendo migrado para a nova versão do EduGest e será liberado nas próximas etapas.</p></div>`;
+    return Promise.resolve();
   };
   /** Usuário sem nenhum módulo liberado: não mostra dado algum. */
   function semModulos() {

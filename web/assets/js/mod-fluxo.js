@@ -154,7 +154,7 @@
       el.onchange = async (ev) => {
         if (ev.target.dataset.filtro !== 'ano') return;
         ano = Number(ev.target.value);
-        try { dados = await EG.api('GET', `/fluxo?ano=${ano}`); render(el); } catch (e) { EG.toast(e.message, 'erro'); }
+        try { dados = await EG.gerando(el, 'Gerando o fluxo de caixa...', () => EG.api('GET', `/fluxo?ano=${ano}`)); render(el); } catch (e) { EG.toast(e.message, 'erro'); }
       };
     }
   });
