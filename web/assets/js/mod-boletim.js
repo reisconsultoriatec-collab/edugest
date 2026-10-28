@@ -118,6 +118,8 @@
     async render(el) {
       op = await EG.opcoesPedagogicas();
       EG.filtrosDaSessao(sel, { turmaId: '', alunoId: '' });
+      const p = EG.presetDe('boletim'); // vindo do Dashboard: aluno que precisa de atenção
+      if (p) Object.assign(sel, { turmaId: String(p.turmaId), alunoId: String(p.alunoId) });
       boletim = null;
       if (!op.turmas.some((t) => t.id === Number(sel.turmaId))) {
         const primeira = op.turmas.find((t) => t.ativo) || op.turmas[0];

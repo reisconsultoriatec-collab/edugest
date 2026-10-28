@@ -13,7 +13,8 @@
  *  PUT    /atual/disciplinas/:id     edita / ativa / desativa    [admin]
  *  DELETE /atual/disciplinas/:id     exclui se não tiver notas   [admin]
  *  GET    /atual/resumo              indicadores do dashboard    [módulo dashboard]
- *  GET    /atual/atividades          atividade recente           [módulo dashboard]
+ *  GET    /atual/atividades          atividade recente (?limite, ?antes, ?autor) [módulo dashboard]
+ *  GET    /atual/atividades/autores  quem aparece na atividade   [módulo dashboard]
  *
  *  "atual" = colégio do header X-Colegio-Id (ou o último selecionado).
  * ===================================================================== */
@@ -327,18 +328,34 @@ router.get('/atual/resumo', soEquipe, exigirModulo('dashboard'), assincrono(asyn
 
 /* ---------------- Atividade recente ---------------- */
 // Exige o módulo Dashboard (o admin sempre tem)
+// ?limite=  ?antes=<id> (próxima página)  ?autor=<usuarioId>
 router.get('/atual/atividades', soEquipe, exigirModulo('dashboard'), assincrono(async (req, res) => {
   const limite = v.inteiro(req.query.limite, 'Limite', { min: 1, max: 100 }) || 20;
+  const antes = v.inteiro(req.query.antes, 'Página', { min: 1 });
+  const autor = v.inteiro(req.query.autor, 'Pessoa', { min: 1 });
+  const cond = ['a.colegio_id = ?']; const params = [req.colegioId];
+  if (antes) { cond.push('a.id < ?'); params.push(antes); }
+  if (autor) { cond.push('a.usuario_id = ?'); params.push(autor); }
   const itens = await query(
     `SELECT a.id, a.acao, a.criado_em, u.nome AS autor
        FROM atividades a
        LEFT JOIN usuarios u ON u.id = a.usuario_id
-      WHERE a.colegio_id = ?
+      WHERE ${cond.join(' AND ')}
       ORDER BY a.id DESC
       LIMIT ?`,
-    [req.colegioId, limite]
+    [...params, limite]
   );
   res.json(itens.map((a) => ({ id: a.id, acao: a.acao, autor: a.autor, data: a.criado_em })));
+}));
+
+/* Quem aparece na atividade do colégio (filtro do "Ver todas") */
+router.get('/atual/atividades/autores', soEquipe, exigirModulo('dashboard'), assincrono(async (req, res) => {
+  const linhas = await query(
+    `SELECT u.id, u.nome, COUNT(*) AS n FROM atividades a JOIN usuarios u ON u.id = a.usuario_id
+      WHERE a.colegio_id = ? GROUP BY u.id, u.nome ORDER BY u.nome`,
+    [req.colegioId]
+  );
+  res.json(linhas.map((l) => ({ id: l.id, nome: l.nome, atividades: Number(l.n) })));
 }));
 
 module.exports = router;

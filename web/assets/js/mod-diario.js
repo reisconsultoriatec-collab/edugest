@@ -185,6 +185,12 @@
     async render(el) {
       op = await EG.opcoesPedagogicas();
       EG.filtrosDaSessao(sel, { turmaId: '', data: '', disciplinaId: '' });
+      const p = EG.presetDe('diario'); // vindo do Dashboard: aula sem chamada
+      if (p && op.turmas.some((t) => t.id === Number(p.turmaId) && t.ativo)) {
+        escolherTurma(String(p.turmaId));
+        sel.data = p.data || sel.data;
+        sel.disciplinaId = p.disciplinaId ? String(p.disciplinaId) : '';
+      }
       if (!sel.data || sel.data > EG.hojeSP()) sel.data = EG.hojeSP();
       if (!op.turmas.some((t) => t.id === Number(sel.turmaId) && t.ativo)) {
         const primeira = op.turmas.find((t) => t.ativo);

@@ -252,7 +252,9 @@
   function passosDaTela(id, soResumo) {
     const t = A().tours[id];
     if (!t) return [];
-    return t.filter((p) => !soResumo || p.g).map((p) => ({ pagina: id, ...p }));
+    // modulos: o passo só aparece para quem tem algum deles · soAdmin: só para o administrador
+    const serve = (p) => (!p.modulos || p.modulos.some((m) => EG.pode(m))) && (!p.soAdmin || EG.estado.perfil === 'admin');
+    return t.filter((p) => (!soResumo || p.g) && serve(p)).map((p) => ({ pagina: id, ...p }));
   }
   function tourGeral() {
     const resp = EG.estado.perfil === 'responsavel';

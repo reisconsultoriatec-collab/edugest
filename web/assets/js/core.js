@@ -20,7 +20,7 @@ window.EG = window.EG || {};
   EG.auth.languageCode = 'pt';
 
   EG.API_BASE = '/api';
-  EG.VERSAO = '1.22.1';
+  EG.VERSAO = '1.23.0';
 
   /** Marca do EduGest (capelo âmbar). classe: 'clara' (fundo escuro) ou 'grande'. */
   EG.logo = (classe) => `<span class="marca ${classe || ''}" aria-hidden="true"><svg viewBox="0 0 32 32">
@@ -584,6 +584,16 @@ window.EG = window.EG || {};
   /* ---------- Registro de módulos ---------- */
   EG.modulos = {};   // id → { titulo, render(el) }
   EG.registrarModulo = (id, def) => { EG.modulos[id] = def; };
+
+  /* ---------- Abrir uma tela já filtrada (ex.: do Dashboard para o Diário) ---------- */
+  let preset = null;
+  /** Navega para a tela com valores iniciais (a tela lê com EG.presetDe). */
+  EG.abrirCom = (pagina, valores) => { preset = { pagina, valores }; EG.navegar(pagina); };
+  /** Valores enviados por EG.abrirCom para esta tela (uma vez só). */
+  EG.presetDe = (pagina) => {
+    if (!preset || preset.pagina !== pagina) return null;
+    const v = preset.valores; preset = null; return v;
+  };
 
   /* ---------- Partida ---------- */
   EG.iniciar = function () {

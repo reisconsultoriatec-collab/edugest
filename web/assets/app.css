@@ -1239,3 +1239,52 @@ body.em-tour .aviso-versao { display: none; }
   .priv-detalhe dd { margin-bottom: 6px; }
   .priv-resultados li { flex-direction: column; align-items: flex-start; }
 }
+
+/* ---------- Dashboard: cartões do que pede atenção ---------- */
+.dash-par { display: grid; gap: 20px; margin-bottom: 20px; align-items: start; }
+.dash-par-2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.dash-par > .card { margin: 0; }
+.dash-esq { display: grid; gap: 12px; padding-top: 4px; }
+.dash-esq i { height: 12px; }
+.dash-esq i:nth-child(1) { width: 85%; } .dash-esq i:nth-child(2) { width: 62%; } .dash-esq i:nth-child(3) { width: 74%; }
+.dash-bloco { padding: 12px 0; border-top: 1px solid var(--border); }
+.dash-cartao .card-cab + .dash-bloco { border-top: 0; padding-top: 0; }
+.dash-cartao .dash-bloco:last-child { padding-bottom: 0; }
+.dash-rotulo { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .3px; color: var(--muted); margin-bottom: 6px; }
+.dash-meta { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 6px; font-size: 13px; color: var(--text-2); flex-wrap: wrap; }
+.dash-meta strong { color: var(--text); }
+.dash-valor { font-family: 'Space Grotesk', sans-serif; font-size: 20px; color: var(--text); }
+.dash-alerta .dash-valor { color: var(--erro-tx); }
+.dash-medidor { height: 8px; border-radius: 4px; background: var(--info-bg); overflow: hidden; margin: 2px 0 8px; }
+.dash-medidor > span { display: block; height: 100%; background: var(--info); border-radius: 4px; transition: width .6s ease; }
+.dash-obs { font-size: 12.5px; color: var(--text-2); line-height: 1.5; }
+.dash-obs i { vertical-align: -2px; }
+.dash-linha { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.dash-erro { color: var(--erro-tx); font-weight: 600; }
+.dash-lista { list-style: none; margin: 0; padding: 0; }
+.dash-lista li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px dashed var(--border); font-size: 13px; }
+.dash-lista li:last-child { border-bottom: 0; }
+.dash-data { width: 46px; flex: none; color: var(--muted); font-size: 12px; }
+.dash-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; overflow-wrap: anywhere; }
+.dash-txt small { font-size: 12px; }
+.dash-num { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.dash-acoes { display: flex; gap: 6px; flex-wrap: wrap; }
+.dash-chip { display: inline-block; padding: 2px 8px; border-radius: 12px; background: var(--erro-bg); color: var(--erro-tx); font-size: 12px; margin: 1px 0; white-space: nowrap; }
+.dash-tabela td { vertical-align: middle; }
+.dash-acoes-linha { white-space: nowrap; text-align: right; }
+.dash-acoes-linha .btn-icone + .btn-icone { margin-left: 4px; }
+@media (max-width: 900px) { .dash-par-2 { grid-template-columns: minmax(0, 1fr); } }
+/* Celular: cada aluno vira um bloco (nome e ações em cima, frequência e médias embaixo) */
+@media (max-width: 640px) {
+  .dash-tabela thead { display: none; }
+  .dash-tabela, .dash-tabela tbody { display: block; }
+  .dash-tabela tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .dash-tabela tr:hover { background: none; }
+  .dash-tabela td { display: block; padding: 0; border: 0; white-space: normal !important; }
+  .dash-tabela td:nth-child(2), .dash-tabela td:nth-child(3) { grid-column: 1 / -1; }
+  .dash-tabela td:nth-child(4) { grid-column: 2; grid-row: 1; }
+  .dash-tabela td[data-rotulo]::before { content: attr(data-rotulo) ': '; color: var(--muted); font-size: 11.5px; }
+  .dash-tabela td[data-rotulo] br { display: none; }
+  .dash-tabela td[data-vazio] { display: none; }
+}
+

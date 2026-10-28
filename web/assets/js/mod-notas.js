@@ -131,6 +131,8 @@
     async render(el) {
       op = await EG.opcoesPedagogicas();
       EG.filtrosDaSessao(sel, { turmaId: '', disciplinaId: '', bimestre: '' });
+      const p = EG.presetDe('notas'); // vindo do Dashboard: notas que faltam
+      if (p) Object.assign(sel, { turmaId: String(p.turmaId), disciplinaId: String(p.disciplinaId), bimestre: String(p.bimestre) });
       if (!sel.bimestre) sel.bimestre = String(EG.bimestreAtual());
       if (!op.turmas.some((t) => t.id === Number(sel.turmaId) && t.ativo)) {
         const primeira = op.turmas.find((t) => t.ativo);

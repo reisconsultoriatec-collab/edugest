@@ -75,6 +75,8 @@ app.use('/api/seguranca', autenticar, carregarUsuario, exigirColegio, exigirPerf
 
 // Pedagógico — só equipe; cada rota confere o módulo
 const equipe = [autenticar, carregarUsuario, exigirColegio, exigirPerfil('admin', 'professor', 'financeiro')];
+// Dashboard: financeiro do mês, pendências pedagógicas e alunos que precisam de atenção
+app.use('/api/painel', equipe, require('./src/routes/painel'));
 app.use('/api/turmas', equipe, require('./src/routes/turmas'));
 app.use('/api/alunos', equipe, require('./src/routes/alunos'));
 app.use('/api/professores', equipe, require('./src/routes/professores'));

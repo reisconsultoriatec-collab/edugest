@@ -5,7 +5,7 @@
  *    perfis → admin · professor · financeiro · equipe · responsavel · proprietario
  *    corpo  → ['p'|'h'|'dica'|'atencao'|'onde', texto] · ['passos'|'lista', [..]] · ['tabela', [[cab], [..]]]
  *    texto  → **negrito** · {{Botão}} · `código`
- *  Tours (ajuda-tours.js) e a lista de implantação ficam em EG.AJUDA também.
+ *  Tours: { g (tour geral), alvo, titulo, texto, modulos?, soAdmin? } e a lista de implantação ficam em EG.AJUDA também.
  * ===================================================================== */
 'use strict';
 (function (EG) {
@@ -184,20 +184,31 @@
     },
     {
       id: 'comecar-dashboard', titulo: 'Dashboard: os números do colégio', tela: 'dashboard',
-      resumo: 'Alunos, professores, turmas, inadimplentes, aulas do dia, captação, comunicados, próximos eventos e atividade recente.',
-      palavras: ['inicio', 'painel', 'indicadores'],
+      resumo: 'Indicadores, financeiro do mês, chamadas e notas pendentes, alunos que precisam de atenção, agenda, comunicados e atividade recente.',
+      palavras: ['inicio', 'painel', 'indicadores', 'pendencias', 'chamada atrasada', 'notas faltando', 'alunos em risco', 'reprovacao'],
       corpo: [
-        ['p', 'O Dashboard é a primeira tela depois do login. Ele junta o que pede atenção:'],
+        ['p', 'O Dashboard é a primeira tela depois do login. Ele junta o que pede atenção, e cada pessoa vê só os cartões das telas liberadas para ela:'],
         ['lista', [
           '**Indicadores**: alunos ativos (e quantos estão sem turma), professores ativos, turmas do ano letivo e alunos inadimplentes. Clique num indicador para abrir a tela correspondente.',
-          '**Cadastros aguardando aprovação** (administrador): aparece quando alguém se cadastrou e precisa ser liberado.',
+          '**Cadastros aguardando aprovação** e **pedidos de privacidade** (administrador).',
           '**Implantação do colégio** (administrador): o que ainda falta configurar, até tudo estar pronto.',
-          '**Suas aulas hoje** (professor): pela grade horária.',
-          '**Captação de alunos**: novos interessados e contatos marcados para hoje ou atrasados no funil.',
-          '**Próximos eventos** e **Últimos comunicados**, com quantas famílias já leram.',
-          '**Atividade recente**: quem fez o quê no sistema.'
-        ]]
-      ]
+          '**Financeiro do mês**: quanto das mensalidades que vencem no mês já foi recebido, o valor em atraso (botão {{Cobrar}}) e as contas a pagar dos próximos 7 dias.',
+          '**Pendências pedagógicas**: aulas sem chamada nos últimos 7 dias e notas que faltam no bimestre. O botão {{Lançar}} abre o Diário ou as Notas já na turma, na data e na disciplina certas.',
+          '**Alunos que precisam de atenção**: frequência abaixo do mínimo ou média abaixo da média de aprovação, com atalho para o boletim e para o WhatsApp do responsável.',
+          '**Suas aulas hoje** (professor), **Captação de alunos**, **Próximos eventos** e **Últimos comunicados**.',
+          '**Atividade recente**: as 3 últimas ações; {{Ver todas}} abre o histórico completo, com filtro por pessoa.'
+        ]],
+        ['h', 'Como as pendências são contadas'],
+        ['tabela', [
+          ['Cartão', 'Regra'],
+          ['Chamada', 'Com grade horária: cada aula dos últimos 7 dias letivos sem registro (as de hoje, depois que começam). A "chamada do dia" vale para todas as aulas do dia. Sem grade: o dia sem nenhuma chamada (hoje, só depois do fim do turno). Feriados e recessos do calendário não contam.'],
+          ['Notas', 'O bimestre que já terminou e, nas 2 últimas semanas, o bimestre atual: turma e disciplina com algum aluno ativo sem nota lançada.'],
+          ['Frequência', 'Abaixo da frequência mínima do colégio, a partir de 10 aulas registradas. Falta justificada conta como presença.'],
+          ['Média', 'Média dos bimestres já lançados abaixo da média de aprovação, em qualquer disciplina.']
+        ]],
+        ['dica', 'O professor vê só as turmas e disciplinas dele. As datas dos bimestres vêm do Calendário; sem elas, vale a divisão padrão (fev–abr, mai–jul, ago–set, out–dez).']
+      ],
+      relacionados: ['diario-chamada', 'notas-lancar', 'calendario-bimestres']
     }
   ]);
 
@@ -1671,8 +1682,11 @@
   const tours = {
     dashboard: [
       { g: 1, alvo: '.pagina .grade-kpi', titulo: 'Dashboard', texto: 'Os números do colégio: alunos ativos, professores, turmas do ano e inadimplentes. **Clique num indicador** para abrir a tela correspondente.' },
-      { g: 1, alvo: ['.pagina .aj-impl', '.pagina [data-dash-implantacao]'], titulo: 'Implantação do colégio', texto: 'Para o administrador: o que ainda falta configurar, na ordem certa. Cada item tem o atalho para a tela e o passo a passo. A lista some quando tudo estiver pronto.' },
-      { alvo: '.pagina .lista-atividade', titulo: 'Atividade recente', texto: 'Quem fez o quê no sistema: notas lançadas, mensalidades geradas, alunos cadastrados...' }
+      { g: 1, soAdmin: true, alvo: ['.pagina .aj-impl', '.pagina [data-dash-implantacao]'], titulo: 'Implantação do colégio', texto: 'Para o administrador: o que ainda falta configurar, na ordem certa. Cada item tem o atalho para a tela e o passo a passo. A lista some quando tudo estiver pronto.' },
+      { modulos: ['mensalidades', 'contas'], alvo: ['.pagina [data-dash="financeiro"]', '.pagina .dash-par'], titulo: 'Financeiro do mês', texto: 'Quanto das mensalidades do mês já entrou, o valor em atraso e as contas a pagar dos próximos 7 dias.' },
+      { g: 1, modulos: ['diario', 'notas'], alvo: ['.pagina [data-dash="pedagogico"]', '.pagina .dash-par'], titulo: 'Pendências pedagógicas', texto: 'Aulas sem chamada nos últimos 7 dias e notas que faltam no bimestre. **Lançar** abre o Diário ou as Notas já no lugar certo.' },
+      { g: 1, modulos: ['boletim', 'notas', 'diario'], alvo: '.pagina [data-dash="atencao"]', titulo: 'Alunos que precisam de atenção', texto: 'Frequência abaixo do mínimo ou média abaixo da média de aprovação, com atalho para o boletim e o WhatsApp do responsável.' },
+      { alvo: '.pagina [data-dash-bloco="atividade"]', titulo: 'Atividade recente', texto: 'As últimas ações no sistema. **Ver todas** abre o histórico completo, com filtro por pessoa.' }
     ],
     alunos: [
       { g: 1, alvo: ['.pagina .cab-acoes', '.pagina .card-titulo'], titulo: 'Alunos', texto: 'Cadastre um aluno em **Novo aluno** ou muitos de uma vez em **Importar planilha** (Excel ou CSV).' },

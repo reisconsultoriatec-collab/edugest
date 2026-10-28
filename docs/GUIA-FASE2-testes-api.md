@@ -23,7 +23,8 @@ Reis Tecnologia · API versão 1.1.0
 | `PUT /api/colegios/atual` · `/atual/config` | admin | Editar dados e configuração |
 | `POST /api/colegios/atual/convite/regenerar` | admin | Trocar o código de convite |
 | `POST/PUT/DELETE /api/colegios/atual/disciplinas` | admin | Disciplinas (excluir só sem notas) |
-| `GET /api/colegios/atual/atividades` | equipe | Atividade recente |
+| `GET /api/colegios/atual/atividades?limite=&antes=&autor=` · `/atividades/autores` | equipe (módulo dashboard) | Atividade recente: as últimas no Dashboard e o histórico completo, página a página e por pessoa |
+| `GET /api/painel/financeiro` · `/pedagogico` · `/atencao` | equipe (módulo dashboard + o módulo de cada cartão) | Dashboard: mensalidades do mês (recebido × previsto), atraso e contas dos próximos 7 dias; aulas sem chamada nos últimos 7 dias letivos e notas que faltam no bimestre encerrado ou nas 2 últimas semanas do atual; alunos com frequência abaixo do mínimo (a partir de 10 aulas) ou média abaixo da de aprovação. Professor: só as turmas e disciplinas dele |
 | `GET /api/usuarios` · `POST /vincular` · `/:id/aprovar` · `/:id/rejeitar` · `PUT /:id` · `DELETE /:id` | admin | Gestão de usuários |
 | `GET /api/seguranca/log` | admin | Log de segurança (sem opção de apagar) |
 | `GET /api/comunicados` · `/opcoes` · `/recentes` · `/:id` · `POST /` · `PUT /:id` · `DELETE /:id` | módulo comunicados | Comunicados: público (colégio todo, segmentos, turmas), fixar, ciência, leituras e WhatsApp. Professor: só as turmas dele |
