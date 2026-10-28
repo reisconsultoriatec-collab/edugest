@@ -8,7 +8,9 @@
   /* pronto: true = módulo já existe nesta versão */
   const MENU = [
     { secao: 'Principal', fixo: true, itens: [
-      { id: 'dashboard', rotulo: 'Dashboard', icone: 'ti-dashboard', pronto: true }
+      { id: 'dashboard', rotulo: 'Dashboard', icone: 'ti-dashboard', pronto: true },
+      // Alta direção (administrador marcado em Usuários) e o proprietário do sistema
+      { id: 'direcao', rotulo: 'Painel da Direção', icone: 'ti-presentation-analytics', pronto: true, soDirecao: true }
     ] },
     { secao: 'Pedagógico', itens: [
       { id: 'alunos', rotulo: 'Alunos', icone: 'ti-users', pronto: true },
@@ -59,6 +61,7 @@
     const e = EG.estado;
     if (item.sempre) return true;
     if (item.soProprietario) return !!(e.me && (e.me.proprietario || e.me.proprietarioVerificar));
+    if (item.soDirecao) return !!(e.colegio && e.colegio.direcao);
     if (item.soAdmin) return e.perfil === 'admin';
     // Tudo depende dos módulos liberados, inclusive o Dashboard
     return e.modulos.includes(item.modulo || item.id);
@@ -247,6 +250,11 @@
     // Cada abertura de tela ganha uma área própria: se a pessoa trocar de tela antes da
     // anterior terminar de carregar, a resposta atrasada cai na área antiga (já fora da
     // página) e não sobrescreve a nova. Os eventos de cada módulo também ficam nela.
+    // A tela que está saindo pode ter algo a desfazer (ex.: Painel da Direção religa o tempo de sessão)
+    const anterior = EG.paginaAtual();
+    if (anterior && EG.modulos[anterior] && EG.modulos[anterior].sair) {
+      try { EG.modulos[anterior].sair(); } catch (e) { /* segue para a tela nova */ }
+    }
     const conteudo = EG.$('#conteudo');
     conteudo.onclick = null; conteudo.onkeydown = null; conteudo.onchange = null; conteudo.oninput = null;
     const el = document.createElement('div');

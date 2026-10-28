@@ -6,7 +6,7 @@
  *  POST   /vincular        vincula conta existente por e-mail (já ativo)
  *  POST   /:id/aprovar     aprova cadastro pendente (pode definir perfil/módulos)
  *  POST   /:id/rejeitar    recusa cadastro pendente
- *  PUT    /:id             muda perfil, módulos ou bloqueia/desbloqueia
+ *  PUT    /:id             muda perfil, módulos, alta direção (só admin) ou bloqueia/desbloqueia
  *  DELETE /:id             remove o acesso ao colégio
  *
  *  :id = usuarios.id. Tudo é restrito ao colégio atual: um admin nunca
@@ -86,7 +86,7 @@ function naoPodeSerVoce(req, usuarioId) {
 router.get('/', assincrono(async (req, res) => {
   const linhas = await query(
     `SELECT u.id, u.nome, u.email, u.ultimo_acesso,
-            uc.perfil, uc.status, uc.modulos, uc.criado_em, uc.aprovado_em,
+            uc.perfil, uc.status, uc.modulos, uc.direcao, uc.criado_em, uc.aprovado_em,
             (SELECT GROUP_CONCAT(a.nome ORDER BY a.nome SEPARATOR '|')
                FROM responsavel_aluno ra JOIN alunos a ON a.id = ra.aluno_id
               WHERE ra.usuario_id = u.id AND ra.colegio_id = uc.colegio_id) AS alunos,
@@ -106,6 +106,7 @@ router.get('/', assincrono(async (req, res) => {
     status: l.status,
     modulos: modulosEfetivos(l.perfil, l.modulos),
     modulosPersonalizados: l.modulos !== null && l.perfil !== 'admin' && l.perfil !== 'responsavel',
+    direcao: l.perfil === 'admin' && !!l.direcao,
     alunos: l.alunos ? l.alunos.split('|') : [],
     professor: l.professor_id ? { id: l.professor_id, nome: l.professor_nome } : null,
     desde: l.criado_em,
@@ -198,6 +199,10 @@ router.put('/:id', assincrono(async (req, res) => {
       perfil = v.umDe(req.body.perfil, PERFIS_EQUIPE, 'Perfil');
     }
     const status = req.body.status !== undefined ? v.umDe(req.body.status, ['ativo', 'bloqueado'], 'Status') : vinc.status;
+    // Alta direção (Painel da Direção): só administradores; quem deixa de ser admin perde
+    if (req.body.direcao !== undefined && typeof req.body.direcao !== 'boolean') throw new HttpErro(400, 'Alta direção inválida', 'validacao');
+    if (req.body.direcao === true && perfil !== 'admin') throw new HttpErro(400, 'Só administradores podem ver o Painel da Direção', 'validacao');
+    const direcao = perfil === 'admin' && (req.body.direcao !== undefined ? req.body.direcao : !!vinc.direcao);
 
     // Tirar alguém da condição de admin ativo exige que reste outro
     const deixaDeSerAdminAtivo = vinc.perfil === 'admin' && vinc.status === 'ativo' && (perfil !== 'admin' || status !== 'ativo');
@@ -220,24 +225,25 @@ router.put('/:id', assincrono(async (req, res) => {
     }
 
     await conn.query(
-      'UPDATE usuario_colegio SET perfil = ?, status = ?, modulos = ? WHERE usuario_id = ? AND colegio_id = ?',
-      [perfil, status, modulosSql, usuarioId, req.colegioId]
+      'UPDATE usuario_colegio SET perfil = ?, status = ?, modulos = ?, direcao = ? WHERE usuario_id = ? AND colegio_id = ?',
+      [perfil, status, modulosSql, direcao ? 1 : 0, usuarioId, req.colegioId]
     );
     const professor = perfil === 'responsavel' ? null
       : await vincularProfessor(conn, req.colegioId, { id: usuarioId, nome: vinc.nome, email: vinc.email }, perfil, req.body.professorId);
-    return { ...vinc, perfilNovo: perfil, statusNovo: status, professor };
+    return { ...vinc, perfilNovo: perfil, statusNovo: status, direcaoNova: direcao, professor };
   });
 
   const mudancas = [];
   if (r.perfil !== r.perfilNovo) mudancas.push(`perfil ${r.perfil} → ${r.perfilNovo}`);
   if (r.status !== r.statusNovo) mudancas.push(r.statusNovo === 'bloqueado' ? 'bloqueado' : 'desbloqueado');
+  if (!!r.direcao !== r.direcaoNova) mudancas.push(r.direcaoNova ? 'Painel da Direção liberado' : 'Painel da Direção retirado');
   if (r.professor) mudancas.push(r.professor);
   if (!mudancas.length) mudancas.push('módulos atualizados');
   await seguranca(req, {
     tipo: 'admin', colegioId: req.colegioId, usuarioId: req.usuario.id, email: req.usuario.email,
     detalhes: `Alterou ${r.nome}: ${mudancas.join(', ')}`
   });
-  res.json({ id: usuarioId, perfil: r.perfilNovo, status: r.statusNovo });
+  res.json({ id: usuarioId, perfil: r.perfilNovo, status: r.statusNovo, direcao: r.direcaoNova });
 }));
 
 /* ---------------- Remover do colégio ---------------- */

@@ -69,6 +69,13 @@
       </div>${checksModulos(marcados)}</div>
       <div data-aviso-admin class="msg-info" ${perfil === 'admin' ? '' : 'hidden'} style="margin-top:10px">O administrador acessa todos os módulos, as configurações e a gestão de usuários.</div>`;
   }
+  /** Alta direção: só administradores; libera o Painel da Direção. */
+  function blocoDirecao(u) {
+    return `<label class="termos-check" data-bloco-direcao ${u.perfil === 'admin' ? '' : 'hidden'} style="margin-top:12px">
+      <input type="checkbox" data-direcao ${u.direcao ? 'checked' : ''}>
+      <span><strong>Alta direção</strong> — vê o <strong>Painel da Direção</strong> (indicadores do colégio, finanças e captação, com modo TV).
+        Marque só quem é da direção ou da mantenedora.</span></label>`;
+  }
   /** Liga troca de perfil e botões Padrão/Todos/Nenhum dentro do modal. */
   function ligarModulos(m) {
     const sel = m.el.querySelector('[data-perfil]');
@@ -77,6 +84,8 @@
       const admin = sel.value === 'admin';
       m.el.querySelector('[data-bloco-modulos]').hidden = admin;
       m.el.querySelector('[data-aviso-admin]').hidden = !admin;
+      const dir = m.el.querySelector('[data-bloco-direcao]');
+      if (dir) dir.hidden = !admin;
       const prof = m.el.querySelector('[data-bloco-professor]');
       if (prof) prof.hidden = sel.value === 'financeiro';
       if (!admin) aplicar(PADRAO[sel.value] || []);
@@ -142,7 +151,7 @@
   }
 
   function linha(u) {
-    const acesso = u.perfil === 'admin' ? '<span class="sub">Acesso total</span>'
+    const acesso = u.perfil === 'admin' ? `<span class="sub">Acesso total</span>${u.direcao ? ' <span class="selo selo-roxo" title="Vê o Painel da Direção">Alta direção</span>' : ''}`
       : u.perfil === 'responsavel' ? `<span class="sub">${u.alunos.length ? 'Aluno(s): ' + EG.esc(u.alunos.join(', ')) : 'Portal'}</span>`
         : `<span class="sub">${u.modulos.length} módulo(s)${u.modulosPersonalizados ? ' · personalizado' : ''}</span>`;
     const vinculo = u.perfil !== 'professor' ? ''
@@ -190,12 +199,14 @@
             <option value="ativo" ${u.status === 'ativo' ? 'selected' : ''}>Ativo</option>
             <option value="bloqueado" ${u.status === 'bloqueado' ? 'selected' : ''}>Bloqueado</option></select></div>
         </div>
-        ${equipe ? blocoProfessor(u, u.perfil) + blocoModulos(u.perfil, u.modulos) : ''}`,
+        ${equipe ? blocoProfessor(u, u.perfil) + blocoModulos(u.perfil, u.modulos) + blocoDirecao(u) : ''}`,
       botoes: [
         { texto: 'Cancelar', acao: () => m.fechar() },
         { texto: 'Salvar', classe: 'btn-primario', icone: 'ti-device-floppy', acao: async () => {
           const corpo = equipe ? lerPerfilModulos(m) : {};
           corpo.status = EG.lerForm(m.el).status;
+          const dir = m.el.querySelector('[data-direcao]');
+          if (dir) corpo.direcao = corpo.perfil === 'admin' && dir.checked;
           await EG.api('PUT', `/usuarios/${u.id}`, corpo);
           m.fechar(); EG.toast('Acesso atualizado'); carregar(el);
         } }

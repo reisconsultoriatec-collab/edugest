@@ -23,7 +23,7 @@ function lerModulos(valor) {
 
 async function buscarVinculo(conn, usuarioId, colegioId) {
   const [[vinc]] = await conn.query(
-    `SELECT uc.perfil, uc.status, u.nome, u.email
+    `SELECT uc.perfil, uc.status, uc.direcao, u.nome, u.email
        FROM usuario_colegio uc JOIN usuarios u ON u.id = uc.usuario_id
       WHERE uc.usuario_id = ? AND uc.colegio_id = ?
       FOR UPDATE`,

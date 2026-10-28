@@ -55,3 +55,10 @@ Se essa opção não aparecer no seu plano, não tem problema: o cadastro do Edu
 - **Mudou o texto?** Troque a versão nos três lugares, publique e atualize o servidor: `TERMOS_VERSAO` em `api/src/services/lgpd.js` e a linha "Versão …" no topo das duas páginas. No próximo acesso, todos aceitam de novo.
 - Os textos são um modelo: vale a revisão de um advogado. Confira também o que depende da infraestrutura (região do servidor, Cloudflare, cópias de segurança) e ajuste o item "Com quem compartilhamos" da política se precisar.
 - Cada colégio define o encarregado de dados em Sistema › Privacidade (LGPD); o item entra na lista de Implantação.
+
+## 5. Painel da Direção numa TV
+
+- Quem vê: o proprietário do sistema e os administradores marcados como **Alta direção** em Sistema › Usuários (coluna `usuario_colegio.direcao`, migração 015). Ninguém marca a si mesmo; a marcação e a retirada ficam no Log de Segurança.
+- Use um computador (ou mini PC / TV box com navegador) ligado à TV, entre com a conta da pessoa da direção, abra o Painel da Direção e clique em **Modo TV** (tela cheia, tema escuro, relógio e rolagem automática). Esc sai.
+- Com o painel aberto, a sessão **não encerra por inatividade** e os números se atualizam a cada 5 minutos. Por isso: TV só em sala da direção (não na recepção), conta de quem é da direção, e **Sair** ao desligar.
+- Se a marcação for retirada com o painel aberto, a pessoa sai do painel na próxima atualização.

@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS usuario_colegio (
   perfil            ENUM('admin','professor','financeiro','responsavel') NOT NULL,
   status            ENUM('pendente','ativo','bloqueado') NOT NULL DEFAULT 'pendente',
   modulos           JSON         NULL     COMMENT 'NULL = módulos padrão do perfil',
+  direcao           TINYINT(1)   NOT NULL DEFAULT 0 COMMENT 'Alta direção: vê o Painel da Direção (só administradores)',
   aprovado_por      INT UNSIGNED NULL,
   aprovado_em       DATETIME     NULL,
   criado_em         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,

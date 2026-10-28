@@ -4,7 +4,7 @@ const path = require('path');
 global.window = { EG: {} };
 require(path.join(__dirname, '../../web/assets/js/ajuda-conteudo.js'));
 const A = window.EG.AJUDA;
-const TELAS = ['dashboard', 'alunos', 'professores', 'turmas', 'diario', 'notas', 'boletim', 'calendario', 'grade', 'documentos', 'mensalidades',
+const TELAS = ['dashboard', 'direcao', 'alunos', 'professores', 'turmas', 'diario', 'notas', 'boletim', 'calendario', 'grade', 'documentos', 'mensalidades',
   'contas', 'fluxo', 'bolsas', 'relatorios', 'conciliacao', 'funil', 'comunicados', 'portal', 'portal-boletim', 'portal-frequencia', 'portal-grade',
   'portal-financeiro', 'portal-comunicados', 'portal-calendario', 'portal-privacidade', 'config', 'usuarios', 'virada', 'seguranca', 'lgpd', 'colegios', 'ajuda'];
 const PERFIS = ['admin', 'professor', 'financeiro', 'equipe', 'responsavel', 'proprietario'];

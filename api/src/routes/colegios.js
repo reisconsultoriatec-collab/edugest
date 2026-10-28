@@ -29,6 +29,7 @@ const { lerDadosColegio, salvarDadosColegio } = require('../services/colegios');
 const { hojeSP } = require('../utils/datas');
 const { TIPOS_CHAVE, normalizarChave } = require('../utils/pix');
 const { contarAbertas } = require('../services/lgpd');
+const { podeVerDirecao } = require('../services/direcao');
 
 const soAdmin = [exigirColegio, exigirPerfil('admin')];
 
@@ -103,6 +104,7 @@ router.get('/atual', exigirColegio, assincrono(async (req, res) => {
     periodos: periodos.map((p) => ({ bimestre: Number(p.bimestre), inicio: p.inicio, fim: p.fim })),
     pendentes: admin ? await contarPendentes(req.colegioId) : undefined,
     privacidade: admin ? await contarAbertas(req.colegioId) : undefined, // pedidos LGPD em aberto (menu)
+    direcao: await podeVerDirecao(req), // Painel da Direção no menu
     perfil: req.perfil,
     modulos: req.modulos
   });

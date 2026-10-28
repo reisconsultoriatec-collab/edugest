@@ -101,7 +101,8 @@
         ['lista', [
           'Nos 2 minutos finais, o indicador do topo fica âmbar com a contagem regressiva.',
           'Antes de encerrar aparece um aviso: clique em {{Continuar conectado}} para seguir.',
-          'Qualquer clique, digitação ou rolagem conta como uso.'
+          'Qualquer clique, digitação ou rolagem conta como uso.',
+          'Exceção: com o **Painel da Direção** aberto (por exemplo, numa TV), a sessão não encerra. Ao sair dele, volta a contar.'
         ]],
         ['h', 'Boas práticas'],
         ['lista', [
@@ -209,6 +210,45 @@
         ['dica', 'O professor vê só as turmas e disciplinas dele. As datas dos bimestres vêm do Calendário; sem elas, vale a divisão padrão (fev–abr, mai–jul, ago–set, out–dez).']
       ],
       relacionados: ['diario-chamada', 'notas-lancar', 'calendario-bimestres']
+    },
+    {
+      id: 'direcao-painel', titulo: 'Painel da Direção: os números do colégio em gráficos', tela: 'direcao', perfis: ['admin'],
+      resumo: 'Visão da alta direção: alunos, receita, inadimplência, fluxo de caixa, frequência, médias e captação, com modo TV e rolagem automática.',
+      palavras: ['painel da direcao', 'diretoria', 'mantenedora', 'dono', 'graficos', 'indicadores', 'tv', 'televisao', 'telao', 'kpi', 'gestao'],
+      corpo: [
+        ['p', 'O Painel da Direção junta, numa tela só, os números que a alta direção acompanha. Os valores são do **colégio todo** no ano letivo atual e se atualizam sozinhos a cada 5 minutos.'],
+        ['onde', 'Menu › Principal › Painel da Direção'],
+        ['h', 'Quem vê'],
+        ['lista', [
+          'O **proprietário do sistema** (Reis Tecnologia), em qualquer colégio que acessa.',
+          'O **administrador marcado como Alta direção** em Sistema › Usuários (ícone de ajustes › {{Alta direção}}). Só administradores podem ser marcados.',
+          'Ninguém marca a si mesmo: peça a outro administrador do colégio ou ao suporte da Reis Tecnologia.'
+        ]],
+        ['h', 'O que tem na tela'],
+        ['tabela', [
+          ['Parte', 'O que mostra'],
+          ['Indicadores', 'Alunos ativos (ocupação, vagas e variação desde janeiro), receita do mês, inadimplência do ano, frequência média, média geral e conversão da captação.'],
+          ['Receita das mensalidades', 'Por mês de vencimento: recebido, vencido e não pago, e a vencer.'],
+          ['Fluxo de caixa', 'Entradas (mensalidades pagas) e saídas (contas pagas) pelo mês do pagamento, com o saldo do ano.'],
+          ['Inadimplência por mês', 'Do que venceu em cada mês, quanto ainda não foi pago.'],
+          ['Alunos ativos', 'Quantos alunos estavam ativos no fim de cada mês, pela data de matrícula e de saída.'],
+          ['Turmas', 'Ocupação de cada turma (alunos e capacidade) e a frequência de cada uma, com a linha do mínimo do colégio.'],
+          ['Médias por disciplina', 'Média dos bimestres lançados e quantos alunos estão abaixo da média de aprovação.'],
+          ['Captação e despesas', 'Interessados dos últimos 12 meses por etapa do funil e as despesas pagas no ano por categoria.'],
+          ['Atenção e agenda', 'Quantos alunos precisam de atenção (a lista fica no Dashboard) e os próximos eventos do calendário.']
+        ]],
+        ['dica', 'Passe o mouse (ou use a tecla Tab) sobre uma coluna ou barra para ver os valores exatos. O ícone de tabela, no canto de cada gráfico, mostra os mesmos números em forma de tabela.'],
+        ['h', 'Modo TV'],
+        ['passos', [
+          'Abra o Painel da Direção no computador ligado à TV.',
+          'Clique em {{Modo TV}}: a tela fica cheia, sem o menu, no tema escuro, com relógio e rolagem automática.',
+          'A rolagem desce devagar, para no fim, volta para o topo e recomeça. Mexeu na tela, ela espera 30 segundos. {{Pausar rolagem}} ou a barra de espaço param e retomam.',
+          'Para sair, use {{Sair do modo TV}} ou a tecla Esc.'
+        ]],
+        ['p', 'Fora do modo TV, a caixa {{Rolagem automática}} liga a mesma rolagem; a escolha fica guardada neste navegador.'],
+        ['atencao', 'Com o Painel da Direção aberto, a sessão **não encerra por inatividade** (para a TV não sair sozinha). Ao trocar de tela, volta a regra do colégio. Use numa TV em sala da direção, não em área aberta ao público, e saia da conta quando desligar.']
+      ],
+      relacionados: ['comecar-dashboard', 'usuarios-modulos', 'comecar-sessao']
     }
   ]);
 
@@ -1206,9 +1246,10 @@
           'Em **Módulos que poderá acessar**: {{Padrão do perfil}}, {{Todos}}, {{Nenhum}} ou marque um a um.',
           'Salve. A mudança vale no próximo acesso da pessoa (ou depois que ela recarregar o sistema).'
         ]],
-        ['p', 'O administrador sempre acessa todos os módulos, as configurações e a gestão de usuários.']
+        ['p', 'O administrador sempre acessa todos os módulos, as configurações e a gestão de usuários.'],
+        ['p', 'Para administradores aparece também **Alta direção**: marcada, a pessoa vê o **Painel da Direção** (gráficos do colégio e modo TV). Marque só quem é da direção ou da mantenedora; a mudança fica no Log de segurança.']
       ],
-      relacionados: ['comecar-perfis']
+      relacionados: ['comecar-perfis', 'direcao-painel']
     },
     {
       id: 'usuarios-vincular', titulo: 'Vincular uma pessoa por e-mail', tela: 'usuarios', perfis: ['admin'],
@@ -1688,6 +1729,12 @@
       { g: 1, modulos: ['boletim', 'notas', 'diario'], alvo: '.pagina [data-dash="atencao"]', titulo: 'Alunos que precisam de atenção', texto: 'Frequência abaixo do mínimo ou média abaixo da média de aprovação, com atalho para o boletim e o WhatsApp do responsável.' },
       { alvo: '.pagina [data-dash-bloco="atividade"]', titulo: 'Atividade recente', texto: 'As últimas ações no sistema. **Ver todas** abre o histórico completo, com filtro por pessoa.' }
     ],
+    direcao: [
+      { g: 1, alvo: '.pagina .dir-cab', titulo: 'Painel da Direção', texto: 'Os números do colégio todo em gráficos, para a alta direção. Atualiza sozinho a cada 5 minutos; **Atualizar** busca na hora.' },
+      { alvo: '.pagina .dir-kpis', titulo: 'Indicadores', texto: 'Alunos ativos, receita do mês, inadimplência, frequência, média geral e conversão da captação.' },
+      { alvo: '.pagina .dir-grade', titulo: 'Gráficos', texto: 'Passe o mouse numa coluna ou barra para ver os valores. O ícone de tabela mostra os mesmos números em tabela.' },
+      { g: 1, alvo: '.pagina [data-acao="tv"]', titulo: 'Modo TV', texto: 'Tela cheia, tema escuro, relógio e **rolagem automática** que desce e sobe sozinha. Com o painel aberto a sessão não encerra por inatividade.' }
+    ],
     alunos: [
       { g: 1, alvo: ['.pagina .cab-acoes', '.pagina .card-titulo'], titulo: 'Alunos', texto: 'Cadastre um aluno em **Novo aluno** ou muitos de uma vez em **Importar planilha** (Excel ou CSV).' },
       { g: 1, alvo: '.pagina [data-filtro="busca"]', titulo: 'Busca e turma', texto: 'Busque por nome, RA, código de acesso ou responsável, e filtre pela turma (ou "Sem turma").' },
@@ -1833,7 +1880,7 @@
   const tourFim = [
     { alvo: '[data-action="ajuda"]', celular: '.usuario-botao', titulo: 'Central de ajuda', texto: ['Pronto! Quando tiver dúvida, use o botão **?**: ele abre o manual já na tela em que você está.', 'Na Central de ajuda há o passo a passo de cada tela, as perguntas frequentes, o manual em PDF e este tour para rever quando quiser.'] }
   ];
-  const ordemEquipe = ['dashboard', 'alunos', 'professores', 'turmas', 'diario', 'notas', 'boletim', 'calendario', 'grade', 'documentos',
+  const ordemEquipe = ['dashboard', 'direcao', 'alunos', 'professores', 'turmas', 'diario', 'notas', 'boletim', 'calendario', 'grade', 'documentos',
     'mensalidades', 'contas', 'fluxo', 'bolsas', 'relatorios', 'conciliacao', 'funil', 'comunicados', 'config', 'usuarios', 'virada', 'seguranca', 'lgpd', 'colegios'];
   const ordemPortal = ['portal', 'portal-boletim', 'portal-frequencia', 'portal-financeiro', 'portal-comunicados', 'portal-calendario', 'portal-privacidade'];
 
