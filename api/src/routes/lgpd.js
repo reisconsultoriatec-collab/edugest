@@ -5,6 +5,7 @@
  *  GET  /                      encarregado, aceites dos termos, pedidos e captação antiga
  *  PUT  /encarregado           { nome, email, telefone } — contato de privacidade do colégio
  *  PUT  /solicitacoes/:id      { status, resposta } — responde um pedido do titular
+ *  GET  /solicitacoes/:id/exportar  cópia dos dados de quem fez o pedido (responsável e filhos)
  *  GET  /alunos/:id/exportar   cópia de tudo o que o sistema guarda sobre o aluno (JSON)
  *  POST /captacao/limpar       { confirmacao: 'APAGAR' } — apaga interessados perdidos há mais de 1 ano
  * ===================================================================== */
@@ -43,6 +44,13 @@ router.put('/solicitacoes/:id', assincrono(async (req, res) => {
   await atividade(req.colegioId, req.usuario.id, `Pedido de privacidade nº ${s.id} (${s.solicitante}): ${s.statusRotulo.toLowerCase()}`);
   await log(req, `Pedido de privacidade nº ${s.id} de ${s.solicitante}: ${s.statusRotulo}`);
   res.json(s);
+}));
+
+router.get('/solicitacoes/:id/exportar', assincrono(async (req, res) => {
+  const r = await lgpd.exportarSolicitante(req.colegioId, v.id(req.params.id));
+  await log(req, `Exportou os dados de ${r.solicitante} para atender o pedido de privacidade nº ${r.pedido}`);
+  res.set('Cache-Control', 'no-store');
+  res.json(r.dados);
 }));
 
 router.get('/alunos/:id/exportar', assincrono(async (req, res) => {

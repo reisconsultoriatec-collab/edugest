@@ -1249,7 +1249,7 @@
           'Termos de uso e política de privacidade aceitos por cada pessoa, com data, IP e dispositivo.',
           'CPF e RG criptografados; acesso por perfil e módulos; responsável vê só os próprios filhos.',
           'Log de segurança que não pode ser apagado, com as ações de privacidade.',
-          'Para as famílias: cópia dos dados na hora e pedidos ao colégio com prazo de 15 dias.'
+          'Para as famílias: pedidos ao colégio pelo portal (saber quais dados ele tem, corrigir, excluir...), com prazo de 15 dias corridos.'
         ]],
         ['dica', 'Os textos completos estão nos links **Termos de uso** e **Privacidade**, no rodapé da tela de acesso.']
       ],
@@ -1278,7 +1278,7 @@
       palavras: ['pedido', 'titular', 'lgpd', 'excluir dados', 'corrigir dados', 'prazo', 'art 18'],
       corpo: [
         ['onde', 'Sistema › Privacidade (LGPD) › Pedidos dos titulares'],
-        ['p', 'O responsável faz o pedido pelo portal. O Dashboard e o menu avisam quantos estão em aberto. O prazo é de **15 dias** (art. 19 da LGPD) e a resposta aparece para a família no portal.'],
+        ['p', 'O responsável faz o pedido pelo portal. O Dashboard e o menu avisam quantos estão em aberto. O prazo é de **15 dias corridos** (art. 19 da LGPD) e a resposta aparece para a família no portal.'],
         ['passos', [
           'Em **Em aberto**, clique em {{Responder}} no pedido.',
           'Leia o pedido e a orientação do tipo. Se precisar de tempo, mude a situação para **Em andamento** e salve.',
@@ -1288,10 +1288,10 @@
         ['h', 'O que fazer em cada tipo'],
         ['tabela', [
           ['Pedido', 'Como atender'],
-          ['Saber quais dados o colégio tem', 'Baixe a cópia dos dados do aluno no próprio pedido e entregue, ou oriente a usar **Baixar meus dados** no portal.'],
+          ['Saber quais dados o colégio tem', 'No próprio pedido, baixe os dados de quem pediu (com os filhos) ou do aluno e entregue por um meio seguro: em mãos, impresso ou pelo e-mail da conta.'],
           ['Corrigir dados', 'Corrija o cadastro (Alunos, por exemplo) e conte na resposta o que mudou.'],
           ['Excluir dados', 'Apague o que não é obrigatório (telefones antigos, autorizados a buscar, dados da captação). Notas, frequência, histórico e financeiro a escola precisa guardar: explique isso.'],
-          ['Receber uma cópia dos dados', 'Baixe a cópia (arquivo JSON). Histórico e transferência saem em Documentos.'],
+          ['Receber uma cópia dos dados', 'Baixe a cópia no próprio pedido (arquivo JSON). Histórico e transferência saem em Documentos.'],
           ['Revogar consentimento', 'Faça o ajuste (por exemplo, não enviar WhatsApp) e confirme. O que é contrato ou obrigação legal continua.'],
           ['Com quem os dados são compartilhados', 'EduGest (Reis Tecnologia), serviço de login (Google Firebase), hospedagem do sistema e órgãos públicos quando a lei exige (Censo Escolar).']
         ]],
@@ -1311,7 +1311,7 @@
           'Entregue o arquivo só ao titular ou ao responsável e apague a cópia do computador depois.'
         ]],
         ['p', 'O arquivo (formato JSON, abre no bloco de notas) tem: cadastro com CPF e RG, responsável cadastrado, responsáveis no portal, autorizados a buscar, notas, frequência, mensalidades, documentos emitidos e anos anteriores do histórico.'],
-        ['dica', 'O responsável consegue a mesma cópia sozinho, na hora, em **Privacidade e meus dados** › {{Baixar meus dados}}.'],
+        ['dica', 'Para atender um pedido, use os botões dentro do próprio pedido: **Dados de quem pediu** traz o responsável e todos os alunos ligados a ele neste colégio.'],
         ['atencao', 'Cada cópia fica registrada no Log de segurança com o nome de quem baixou.']
       ],
       relacionados: ['lgpd-pedidos']
@@ -1439,21 +1439,20 @@
       ]
     },
     {
-      id: 'portal-privacidade', titulo: 'Privacidade e meus dados: cópia, pedidos e encerrar o acesso', tela: 'portal-privacidade', perfis: ['responsavel'],
-      resumo: 'Baixar tudo o que o colégio guarda sobre você e seus filhos, fazer pedidos de correção ou exclusão e encerrar o acesso ao portal.',
-      palavras: ['privacidade', 'lgpd', 'meus dados', 'baixar dados', 'corrigir', 'excluir', 'encerrar conta', 'sair do portal'],
+      id: 'portal-privacidade', titulo: 'Privacidade e meus dados: pedidos ao colégio e encerrar o acesso', tela: 'portal-privacidade', perfis: ['responsavel'],
+      resumo: 'Pedir ao colégio para saber quais dados ele tem, receber uma cópia, corrigir ou excluir dados, e encerrar o acesso ao portal.',
+      palavras: ['privacidade', 'lgpd', 'meus dados', 'quais dados', 'copia dos dados', 'corrigir', 'excluir', 'encerrar conta', 'sair do portal'],
       corpo: [
         ['onde', 'Menu › Privacidade e meus dados'],
         ['h', 'Quem cuida dos seus dados'],
         ['p', 'Mostra o colégio (que decide sobre os dados), o **encarregado de dados** com e-mail e telefone, e a Reis Tecnologia, que fornece o sistema.'],
-        ['h', 'Baixar meus dados'],
-        ['p', 'Clique em {{Baixar meus dados}}: na hora, você recebe um arquivo com o seu cadastro e, de cada filho, o cadastro, notas, frequência, mensalidades e documentos. O arquivo tem dados pessoais: guarde em lugar seguro.'],
         ['h', 'Fazer um pedido ao colégio'],
+        ['p', 'Para saber quais dados o colégio tem sobre você e seus filhos, receber uma cópia, corrigir ou excluir dados, faça um pedido. O colégio confere e responde.'],
         ['passos', [
           'Clique em {{Fazer um pedido}}.',
-          'Escolha o que precisa (corrigir, excluir, saber com quem os dados são compartilhados, não receber mais mensagens...) e sobre quem é o pedido.',
+          'Escolha o que precisa (saber quais dados o colégio tem, corrigir, excluir, receber uma cópia, não receber mais mensagens...) e sobre quem é o pedido.',
           'Descreva com detalhes e clique em {{Enviar pedido}}.',
-          'Acompanhe em **Meus pedidos**: o colégio tem até 15 dias para responder, e a resposta aparece ali.'
+          'Acompanhe em **Meus pedidos**: o colégio tem até 15 dias corridos para responder, e a resposta aparece ali.'
         ]],
         ['p', 'Notas, frequência, histórico e registros financeiros a escola é obrigada por lei a guardar; nesses casos, o colégio explica na resposta.'],
         ['h', 'Encerrar meu acesso'],
@@ -1798,7 +1797,7 @@
     ],
     'portal-privacidade': [
       { g: 1, alvo: ['.pagina [data-bloco="quem"]', '.pagina .card'], titulo: 'Privacidade e meus dados', texto: 'Quem cuida dos seus dados no colégio e o contato do encarregado.' },
-      { g: 1, alvo: ['.pagina .priv-acoes', '.pagina .card'], titulo: 'Seus direitos', texto: 'Baixe na hora a cópia dos seus dados e dos seus filhos, ou faça um pedido ao colégio (correção, exclusão e outros). A resposta chega em até 15 dias, em **Meus pedidos**.' },
+      { g: 1, alvo: ['.pagina [data-bloco="pedir"]', '.pagina .card'], titulo: 'Seus direitos', texto: 'Peça ao colégio para saber quais dados ele tem, receber uma cópia, corrigir, excluir e outros. A resposta chega em até 15 dias, em **Meus pedidos**.' },
       { alvo: '.pagina [data-bloco="encerrar"]', titulo: 'Encerrar o acesso', texto: 'Se não quiser mais usar o portal deste colégio. Os registros escolares continuam com o colégio.' }
     ]
   };

@@ -140,7 +140,7 @@ async function exportarAluno(colegioId, alunoId) {
   };
 }
 
-/** Cópia para o próprio responsável: os dados dele e os de cada filho vinculado. */
+/** Cópia dos dados de um responsável (os dele e os de cada filho vinculado) — o colégio baixa para atender o pedido. */
 async function exportarResponsavel(usuarioId, colegioId) {
   const [u, termos, filhos, leituras, pedidos, enc] = await Promise.all([
     queryUm('SELECT nome, email, criado_em, ultimo_acesso FROM usuarios WHERE id = ?', [usuarioId]),
@@ -170,7 +170,8 @@ function formatarSolicitacao(s) {
     id: s.id, tipo: s.tipo, tipoRotulo: TIPOS[s.tipo] || s.tipo, descricao: s.descricao, status: s.status, statusRotulo: STATUS[s.status] || s.status,
     resposta: s.resposta || null, respondidaEm: s.respondida_em || null, respondidaPor: s.respondida_por_nome || null,
     criadaEm: s.criada_em, prazo: s.prazo, atrasada: ['aberta', 'em_andamento'].includes(s.status) && s.prazo < hojeSP(),
-    solicitante: s.solicitante_nome, solicitanteEmail: s.solicitante_email || null, alunoId: s.aluno_id || null, aluno: s.aluno_nome || null
+    solicitante: s.solicitante_nome, solicitanteEmail: s.solicitante_email || null, solicitanteId: s.usuario_id || null,
+    alunoId: s.aluno_id || null, aluno: s.aluno_nome || null
   };
 }
 async function listarSolicitacoes(colegioId, { usuarioId } = {}) {
@@ -210,6 +211,13 @@ async function responderSolicitacao(colegioId, id, usuarioId, { status, resposta
     [status, texto ? texto.slice(0, 4000) : s.resposta, usuarioId, agoraSP(), id, colegioId]);
   const n = await queryUm(`SELECT s.*, u.nome AS respondida_por_nome FROM solicitacoes_titular s LEFT JOIN usuarios u ON u.id = s.respondida_por WHERE s.id = ?`, [id]);
   return formatarSolicitacao(n);
+}
+/** Para o administrador atender um pedido: os dados de quem pediu (responsável e filhos vinculados neste colégio). */
+async function exportarSolicitante(colegioId, id) {
+  const s = await queryUm('SELECT id, usuario_id, solicitante_nome FROM solicitacoes_titular WHERE id = ? AND colegio_id = ?', [id, colegioId]);
+  if (!s) throw new HttpErro(404, 'Pedido não encontrado', 'nao_encontrado');
+  if (!s.usuario_id) throw new HttpErro(409, 'Quem fez o pedido não tem mais conta no sistema. Use a cópia por aluno.', 'sem_conta');
+  return { pedido: s.id, solicitante: s.solicitante_nome, dados: await exportarResponsavel(s.usuario_id, colegioId) };
 }
 async function contarAbertas(colegioId) {
   const r = await queryUm(
@@ -257,7 +265,7 @@ async function encerrarAcesso(usuarioId, colegioId) {
 module.exports = {
   TERMOS_VERSAO, TIPOS, STATUS, PRAZO_DIAS, somarDias,
   termosDoUsuario, aceitarTermos, encarregado, salvarEncarregado,
-  exportarAluno, exportarResponsavel,
+  exportarAluno, exportarResponsavel, exportarSolicitante,
   listarSolicitacoes, criarSolicitacao, responderSolicitacao, contarAbertas,
   resumoAceites, captacaoAntiga, limparCaptacao, encerrarAcesso
 };

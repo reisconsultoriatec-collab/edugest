@@ -45,6 +45,8 @@ for (const pag of ['web/termos.html', 'web/privacidade.html']) {
 }
 const app = ler('web/index.html') + ler('web/assets/js/auth.js');
 conf('tela de acesso tem os links dos termos e da privacidade', app.includes('href="termos.html"') && app.includes('href="privacidade.html"'));
+conf('a família não baixa os dados sozinha (pede ao colégio)', !/meus-dados/.test(ler('api/src/routes/portal.js')) && !/meus-dados|Baixar meus dados/.test(ler('web/assets/js/mod-privacidade.js') + ler('web/assets/js/ajuda-conteudo.js') + ler('web/privacidade.html')));
+conf('administrador baixa os dados de quem pediu', /router\.get\('\/solicitacoes\/:id\/exportar'/.test(ler('api/src/routes/lgpd.js')));
 const server = ler('api/server.js');
 conf('/api/lgpd só para administrador', /app\.use\('\/api\/lgpd', autenticar, carregarUsuario, exigirColegio, exigirPerfil\('admin'\)/.test(server));
 conf('/api/portal só para responsável', /app\.use\('\/api\/portal', autenticar, carregarUsuario, exigirColegio, exigirPerfil\('responsavel'\)/.test(server));

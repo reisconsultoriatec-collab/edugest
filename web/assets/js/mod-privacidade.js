@@ -51,7 +51,7 @@
             <li><i class="ti ti-school"></i><span>Os dados servem à vida escolar: matrícula, notas, frequência, mensalidades, documentos e comunicação com as famílias. <strong>Nada é vendido nem usado para propaganda.</strong></span></li>
             <li><i class="ti ti-lock"></i><span>Cada pessoa vê só o que o perfil permite. CPF e RG ficam criptografados, a conexão é segura e os acessos ficam registrados.</span></li>
             <li><i class="ti ti-user-check"></i><span>${resp
-              ? 'Você pode baixar uma cópia dos seus dados e fazer pedidos ao colégio (correção, exclusão e outros) em <strong>Privacidade e meus dados</strong>, no menu.'
+              ? 'Você pode pedir ao colégio para saber quais dados ele tem, corrigir, excluir e outros, em <strong>Privacidade e meus dados</strong>, no menu.'
               : 'Use os dados das famílias só para o trabalho no colégio: não copie para fora do sistema, não repasse a terceiros e não compartilhe a sua senha.'}</span></li>
           </ul>
           <p class="termos-links"><a href="termos.html" target="_blank" rel="noopener"><i class="ti ti-file-text"></i> Termos de uso</a>
@@ -84,11 +84,11 @@
 
   /* =================== Portal: Privacidade e meus dados =================== */
   const DICA_PEDIDO = {
-    acesso: ['Ex.: quero saber quais dados do meu filho o colégio guarda e para quê.', 'A cópia completa sai na hora pelo botão "Baixar meus dados".'],
+    acesso: ['Ex.: quero saber quais dados do meu filho o colégio guarda e para quê.', 'O colégio confere e responde dentro do prazo, aqui em Meus pedidos.'],
     correcao: ['Ex.: o nome da mãe está escrito errado; o certo é Maria de Souza Lima.', ''],
     exclusao: ['Ex.: quero que apaguem o telefone antigo e a autorização de retirada da tia Ana.',
       'Matrícula, notas, frequência, histórico e registros financeiros a escola é obrigada por lei a guardar. O colégio explica o que pode ser apagado.'],
-    portabilidade: ['Ex.: vamos mudar de escola e precisamos dos dados para levar.', 'A cópia completa sai na hora pelo botão "Baixar meus dados". Documentos oficiais (histórico, transferência) são pedidos à secretaria.'],
+    portabilidade: ['Ex.: vamos mudar de escola e precisamos dos dados para levar.', 'Documentos oficiais (histórico, transferência) são pedidos à secretaria.'],
     revogacao: ['Ex.: não quero mais receber mensagens pelo WhatsApp.', ''],
     informacao: ['Ex.: com quais empresas ou órgãos os dados são compartilhados?', ''],
     outro: ['Descreva o que você precisa.', '']
@@ -120,19 +120,20 @@
           <a href="termos.html" target="_blank" rel="noopener">Termos de uso</a> · <a href="privacidade.html" target="_blank" rel="noopener">Política de privacidade</a></p>
       </div>
 
-      <div class="priv-acoes">
-        <div class="card priv-acao" data-bloco="copia">
-          <span class="priv-acao-icone" style="background:var(--info-bg);color:var(--info)"><i class="ti ti-download"></i></span>
-          <h3>Baixar meus dados</h3>
-          <p>Um arquivo com tudo o que o sistema guarda sobre você e ${filhos.length === 1 ? 'o aluno' : 'os alunos'} neste colégio: cadastro, notas, frequência, mensalidades e documentos.</p>
-          <button class="btn btn-secundario" data-action="baixar-meus-dados"><i class="ti ti-file-download"></i> Baixar meus dados</button>
-          <small class="sub">Formato JSON: abre no bloco de notas e pode ser levado para outro sistema.</small>
-        </div>
-        <div class="card priv-acao" data-bloco="pedir">
-          <span class="priv-acao-icone" style="background:var(--ok-bg);color:var(--ok)"><i class="ti ti-message-plus"></i></span>
-          <h3>Fazer um pedido ao colégio</h3>
-          <p>Corrigir ou excluir dados, saber com quem são compartilhados, deixar de receber mensagens e outros. O colégio responde em até ${r.prazoDias} dias.</p>
+      <div class="card" data-bloco="pedir">
+        <div class="card-cab"><div class="card-titulo"><i class="ti ti-message-plus"></i> Fazer um pedido ao colégio</div></div>
+        <p class="card-desc">Pela LGPD, você pode pedir ao colégio, sobre você e sobre ${filhos.length === 1 ? 'o aluno' : 'os alunos'}:</p>
+        <ul class="priv-direitos">
+          <li><i class="ti ti-list-search"></i><span>Saber quais dados o colégio tem e para quê</span></li>
+          <li><i class="ti ti-pencil"></i><span>Corrigir dados errados ou desatualizados</span></li>
+          <li><i class="ti ti-trash"></i><span>Excluir o que a escola não é obrigada a guardar</span></li>
+          <li><i class="ti ti-file-export"></i><span>Receber uma cópia dos dados</span></li>
+          <li><i class="ti ti-share"></i><span>Saber com quem os dados são compartilhados</span></li>
+          <li><i class="ti ti-message-off"></i><span>Deixar de receber mensagens</span></li>
+        </ul>
+        <div class="priv-linha-acao">
           <button class="btn btn-primario" data-action="novo-pedido"><i class="ti ti-plus"></i> Fazer um pedido</button>
+          <span class="sub">O colégio responde em até ${r.prazoDias} dias, e a resposta aparece em Meus pedidos.</span>
         </div>
       </div>
 
@@ -152,15 +153,7 @@
       const b = ev.target.closest('[data-action]');
       if (!b || !el.contains(b)) return;
       const acao = b.dataset.action;
-      if (acao === 'baixar-meus-dados') {
-        await EG.guarda(b, async () => {
-          try {
-            const d = await EG.api('GET', '/portal/meus-dados');
-            EG.baixarJson(`meus-dados-edugest-${EG.hojeSP()}.json`, d);
-            EG.toast('Arquivo baixado. Guarde em lugar seguro: ele tem dados pessoais.');
-          } catch (e) { EG.toast(e.message, 'erro'); }
-        });
-      } else if (acao === 'novo-pedido') novoPedido(r, filhos, el);
+      if (acao === 'novo-pedido') novoPedido(r, filhos, el);
       else if (acao === 'encerrar-acesso') encerrarAcesso(filhos);
     };
   }
@@ -254,7 +247,7 @@
   const est = { filtro: 'abertas' };
   let dados = null;
   const DICA_RESPOSTA = {
-    acesso: 'Baixe a cópia dos dados do aluno (botão acima) e entregue à família, ou oriente a usar <strong>Baixar meus dados</strong> no portal, que entrega a cópia na hora.',
+    acesso: 'Baixe a cópia dos dados (botões acima) e entregue à família por um meio seguro: em mãos, impressa, ou por e-mail para o endereço da conta. Na resposta, conte como e quando foi entregue.',
     correcao: 'Corrija o cadastro (em Alunos, por exemplo) e conte na resposta o que mudou.',
     exclusao: 'Matrícula, notas, frequência, histórico e registros financeiros a escola precisa guardar por obrigação legal: explique isso na resposta. Telefones, e-mails, autorizados a buscar e dados da captação podem ser apagados.',
     portabilidade: 'Baixe a cópia dos dados do aluno (arquivo JSON) e entregue à família. Documentos oficiais, como histórico e transferência, saem em Documentos.',
@@ -417,7 +410,9 @@
         </dl>
         <div class="priv-citacao priv-texto">${esc(s.descricao)}</div>
         ${dica ? `<div class="msg-info">${dica}</div>` : ''}
-        ${s.alunoId ? `<p class="priv-baixar"><button class="btn btn-secundario btn-pequeno" data-modal="baixar"><i class="ti ti-file-download"></i> Baixar os dados de ${esc(s.aluno)}</button></p>` : ''}
+        ${s.solicitanteId || s.alunoId ? `<p class="priv-baixar">
+          ${s.solicitanteId ? `<button class="btn btn-secundario btn-pequeno" data-modal="baixar-solicitante"><i class="ti ti-file-download"></i> Dados de quem pediu (e filhos)</button>` : ''}
+          ${s.alunoId ? `<button class="btn btn-secundario btn-pequeno" data-modal="baixar"><i class="ti ti-file-download"></i> Dados de ${esc(s.aluno)}</button>` : ''}</p>` : ''}
         <div class="campo"><label for="respSit">Situação</label>
           <select class="select" id="respSit" data-campo="status">${Object.entries(SITUACAO).map(([k, [rot]]) => `<option value="${k}" ${k === s.status ? 'selected' : ''}>${rot}</option>`).join('')}</select></div>
         <div class="campo"><label for="respTexto">Resposta para a família</label>
@@ -439,6 +434,14 @@
     });
     const bx = m.el.querySelector('[data-modal="baixar"]');
     if (bx) bx.addEventListener('click', () => EG.guarda(bx, () => baixarAluno(s.alunoId, s.aluno).catch((e) => m.erro(e.message))));
+    const bs = m.el.querySelector('[data-modal="baixar-solicitante"]');
+    if (bs) bs.addEventListener('click', () => EG.guarda(bs, async () => {
+      try {
+        const d = await EG.api('GET', `/lgpd/solicitacoes/${s.id}/exportar`);
+        EG.baixarJson(`dados-${slug(s.solicitante) || 'responsavel'}-pedido-${s.id}-${EG.hojeSP()}.json`, d);
+        EG.toast('Arquivo baixado. Ele tem dados pessoais: entregue só ao titular e apague do computador depois.');
+      } catch (e) { m.erro(e.message); }
+    }));
   }
 
   function limparCaptacao(el) {

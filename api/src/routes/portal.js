@@ -16,7 +16,6 @@
  *  GET  /calendario/proximos           próximas datas (Início)
  *  GET  /alunos/:id/grade              horário de aulas da turma atual do aluno
  *  GET  /privacidade                   contato do encarregado, aceite dos termos e meus pedidos (LGPD)
- *  GET  /meus-dados                    cópia de tudo o que o sistema guarda sobre mim e meus filhos (JSON)
  *  POST /solicitacoes                  pedido do titular (acesso, correção, exclusão...)
  *  POST /encerrar-acesso               desfaz o vínculo com o colégio (os registros escolares ficam)
  *
@@ -385,16 +384,8 @@ router.get('/privacidade', assincrono(async (req, res) => {
   res.json({ encarregado, termos, solicitacoes, tipos: lgpd.TIPOS, prazoDias: lgpd.PRAZO_DIAS });
 }));
 
-router.get('/meus-dados', assincrono(async (req, res) => {
-  const dados = await lgpd.exportarResponsavel(req.usuario.id, req.colegioId);
-  await seguranca(req, {
-    tipo: 'privacidade', colegioId: req.colegioId, usuarioId: req.usuario.id, email: req.usuario.email,
-    detalhes: `Baixou a cópia dos próprios dados (${dados.alunos.length} aluno${dados.alunos.length === 1 ? '' : 's'})`
-  });
-  res.set('Cache-Control', 'no-store');
-  res.json(dados);
-}));
-
+// A cópia dos dados não sai direto no portal: a família pede ao colégio (POST /solicitacoes),
+// que confere e entrega dentro do prazo (o administrador baixa em /api/lgpd).
 router.post('/solicitacoes', assincrono(async (req, res) => {
   const b = req.body || {};
   let aluno = null;
