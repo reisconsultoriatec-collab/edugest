@@ -55,6 +55,55 @@
     </section>`;
   }
 
+  /* =================== Presença em sala (topo) =================== */
+  const SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  const SEMANA_LONGA = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
+  const dow = (s) => new Date(`${s}T12:00:00Z`).getUTCDay();
+  const ddmm = (s) => `${s.slice(8, 10)}/${s.slice(5, 7)}`;
+  const pctInteiro = (v) => (v === null || v === undefined ? '—' : `${Math.round(v)}%`);
+  function blocoPresenca(d) {
+    const p = d.presenca;
+    if (!p) return '';
+    const r = p.resumo; const lim = p.alerta;
+    const nomeDia = r.data ? (r.ehHoje ? `hoje, ${SEMANA_LONGA[dow(r.data)]} ${ddmm(r.data)}` : `${SEMANA_LONGA[dow(r.data)]} ${ddmm(r.data)} (último dia letivo)`) : '';
+    const sub = !p.turmas.length ? 'Nenhuma turma no ano letivo'
+      : !r.data ? 'Sem dias letivos nas últimas semanas (férias ou calendário sem bimestre)'
+        : r.alunos ? `${nomeDia} · <strong>${pct(r.percentual)}</strong> dos alunos presentes (${r.presentes} de ${r.alunos}) · chamada em ${r.turmasComChamada} de ${r.turmas} turmas`
+          : `${nomeDia} · nenhuma chamada lançada ${r.ehHoje ? 'ainda' : 'no dia'}`;
+    // Alerta: pisca só quando é o dia de hoje (dias anteriores ficam em vermelho, parados)
+    const banner = r.emAlerta.length ? `<div class="dir-pres-aviso ${r.ehHoje ? 'piscando' : ''}" role="alert">
+        <i class="ti ti-alert-triangle"></i><span><strong>Presença abaixo de ${lim}% ${r.ehHoje ? 'hoje' : `em ${ddmm(r.data)}`}:</strong>
+        ${r.emAlerta.map((a) => `${esc(a.turma)} (${pct(a.percentual)})`).join(' · ')}</span></div>` : '';
+    const tiles = p.turmas.map((t) => {
+      const dia = t.dias.length ? t.dias[t.dias.length - 1] : null;
+      const tem = dia && dia.alunos;
+      const local = [t.sala ? `Sala ${esc(t.sala)}` : '', t.periodo ? esc(EG.PERIODOS[t.periodo] || t.periodo) : ''].filter(Boolean).join(' · ');
+      const det = tem ? [`${dia.presentes} de ${dia.alunos} presentes`, dia.faltas ? plural(dia.faltas, 'falta', 'faltas') : '', dia.justificadas ? plural(dia.justificadas, 'justificada', 'justificadas') : ''].filter(Boolean).join(' · ')
+        : r.ehHoje ? 'chamada ainda não lançada' : 'sem chamada no dia';
+      const mini = t.dias.map((x) => {
+        const cls = [x.percentual === null ? 'vazio' : x.percentual < lim ? 'baixo' : '', x.data === p.principal ? 'atual' : ''].filter(Boolean).join(' ');
+        const dica = `${SEMANA[dow(x.data)]} ${ddmm(x.data)}: ${x.alunos ? `${x.presentes} de ${x.alunos} presentes (${pct(x.percentual)})` : 'sem chamada'}`;
+        return `<span class="${cls}" title="${esc(dica)}"><b>${SEMANA[dow(x.data)]}</b><em>${pctInteiro(x.percentual)}</em></span>`;
+      }).join('');
+      const largura = tem ? Math.min(100, dia.percentual) : 0;
+      return `<div class="dir-pres-turma ${t.alerta ? `alerta ${r.ehHoje ? 'piscando' : ''}` : ''} ${tem ? '' : 'sem'}" data-presenca-turma="${t.turmaId}">
+          <strong class="dir-pres-nome" title="${esc(t.turma)}">${esc(t.turma)}</strong>
+          <small class="dir-pres-local">${local || '&nbsp;'}</small>
+          <div class="dir-pres-valor">${tem ? pct(dia.percentual) : '—'}${t.alerta ? `<span class="dir-pres-selo"><i class="ti ti-alert-triangle"></i> abaixo de ${lim}%</span>` : ''}</div>
+          <div class="dir-pres-barra" role="meter" aria-label="Presença" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${largura}"><span style="width:${largura}%"></span><i style="left:${lim}%" title="${lim}%"></i></div>
+          <div class="dir-pres-obs">${det}</div>
+          <div class="dir-pres-dias">${mini}</div>
+        </div>`;
+    }).join('');
+    return `<section class="dir-card dir-presenca" data-cartao="presenca">
+        <header class="dir-card-cab"><div><h3><i class="ti ti-school"></i> Presença em sala</h3><p>${sub}</p></div>
+          <span class="dir-pres-regra">alerta abaixo de ${lim}%</span></header>
+        ${banner}
+        ${p.turmas.length && r.data ? `<div class="dir-pres-grade">${tiles}</div>
+          <p class="dir-pres-nota">Aluno presente em pelo menos uma aula do dia conta como presente. Os quadradinhos mostram os últimos ${p.dias.length} dias letivos de cada turma.</p>` : ''}
+      </section>`;
+  }
+
   /* =================== Cartões dos gráficos =================== */
   const legenda = (itens) => `<div class="dir-legenda">${itens.map(([c, nome, tipo]) =>
     `<span><i class="dir-chave ${tipo === 'linha' ? 'linha' : ''}" style="--c:var(--g-${c})"></i>${esc(nome)}</span>`).join('')}</div>`;
@@ -78,6 +127,7 @@
     const temInad = d.inadimplenciaMensal.some((m) => m.percentual !== null);
     const k = d.kpis;
     return `
+      ${blocoPresenca(d)}
       ${kpis(d)}
       <div class="dir-grade">
         ${cartao('receita', { titulo: 'Receita das mensalidades', classe: 'larga',

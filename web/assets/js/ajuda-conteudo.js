@@ -214,7 +214,7 @@
     {
       id: 'direcao-painel', titulo: 'Painel da Direção: os números do colégio em gráficos', tela: 'direcao', perfis: ['admin'],
       resumo: 'Visão da alta direção: alunos, receita, inadimplência, fluxo de caixa, frequência, médias e captação, com modo TV e rolagem automática.',
-      palavras: ['painel da direcao', 'diretoria', 'mantenedora', 'dono', 'graficos', 'indicadores', 'tv', 'televisao', 'telao', 'kpi', 'gestao'],
+      palavras: ['painel da direcao', 'presenca em sala', 'presenca por turma', 'alerta de presenca', 'diretoria', 'mantenedora', 'dono', 'graficos', 'indicadores', 'tv', 'televisao', 'telao', 'kpi', 'gestao'],
       corpo: [
         ['p', 'O Painel da Direção junta, numa tela só, os números que a alta direção acompanha. Os valores são do **colégio todo** no ano letivo atual e se atualizam sozinhos a cada 5 minutos.'],
         ['onde', 'Menu › Principal › Painel da Direção'],
@@ -227,6 +227,7 @@
         ['h', 'O que tem na tela'],
         ['tabela', [
           ['Parte', 'O que mostra'],
+          ['Presença em sala (topo)', 'Cada turma, com a sala e o turno: quantos alunos estão presentes hoje (pela chamada do Diário) e os últimos 5 dias letivos. Abaixo de 60% a turma fica em vermelho **piscando**, e um aviso no alto lista as turmas em alerta. Aluno presente em pelo menos uma aula do dia conta como presente.'],
           ['Indicadores', 'Alunos ativos (ocupação, vagas e variação desde janeiro), receita do mês, inadimplência do ano, frequência média, média geral e conversão da captação.'],
           ['Receita das mensalidades', 'Por mês de vencimento: recebido, vencido e não pago, e a vencer.'],
           ['Fluxo de caixa', 'Entradas (mensalidades pagas) e saídas (contas pagas) pelo mês do pagamento, com o saldo do ano.'],
@@ -1731,6 +1732,7 @@
     ],
     direcao: [
       { g: 1, alvo: '.pagina .dir-cab', titulo: 'Painel da Direção', texto: 'Os números do colégio todo em gráficos, para a alta direção. Atualiza sozinho a cada 5 minutos; **Atualizar** busca na hora.' },
+      { g: 1, alvo: ['.pagina .dir-presenca', '.pagina .dir-cab'], titulo: 'Presença em sala', texto: 'No topo, a presença de hoje em cada turma (pela chamada do Diário) e os últimos 5 dias letivos. **Abaixo de 60%** a turma fica em vermelho piscando.' },
       { alvo: '.pagina .dir-kpis', titulo: 'Indicadores', texto: 'Alunos ativos, receita do mês, inadimplência, frequência, média geral e conversão da captação.' },
       { alvo: '.pagina .dir-grade', titulo: 'Gráficos', texto: 'Passe o mouse numa coluna ou barra para ver os valores. O ícone de tabela mostra os mesmos números em tabela.' },
       { g: 1, alvo: '.pagina [data-acao="tv"]', titulo: 'Modo TV', texto: 'Tela cheia, tema escuro, relógio e **rolagem automática** que desce e sobe sozinha. Com o painel aberto a sessão não encerra por inatividade.' }

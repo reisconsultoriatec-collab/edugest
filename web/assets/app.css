@@ -1297,10 +1297,12 @@ body.em-tour .aviso-versao { display: none; }
 :root, [data-theme="light"] {
   --g-s1: #2a78d6; --g-s2: #eb6834; --g-s3: #1baf7a; --g-neutro: #d5dbe3; --g-trilho: #cde2fb;
   --g-grade: #edf1f5; --g-eixo: #cbd5e1; --g-realce: rgba(42, 120, 214, .06);
+  --pisca-forte: #FECACA; --pisca-brilho: rgba(239, 68, 68, .45);
 }
 [data-theme="dark"] {
   --g-s1: #3987e5; --g-s2: #d95926; --g-s3: #199e70; --g-neutro: #3b4a60; --g-trilho: rgba(57, 135, 229, .24);
   --g-grade: #2a3a50; --g-eixo: #475569; --g-realce: rgba(57, 135, 229, .10);
+  --pisca-forte: rgba(239, 68, 68, .38); --pisca-brilho: rgba(239, 68, 68, .55);
 }
 /* Gráficos */
 .g-svg { display: block; overflow: visible; font-family: 'Inter', system-ui, sans-serif; }
@@ -1381,6 +1383,54 @@ body.em-tour .aviso-versao { display: none; }
 .dir-rodape { text-align: center; color: var(--text-2); font-size: 12px; margin: 22px 0 6px; }
 .dir-recarregando { opacity: .6; transition: opacity .2s; }
 .dir-tv-cab { display: none; }
+
+/* Presença em sala (topo do painel) */
+.dir-presenca { margin-bottom: 20px; }
+.dir-presenca h3 { display: flex; align-items: center; gap: 8px; }
+.dir-presenca h3 i { color: var(--amber); }
+.dir-pres-regra { font-size: 11.5px; color: var(--erro-tx); background: var(--erro-bg); border-radius: 20px; padding: 3px 10px; white-space: nowrap; font-weight: 600; }
+.dir-pres-aviso { display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px; border-radius: 10px; margin-bottom: 14px;
+  background: var(--erro-bg); color: var(--erro-tx); border: 1px solid var(--erro); font-size: 13.5px; line-height: 1.45; }
+.dir-pres-aviso i { font-size: 18px; flex: none; margin-top: 1px; }
+.dir-pres-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(205px, 1fr)); gap: 12px; }
+.dir-pres-turma { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; min-width: 0; background: var(--card); }
+.dir-pres-turma.sem { background: var(--bg); }
+.dir-pres-nome { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dir-pres-selo { font-family: 'Inter', system-ui, sans-serif; font-size: 10.5px; font-weight: 700; color: #fff; background: var(--erro); border-radius: 12px; padding: 2px 7px;
+  white-space: nowrap; display: inline-flex; align-items: center; gap: 3px; vertical-align: middle; margin-left: 8px; }
+.dir-pres-local { font-size: 11.5px; color: var(--text-2); }
+.dir-pres-valor { font-family: 'Space Grotesk', sans-serif; font-size: 26px; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.dir-pres-turma.sem .dir-pres-valor { color: var(--muted); }
+.dir-pres-turma.alerta .dir-pres-valor { color: var(--erro-tx); }
+.dir-pres-barra { position: relative; height: 6px; border-radius: 3px; background: var(--g-trilho); margin: 2px 0 2px; }
+.dir-pres-barra > span { display: block; height: 100%; border-radius: 3px; background: var(--g-s1); transition: width .6s ease; }
+.dir-pres-turma.alerta .dir-pres-barra > span { background: var(--erro); }
+.dir-pres-barra > i { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--text-2); border-radius: 1px; }
+.dir-pres-obs { font-size: 12px; color: var(--text-2); min-height: 1.4em; }
+.dir-pres-dias { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; margin-top: 4px; }
+.dir-pres-dias span { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 3px 0; border-radius: 6px; background: var(--bg);
+  font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text); border: 1px solid transparent; }
+.dir-pres-dias span b { font-size: 10px; font-weight: 600; color: var(--text-2); text-transform: uppercase; }
+.dir-pres-dias em { font-style: normal; }
+.dir-pres-dias span.baixo em { font-weight: 800; }
+.dir-pres-dias span.vazio { color: var(--muted); }
+.dir-pres-dias span.baixo { background: var(--erro-bg); color: var(--erro-tx); }
+.dir-pres-dias span.atual { border-color: var(--text-2); }
+.dir-pres-nota { font-size: 11.5px; color: var(--text-2); margin-top: 10px; }
+.dir-pres-turma.alerta { border-color: var(--erro); background: var(--erro-bg); }
+/* Pisca suave (pulso de ~1,3 s, sem flash): o alerta chama atenção também de longe, na TV */
+@keyframes dir-pisca {
+  0%, 100% { background: var(--erro-bg); box-shadow: 0 0 0 0 transparent; }
+  50% { background: var(--pisca-forte); box-shadow: 0 0 0 4px var(--pisca-brilho); }
+}
+.dir-pres-turma.alerta.piscando, .dir-pres-aviso.piscando { animation: dir-pisca 1.3s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .dir-pres-turma.alerta.piscando, .dir-pres-aviso.piscando { animation: none; } }
+body.modo-tv .dir-pres-grade { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+body.modo-tv .dir-pres-valor { font-size: 32px; }
+body.modo-tv .dir-pres-nome { font-size: 16px; }
+body.modo-tv .dir-pres-aviso { font-size: 16px; }
+@media (max-width: 560px) { .dir-pres-grade { grid-template-columns: minmax(0, 1fr); gap: 8px; } .dir-pres-turma { padding: 10px 12px; }
+  .dir-presenca .dir-card-cab { flex-wrap: wrap; } }
 @media (min-width: 1500px) {
   .dir-kpis { grid-template-columns: repeat(6, minmax(0, 1fr)); }
   .dir-grade { grid-template-columns: repeat(3, minmax(0, 1fr)); }

@@ -62,3 +62,4 @@ Se essa opção não aparecer no seu plano, não tem problema: o cadastro do Edu
 - Use um computador (ou mini PC / TV box com navegador) ligado à TV, entre com a conta da pessoa da direção, abra o Painel da Direção e clique em **Modo TV** (tela cheia, tema escuro, relógio e rolagem automática). Esc sai.
 - Com o painel aberto, a sessão **não encerra por inatividade** e os números se atualizam a cada 5 minutos. Por isso: TV só em sala da direção (não na recepção), conta de quem é da direção, e **Sair** ao desligar.
 - Se a marcação for retirada com o painel aberto, a pessoa sai do painel na próxima atualização.
+- No topo fica a **presença em sala** de cada turma (chamada do Diário). Turma abaixo de 60% de presença no dia pisca em vermelho; o limite é `ALERTA_PRESENCA` em `api/src/services/direcao.js`. Quem configurou o computador para "reduzir movimento" vê o alerta em vermelho, sem piscar.

@@ -84,6 +84,34 @@ const conf = (n, ok, extra) => { console.log((ok ? 'ok   ' : 'ERRO ') + n + (ok 
   conf('média da disciplina e alunos abaixo (média do aluno 5,0)', mat.media === 6.3 && mat.alunosAbaixo === 1 && p.mediasDisciplinas.length === 1, p.mediasDisciplinas);
   conf('média geral', p.mediaGeral === 6.3, p.mediaGeral);
 
+  /* ---------- Presença em sala ---------- */
+  const tp = [{ id: 1, nome: '6º Ano A', sala: '12', periodo: 'matutino' }, { id: 2, nome: '5º Ano A', sala: null, periodo: 'vespertino' }, { id: 3, nome: '7º Ano', periodo: 'matutino' }];
+  const lp = [
+    // hoje (28/10), 6º Ano A: Ana presente em 1 das 2 aulas, Bia faltou nas 2, Caio justificada, Duda presente → 2 de 4 = 50% (alerta)
+    { turma_id: 1, data: '2026-10-28', aluno_id: 1, p: 1, j: 0 }, { turma_id: 1, data: '2026-10-28', aluno_id: 2, p: 0, j: 0 },
+    { turma_id: 1, data: '2026-10-28', aluno_id: 3, p: 0, j: 2 }, { turma_id: 1, data: '2026-10-28', aluno_id: 4, p: 2, j: 0 },
+    // hoje, 5º Ano A: 3 de 4 = 75%
+    { turma_id: 2, data: '2026-10-28', aluno_id: 5, p: 1, j: 0 }, { turma_id: 2, data: '2026-10-28', aluno_id: 6, p: 1, j: 0 },
+    { turma_id: 2, data: '2026-10-28', aluno_id: 7, p: 1, j: 0 }, { turma_id: 2, data: '2026-10-28', aluno_id: 8, p: 0, j: 0 },
+    // ontem, 6º Ano A: 1 de 2; sábado 24/10 (fora dos dias letivos) teve chamada
+    { turma_id: 1, data: '2026-10-27', aluno_id: 1, p: 1, j: 0 }, { turma_id: 1, data: '2026-10-27', aluno_id: 2, p: 0, j: 0 },
+    { turma_id: 2, data: '2026-10-24', aluno_id: 5, p: 1, j: 0 }
+  ];
+  const dl = ['2026-10-20', '2026-10-21', '2026-10-22', '2026-10-23', '2026-10-26', '2026-10-27', '2026-10-28'];
+  const pr = d.montarPresenca({ turmas: tp, dias: dl, linhas: lp, hoje: '2026-10-28' });
+  conf('últimos 5 dias (inclui dia com chamada fora do calendário), o último é hoje', pr.dias.join() === '2026-10-23,2026-10-24,2026-10-26,2026-10-27,2026-10-28' && pr.principal === '2026-10-28' && pr.resumo.ehHoje, pr.dias);
+  const t6 = pr.turmas.find((t) => t.turma === '6º Ano A'); const h6 = t6.dias[4];
+  conf('aluno conta por dia: presente em alguma aula; senão justificada; senão falta', h6.alunos === 4 && h6.presentes === 2 && h6.justificadas === 1 && h6.faltas === 1 && h6.percentual === 50, h6);
+  conf('abaixo de 60% fica em alerta', t6.alerta && !pr.turmas.find((t) => t.turma === '5º Ano A').alerta, pr.turmas.map((t) => [t.turma, t.alerta]));
+  conf('turma sem chamada: sem percentual e sem alerta', pr.turmas.find((t) => t.turma === '7º Ano').dias.every((x) => x.percentual === null) && !pr.turmas.find((t) => t.turma === '7º Ano').alerta);
+  conf('resumo do dia: 5 de 8 presentes, 2 de 3 turmas com chamada, 1 em alerta', pr.resumo.presentes === 5 && pr.resumo.alunos === 8 && pr.resumo.percentual === 62.5
+    && pr.resumo.turmasComChamada === 2 && pr.resumo.turmas === 3 && pr.resumo.emAlerta.length === 1 && pr.resumo.emAlerta[0].percentual === 50, pr.resumo);
+  conf('turmas em ordem e com sala', pr.turmas.map((t) => t.turma).join() === '5º Ano A,6º Ano A,7º Ano' && t6.sala === '12', pr.turmas.map((t) => t.turma));
+  const fds = d.montarPresenca({ turmas: tp, dias: dl.slice(0, 4), linhas: [], hoje: '2026-10-25' });
+  conf('fim de semana: dia principal é o último dia letivo (sem alerta, sem chamada)', fds.principal === '2026-10-23' && !fds.resumo.ehHoje && fds.resumo.percentual === null && !fds.resumo.emAlerta.length, fds);
+  const ferias = d.montarPresenca({ turmas: tp, dias: [], linhas: [], hoje: '2026-07-15' });
+  conf('férias sem chamada: sem dias', ferias.principal === null && ferias.dias.length === 0 && ferias.turmas[0].dias.length === 0, ferias);
+
   /* ---------- Quem pode ver ---------- */
   const req = (perfil, email, verif) => ({ usuario: { id: 5 }, colegioId: 1, perfil, firebase: { email, emailVerificado: verif } });
   marcado = 0;

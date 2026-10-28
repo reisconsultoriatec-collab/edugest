@@ -2,6 +2,9 @@
 /* =====================================================================
  *  Painel da Direção — visão do colégio para a alta direção
  *
+ *  No topo: presença em sala por turma e por dia (últimos dias letivos),
+ *  com alerta abaixo de 60%.
+ *
  *  Acesso: administrador marcado como alta direção (usuario_colegio.direcao)
  *  ou o proprietário do sistema. Os números são do colégio todo, no ano
  *  letivo atual (financeiro: mês do vencimento e mês do pagamento).
@@ -16,8 +19,11 @@ const { ehProprietario } = require('../utils/proprietario');
 const { arred1, mediaBimestre } = require('./escopo');
 const F = require('./funil');
 const painel = require('./painel');
+const { somarDias } = require('./calendario');
 
 const CACHE_MS = 60 * 1000;
+const ALERTA_PRESENCA = 60; // %: turma com presença abaixo disso no dia fica em alerta (pisca no painel)
+const DIAS_PRESENCA = 5;    // dias letivos mostrados por turma (o último é o dia principal)
 const cache = new Map();
 
 /** Alta direção (administrador marcado) ou proprietário do sistema. */
@@ -178,6 +184,48 @@ function montarPedagogico({ turmas, freq, notas, mediaAprov }) {
   };
 }
 
+/* ---------------- Presença em sala (por turma e por dia) ---------------- */
+/**
+ * linhas: uma por aluno, turma e dia, com quantas presenças (p) e justificadas (j) ele
+ * teve nas chamadas do dia. Aluno presente no dia = presente em pelo menos uma aula;
+ * senão, justificada se teve alguma; senão, falta.
+ * dias: dias letivos do período (somam-se os dias que tiveram chamada mesmo fora deles).
+ */
+function montarPresenca({ turmas, dias, linhas, hoje, alerta = ALERTA_PRESENCA }) {
+  const cont = new Map();
+  linhas.forEach((l) => {
+    const k = `${l.turma_id}|${dia10(l.data)}`;
+    if (!cont.has(k)) cont.set(k, { alunos: 0, presentes: 0, justificadas: 0, faltas: 0 });
+    const c = cont.get(k);
+    c.alunos++;
+    if (num(l.p) > 0) c.presentes++; else if (num(l.j) > 0) c.justificadas++; else c.faltas++;
+  });
+  const comChamada = linhas.map((l) => dia10(l.data));
+  const lista = [...new Set([...dias, ...comChamada])].filter((d) => d <= hoje).sort().slice(-DIAS_PRESENCA);
+  const principal = lista.length ? lista[lista.length - 1] : null;
+  const vazio = { alunos: 0, presentes: 0, justificadas: 0, faltas: 0 };
+  const porTurma = turmas.map((t) => {
+    const ds = lista.map((d) => { const c = cont.get(`${t.id}|${d}`) || vazio; return { data: d, ...c, percentual: pct(c.presentes, c.alunos) }; });
+    const dia = ds.length ? ds[ds.length - 1] : null;
+    return {
+      turmaId: t.id, turma: t.nome, sala: t.sala || null, periodo: t.periodo || null, dias: ds,
+      alerta: !!dia && dia.percentual !== null && dia.percentual < alerta
+    };
+  }).sort((a, b) => a.turma.localeCompare(b.turma, 'pt-BR', { numeric: true }));
+  const doDia = porTurma.map((t) => t.dias[t.dias.length - 1]).filter((d) => d && d.alunos);
+  const soma = (k) => doDia.reduce((s, d) => s + d[k], 0);
+  return {
+    alerta, dias: lista, principal,
+    resumo: {
+      data: principal, ehHoje: principal === hoje,
+      alunos: soma('alunos'), presentes: soma('presentes'), justificadas: soma('justificadas'), faltas: soma('faltas'),
+      percentual: pct(soma('presentes'), soma('alunos')), turmasComChamada: doDia.length, turmas: porTurma.length,
+      emAlerta: porTurma.filter((t) => t.alerta).map((t) => ({ turmaId: t.turmaId, turma: t.turma, percentual: t.dias[t.dias.length - 1].percentual }))
+    },
+    turmas: porTurma
+  };
+}
+
 /* ---------------- Consultas ---------------- */
 async function carregar(colegioId) {
   const hoje = hojeSP();
@@ -189,9 +237,10 @@ async function carregar(colegioId) {
   const freqMin = Number(cfg && cfg.frequencia_minima !== null && cfg.frequencia_minima !== undefined ? cfg.frequencia_minima : 75);
   const ini = `${ano}-01-01`, fim = `${ano}-12-31`;
   const doze = (() => { const [a, m] = hoje.slice(0, 7).split('-').map(Number); return new Date(Date.UTC(a, m - 12, 1)).toISOString().slice(0, 10); })();
-  const turmas = await query('SELECT id, nome, serie, periodo, capacidade FROM turmas WHERE colegio_id = ? AND ano_letivo = ? AND ativo = 1', [colegioId, ano]);
+  const turmas = await query('SELECT id, nome, serie, periodo, capacidade, sala FROM turmas WHERE colegio_id = ? AND ano_letivo = ? AND ativo = 1', [colegioId, ano]);
   const ids = turmas.length ? turmas.map((t) => t.id) : [0];
-  const [alunos, mensalidades, contas, divida, freq, notas, leads, professores, eventos, atencao] = await Promise.all([
+  const iniPresenca = somarDias(hoje, -20); // ~3 semanas: dá os últimos dias letivos mesmo com feriado no meio
+  const [alunos, mensalidades, contas, divida, freq, notas, leads, professores, eventos, atencao, periodos, naoLetivos, chamadas] = await Promise.all([
     query('SELECT id, status, turma_id, data_matricula, data_saida, criado_em FROM alunos WHERE colegio_id = ?', [colegioId]),
     query(`SELECT aluno_id, vencimento, valor_bruto, desconto, valor, status, data_pagamento, valor_pago FROM mensalidades
             WHERE colegio_id = ? AND ((vencimento >= ? AND vencimento <= ?) OR (data_pagamento >= ? AND data_pagamento <= ?))`,
@@ -213,15 +262,25 @@ async function carregar(colegioId) {
     query(`SELECT titulo, tipo, data, data_fim, hora_inicio FROM eventos
             WHERE colegio_id = ? AND tipo <> 'bimestre' AND COALESCE(data_fim, data) >= ? AND data <= ?
             ORDER BY data, hora_inicio LIMIT 6`, [colegioId, hoje, `${ano + 1}-12-31`]),
-    painel.atencao(colegioId, { restrito: false })
+    painel.atencao(colegioId, { restrito: false }),
+    query('SELECT bimestre, inicio, fim FROM periodos_letivos WHERE colegio_id = ? AND ano = ?', [colegioId, ano]),
+    query(`SELECT tipo, alcance, data, data_fim FROM eventos WHERE colegio_id = ? AND tipo IN ('feriado', 'recesso', 'letivo')
+            AND data <= ? AND COALESCE(data_fim, data) >= ?`, [colegioId, hoje, iniPresenca]),
+    query(`SELECT d.turma_id, d.data, f.aluno_id, COALESCE(SUM(f.status = 'P'), 0) AS p, COALESCE(SUM(f.status = 'J'), 0) AS j
+             FROM frequencias f JOIN diarios d ON d.id = f.diario_id
+            WHERE d.colegio_id = ? AND d.turma_id IN (?) AND d.data >= ? AND d.data <= ?
+            GROUP BY d.turma_id, d.data, f.aluno_id`, [colegioId, ids, iniPresenca, hoje])
   ]);
+  const diasLet = painel.diasLetivos(iniPresenca, hoje, painel.periodosDoAno(periodos, ano), naoLetivos.map((e) => ({ ...e, data: dia10(e.data), data_fim: dia10(e.data_fim) })));
+  const presenca = montarPresenca({ turmas, dias: diasLet, linhas: chamadas, hoje });
   const fin = montarFinanceiro({ ano, hoje, mensalidades, contas });
   const al = montarAlunos({ ano, hoje, alunos, turmas });
   const ped = montarPedagogico({ turmas, freq, notas, mediaAprov });
   const cap = F.indicadores(leads, hoje);
   return {
     geradoEm: agoraSP(), hoje, anoLetivo: ano, colegio: cfg ? cfg.nome : null,
-    criterios: { mediaAprovacao: mediaAprov, frequenciaMinima: freqMin },
+    criterios: { mediaAprovacao: mediaAprov, frequenciaMinima: freqMin, alertaPresenca: ALERTA_PRESENCA },
+    presenca,
     kpis: {
       ...al.alunos, turmas: turmas.length, professores: num(professores && professores.n),
       receitaMes: fin.receitaMes, receitaAno: fin.receitaAno, ticketMedio: fin.ticketMedio, descontos: fin.descontos,
@@ -246,4 +305,4 @@ async function painelDirecao(colegioId, { atualizar } = {}) {
   return dados;
 }
 
-module.exports = { podeVerDirecao, painelDirecao, montarFinanceiro, montarAlunos, montarPedagogico, CACHE_MS, _cache: cache };
+module.exports = { podeVerDirecao, painelDirecao, montarFinanceiro, montarAlunos, montarPedagogico, montarPresenca, ALERTA_PRESENCA, DIAS_PRESENCA, CACHE_MS, _cache: cache };
