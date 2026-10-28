@@ -809,3 +809,12 @@ CREATE TABLE IF NOT EXISTS virada_alunos (
   CONSTRAINT fk_valunos_origem  FOREIGN KEY (turma_origem_id)  REFERENCES turmas (id)  ON DELETE SET NULL,
   CONSTRAINT fk_valunos_destino FOREIGN KEY (turma_destino_id) REFERENCES turmas (id)  ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Central de ajuda: artigos lidos e tours feitos por pessoa (migração 013)
+CREATE TABLE IF NOT EXISTS usuario_ajuda (
+  usuario_id  INT UNSIGNED NOT NULL,
+  chave       VARCHAR(60)  NOT NULL COMMENT 'artigo:<id>, tour:<id> ou preferências da ajuda',
+  feito_em    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (usuario_id, chave),
+  CONSTRAINT fk_uajuda_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

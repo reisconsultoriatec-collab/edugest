@@ -44,6 +44,7 @@
           ${kpi('ti-alert-triangle', 'var(--erro-bg)', 'var(--erro)', 'Inadimplentes', r.inadimplentes, 'com mensalidade vencida', 'mensalidades', 'inadimplentes')}
         </div>
 
+        ${e.perfil === 'admin' ? '<div data-dash-implantacao></div>' : ''}
         ${minha && minha.vinculado && minha.total ? cardAulasHoje(minha) : ''}
         ${funil && (funil.novos || funil.contatosHoje || funil.atrasados || funil.visitasHoje) ? cardFunil(funil) : ''}
         ${agenda || com ? `<div class="${agenda && com ? 'linha-2' : ''}" style="gap:20px;align-items:start;margin-bottom:20px">
@@ -58,6 +59,11 @@
               <span class="quando">${EG.dataHora(a.data)}</span></li>`).join('')}</ul>`
           : '<div class="vazio"><i class="ti ti-clock"></i>Nenhuma atividade ainda</div>'}
         </div>`;
+      // Administrador: o que ainda falta configurar no colégio (some quando tudo estiver pronto)
+      const impl = el.querySelector('[data-dash-implantacao]');
+      if (impl && EG.cartaoImplantacao) {
+        EG.cartaoImplantacao().then((html) => { if (impl.isConnected) { if (html) impl.outerHTML = html; else impl.remove(); } }).catch(() => impl.remove());
+      }
     }
   });
 

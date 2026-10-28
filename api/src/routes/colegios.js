@@ -245,6 +245,57 @@ router.delete('/atual/disciplinas/:id', soAdmin, assincrono(async (req, res) => 
   res.status(204).end();
 }));
 
+/* ---------------- Implantação (checklist do administrador) ----------------
+ * O que já foi configurado no colégio, para a Central de ajuda e o Dashboard
+ * mostrarem os próximos passos. Só contagens: nenhum dado pessoal. */
+router.get('/atual/implantacao', soAdmin, assincrono(async (req, res) => {
+  const c = req.colegioId;
+  const cfg = await queryUm('SELECT ano_letivo, valor_mensalidade, pix_chave, cidade FROM config_colegio WHERE colegio_id = ?', [c]);
+  const ano = cfg ? Number(cfg.ano_letivo) : Number(hojeSP().slice(0, 4));
+  const n = await queryUm(
+    `SELECT
+       (SELECT COUNT(*) FROM colegios WHERE id = ? AND COALESCE(cnpj, '') <> '' AND COALESCE(telefone, '') <> '' AND COALESCE(endereco, '') <> '') AS dados,
+       (SELECT COUNT(*) FROM colegio_logos WHERE colegio_id = ?) AS logo,
+       (SELECT COUNT(*) FROM turmas WHERE colegio_id = ? AND ano_letivo = ? AND ativo = 1) AS turmas,
+       (SELECT COUNT(*) FROM professores WHERE colegio_id = ? AND status = 'ativo') AS professores,
+       (SELECT COUNT(*) FROM atribuicoes a JOIN turmas t ON t.id = a.turma_id WHERE a.colegio_id = ? AND t.ano_letivo = ?) AS atribuicoes,
+       (SELECT COUNT(*) FROM horarios_aula WHERE colegio_id = ?) AS horarios,
+       (SELECT COUNT(*) FROM grade_horaria g JOIN turmas t ON t.id = g.turma_id WHERE g.colegio_id = ? AND t.ano_letivo = ?) AS grade,
+       (SELECT COUNT(*) FROM periodos_letivos WHERE colegio_id = ? AND ano = ?) AS bimestres,
+       (SELECT COUNT(*) FROM alunos WHERE colegio_id = ? AND status = 'ativo') AS alunos,
+       (SELECT COUNT(*) FROM alunos WHERE colegio_id = ? AND status = 'ativo' AND turma_id IS NULL) AS sem_turma,
+       (SELECT COUNT(*) FROM mensalidades WHERE colegio_id = ? AND referencia LIKE ?) AS mensalidades,
+       (SELECT COUNT(*) FROM usuario_colegio WHERE colegio_id = ? AND status = 'ativo' AND perfil <> 'responsavel') AS equipe,
+       (SELECT COUNT(*) FROM responsavel_aluno WHERE colegio_id = ?) AS familias`,
+    [c, c, c, ano, c, c, ano, c, c, ano, c, ano, c, c, c, `${ano}-%`, c, c]
+  );
+  const num = Object.fromEntries(Object.entries(n).map(([k, x]) => [k, Number(x)]));
+  const itens = {
+    dados: num.dados > 0,
+    mensalidade: !!(cfg && Number(cfg.valor_mensalidade) > 0),
+    pix: !!(cfg && cfg.pix_chave && cfg.cidade),
+    documentos: num.logo > 0,
+    turmas: num.turmas > 0,
+    professores: num.professores > 0,
+    atribuicoes: num.atribuicoes > 0,
+    horarios: num.horarios > 0,
+    grade: num.grade > 0,
+    calendario: num.bimestres > 0,
+    alunos: num.alunos > 0,
+    enturmados: num.alunos > 0 && num.sem_turma === 0,
+    mensalidades: num.mensalidades > 0,
+    equipe: num.equipe >= 2,
+    familias: num.familias > 0
+  };
+  res.json({
+    anoLetivo: ano,
+    itens,
+    feitos: Object.values(itens).filter(Boolean).length,
+    total: Object.keys(itens).length,
+    numeros: { turmas: num.turmas, professores: num.professores, alunos: num.alunos, semTurma: num.sem_turma, equipe: num.equipe, familias: num.familias }
+  });
+}));
+
 /* ---------------- Indicadores do Dashboard ---------------- */
 router.get('/atual/resumo', soEquipe, exigirModulo('dashboard'), assincrono(async (req, res) => {
   const cfg = await queryUm('SELECT ano_letivo FROM config_colegio WHERE colegio_id = ?', [req.colegioId]);

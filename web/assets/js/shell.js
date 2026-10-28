@@ -47,12 +47,15 @@
       { id: 'seguranca', rotulo: 'Log de Segurança', icone: 'ti-shield-lock', pronto: true, soAdmin: true },
       // Só o proprietário do sistema (PROPRIETARIO_EMAILS no .env da API)
       { id: 'colegios', rotulo: 'Gestão de Colégios', icone: 'ti-building-community', pronto: true, soProprietario: true }
-    ] }
+    ] },
+    // Manual do sistema: todo mundo (equipe e responsáveis) acessa
+    { secao: 'Ajuda', fixo: true, itens: [{ id: 'ajuda', rotulo: 'Central de ajuda', icone: 'ti-help', pronto: true, sempre: true }] }
   ];
   const TODOS = MENU.flatMap((s) => s.itens);
 
   function permitido(item) {
     const e = EG.estado;
+    if (item.sempre) return true;
     if (item.soProprietario) return !!(e.me && (e.me.proprietario || e.me.proprietarioVerificar));
     if (item.soAdmin) return e.perfil === 'admin';
     // Tudo depende dos módulos liberados, inclusive o Dashboard
@@ -94,6 +97,7 @@
     EG.carregando(true, 'Tudo pronto!', 100);
     await new Promise((ok) => setTimeout(ok, 200));
     EG.carregando(false);
+    if (EG.boasVindas) setTimeout(() => EG.boasVindas(), 700); // primeiro acesso: convite para o tour
   };
 
   function montarSeletor() {
@@ -186,8 +190,13 @@
   };
 
   /* ---------- Navegação ---------- */
+  /** A pessoa pode abrir esta tela? (usado pelo tour e pela Central de ajuda) */
+  EG.paginaPermitida = (id) => { const i = TODOS.find((x) => x.id === id); return !!(i && permitido(i)); };
+  EG.rotuloPagina = (id) => { const i = TODOS.find((x) => x.id === id); return i ? i.rotulo : id; };
+  EG.paginaAtual = () => { const p = EG.$('#conteudo > .pagina'); return p ? p.dataset.pagina : null; };
+
   function paginaInicial() {
-    const primeiro = TODOS.find(permitido);
+    const primeiro = TODOS.find((i) => !i.sempre && permitido(i));
     return primeiro ? primeiro.id : null;
   }
 

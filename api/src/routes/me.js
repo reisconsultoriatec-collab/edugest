@@ -6,6 +6,7 @@
  *                        (+ proprietario / proprietarioVerificar)
  *  GET /api/me/acesso  → perfil e módulos no colégio do header X-Colegio-Id
  *  PUT /api/me/colegio-atual, /nome, /tour
+ *  GET/PUT /api/me/ajuda — artigos da Central de ajuda lidos e tours feitos
  * ===================================================================== */
 const router = require('express').Router();
 const { query, queryUm } = require('../db');
@@ -100,6 +101,31 @@ router.put('/nome', exigirUsuario, assincrono(async (req, res) => {
 /* PUT /api/me/tour — marca o tour guiado como concluído */
 router.put('/tour', exigirUsuario, assincrono(async (req, res) => {
   await query('UPDATE usuarios SET tour_concluido = 1 WHERE id = ?', [req.usuario.id]);
+  res.status(204).end();
+}));
+
+/* ---------------- Central de ajuda ---------------- */
+const CHAVE_AJUDA = /^[a-z0-9][a-z0-9:-]{0,59}$/;
+const MAX_MARCAS = 500;
+
+/* GET /api/me/ajuda → { marcados: { 'artigo:alunos-cadastrar': '2026-10-28 09:00:00', ... } } */
+router.get('/ajuda', exigirUsuario, assincrono(async (req, res) => {
+  const linhas = await query('SELECT chave, feito_em FROM usuario_ajuda WHERE usuario_id = ?', [req.usuario.id]);
+  res.json({ marcados: Object.fromEntries(linhas.map((l) => [l.chave, l.feito_em])) });
+}));
+
+/* PUT /api/me/ajuda { chave, feito } — marca (ou desmarca) um artigo lido ou um tour feito */
+router.put('/ajuda', exigirUsuario, assincrono(async (req, res) => {
+  const chave = String((req.body && req.body.chave) || '');
+  if (!CHAVE_AJUDA.test(chave)) throw new HttpErro(400, 'Item da ajuda inválido', 'validacao');
+  if (req.body.feito === false) {
+    await query('DELETE FROM usuario_ajuda WHERE usuario_id = ? AND chave = ?', [req.usuario.id, chave]);
+  } else {
+    const n = await queryUm('SELECT COUNT(*) AS n FROM usuario_ajuda WHERE usuario_id = ?', [req.usuario.id]);
+    if (Number(n.n) < MAX_MARCAS) {
+      await query('INSERT IGNORE INTO usuario_ajuda (usuario_id, chave, feito_em) VALUES (?, ?, ?)', [req.usuario.id, chave, agoraSP()]);
+    }
+  }
   res.status(204).end();
 }));
 
