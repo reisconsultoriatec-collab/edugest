@@ -7,6 +7,7 @@
  *  GET /api/me/acesso  → perfil e módulos no colégio do header X-Colegio-Id
  *  PUT /api/me/colegio-atual, /nome, /tour
  *  GET/PUT /api/me/ajuda — artigos da Central de ajuda lidos e tours feitos
+ *  POST /api/me/termos — aceite dos termos de uso e da política de privacidade
  * ===================================================================== */
 const router = require('express').Router();
 const { query, queryUm } = require('../db');
@@ -17,6 +18,8 @@ const { modulosEfetivos } = require('../utils/modulos');
 const { agoraSP } = require('../utils/datas');
 const { ipCliente } = require('../utils/ip');
 const { situacaoProprietario } = require('../utils/proprietario');
+const lgpd = require('../services/lgpd');
+const { seguranca } = require('../utils/auditoria');
 
 /** proprietario: libera a Gestão de Colégios · proprietarioVerificar: é o dono, falta confirmar o e-mail */
 function flagsProprietario(req) {
@@ -45,6 +48,7 @@ router.get('/', assincrono(async (req, res) => {
   );
 
   await query('UPDATE usuarios SET ultimo_acesso = ?, ultimo_ip = ? WHERE id = ?', [agoraSP(), ipCliente(req), u.id]);
+  const termos = await lgpd.termosDoUsuario(u.id);
 
   return res.json({
     cadastrado: true,
@@ -57,6 +61,7 @@ router.get('/', assincrono(async (req, res) => {
       colegioAtualId: u.colegio_atual_id,
       tourConcluido: !!u.tour_concluido
     },
+    termos,
     colegios: colegios.map((c) => ({
       id: c.id,
       nome: c.nome,
@@ -102,6 +107,27 @@ router.put('/nome', exigirUsuario, assincrono(async (req, res) => {
 router.put('/tour', exigirUsuario, assincrono(async (req, res) => {
   await query('UPDATE usuarios SET tour_concluido = 1 WHERE id = ?', [req.usuario.id]);
   res.status(204).end();
+}));
+
+/* POST /api/me/termos { versao } — aceite dos termos de uso e da política de privacidade.
+ * A versão enviada precisa ser a atual: quem leu um texto antigo aceita de novo. */
+router.post('/termos', exigirUsuario, assincrono(async (req, res) => {
+  if (String((req.body && req.body.versao) || '') !== lgpd.TERMOS_VERSAO) {
+    throw new HttpErro(409, 'Os termos foram atualizados. Recarregue a página para ler a versão nova.', 'termos_desatualizados');
+  }
+  const atual = await lgpd.termosDoUsuario(req.usuario.id);
+  if (atual.aceito) return res.json(atual);
+  // colégio aberto na tela (header) ou o último usado; só fica registrado se a pessoa tiver vínculo com ele
+  const colegioId = Number(req.headers['x-colegio-id'] || req.usuario.colegio_atual_id) || null;
+  const vinc = colegioId
+    ? await queryUm('SELECT perfil FROM usuario_colegio WHERE usuario_id = ? AND colegio_id = ?', [req.usuario.id, colegioId])
+    : null;
+  const termos = await lgpd.aceitarTermos(req, { usuarioId: req.usuario.id, colegioId: vinc ? colegioId : null, perfil: vinc ? vinc.perfil : null });
+  await seguranca(req, {
+    tipo: 'privacidade', colegioId: vinc ? colegioId : null, usuarioId: req.usuario.id, email: req.usuario.email,
+    detalhes: `Aceitou os termos de uso e a política de privacidade (versão ${lgpd.TERMOS_VERSAO})`
+  });
+  res.json(termos);
 }));
 
 /* ---------------- Central de ajuda ---------------- */

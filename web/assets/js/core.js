@@ -20,7 +20,7 @@ window.EG = window.EG || {};
   EG.auth.languageCode = 'pt';
 
   EG.API_BASE = '/api';
-  EG.VERSAO = '1.21.0';
+  EG.VERSAO = '1.22.0';
 
   /** Marca do EduGest (capelo âmbar). classe: 'clara' (fundo escuro) ou 'grande'. */
   EG.logo = (classe) => `<span class="marca ${classe || ''}" aria-hidden="true"><svg viewBox="0 0 32 32">
@@ -199,11 +199,11 @@ window.EG = window.EG || {};
 
   /* ---------- Modal ---------- */
   /**
-   * EG.modal({ titulo, corpo (HTML), largura, botoes: [{ texto, classe, acao(modal) }] })
+   * EG.modal({ titulo, corpo (HTML), largura, fixo, botoes: [{ texto, classe, acao(modal) }] })
    * acao pode ser async; se lançar erro, o modal mostra o erro e continua aberto.
    * Retorna { el, fechar }.
    */
-  EG.modal = function ({ titulo, corpo, botoes, largura, aoFechar }) {
+  EG.modal = function ({ titulo, corpo, botoes, largura, aoFechar, fixo }) {
     const fundo = document.createElement('div');
     fundo.className = 'modal-fundo';
     fundo.innerHTML = `
@@ -223,10 +223,14 @@ window.EG = window.EG || {};
       },
       erro(msg) { caixaErro.textContent = msg; caixaErro.hidden = !msg; if (msg) caixaErro.scrollIntoView({ block: 'nearest' }); }
     };
-    const esc = (e) => { if (e.key === 'Escape') m.fechar(); };
+    // fixo: só fecha pelos botões (sem X, Esc ou clique fora) — ex.: aceite dos termos
+    const esc = (e) => { if (e.key === 'Escape' && !fixo) m.fechar(); };
     document.addEventListener('keydown', esc);
-    fundo.querySelector('[data-fechar]').addEventListener('click', m.fechar);
-    fundo.addEventListener('mousedown', (e) => { if (e.target === fundo) m.fechar(); });
+    if (fixo) { fundo.querySelector('[data-fechar]').remove(); fundo.classList.add('modal-fixo'); }
+    else {
+      fundo.querySelector('[data-fechar]').addEventListener('click', m.fechar);
+      fundo.addEventListener('mousedown', (e) => { if (e.target === fundo) m.fechar(); });
+    }
 
     (botoes || [{ texto: 'Fechar', classe: 'btn-secundario', acao: () => m.fechar() }]).forEach((b) => {
       const btn = document.createElement('button');

@@ -90,6 +90,9 @@ CREATE TABLE IF NOT EXISTS config_colegio (
   pix_chave           VARCHAR(80)       NULL,
   pix_beneficiario    VARCHAR(60)       NULL     COMMENT 'Nome exibido no PIX',
   cidade              VARCHAR(60)       NULL     COMMENT 'Cidade do PIX e dos documentos',
+  encarregado_nome    VARCHAR(100)      NULL     COMMENT 'Encarregado de dados (LGPD)',
+  encarregado_email   VARCHAR(160)      NULL,
+  encarregado_telefone VARCHAR(20)      NULL,
   cobranca_instrucoes VARCHAR(300)      NULL     COMMENT 'Texto impresso nas cobranças',
   link_validade_dias  SMALLINT UNSIGNED NOT NULL DEFAULT 30 COMMENT 'Validade dos links enviados por WhatsApp',
   atualizado_em       DATETIME          NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -732,7 +735,7 @@ CREATE TABLE IF NOT EXISTS log_seguranca (
   colegio_id   INT UNSIGNED    NULL,
   usuario_id   INT UNSIGNED    NULL,
   email        VARCHAR(160)    NULL,
-  tipo         ENUM('login_ok','login_falha','logout','timeout','cadastro','admin') NOT NULL,
+  tipo         ENUM('login_ok','login_falha','logout','timeout','cadastro','admin','privacidade') NOT NULL,
   detalhes     VARCHAR(255)    NULL,
   ip           VARCHAR(45)     NULL,
   dispositivo  VARCHAR(120)    NULL,
@@ -817,4 +820,43 @@ CREATE TABLE IF NOT EXISTS usuario_ajuda (
   feito_em    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (usuario_id, chave),
   CONSTRAINT fk_uajuda_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- LGPD: aceite dos termos e pedidos dos titulares (migração 014)
+CREATE TABLE IF NOT EXISTS termos_aceites (
+  id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  usuario_id  INT UNSIGNED NOT NULL,
+  versao      VARCHAR(20)  NOT NULL,
+  colegio_id  INT UNSIGNED NULL COMMENT 'Colégio aberto quando aceitou',
+  perfil      VARCHAR(20)  NULL,
+  aceito_em   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  ip          VARCHAR(45)  NULL,
+  dispositivo VARCHAR(60)  NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_termos_usuario_versao (usuario_id, versao),
+  CONSTRAINT fk_termos_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS solicitacoes_titular (
+  id                 INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  colegio_id         INT UNSIGNED NOT NULL,
+  usuario_id         INT UNSIGNED NULL,
+  solicitante_nome   VARCHAR(100) NOT NULL,
+  solicitante_email  VARCHAR(160) NULL,
+  aluno_id           INT UNSIGNED NULL,
+  aluno_nome         VARCHAR(100) NULL,
+  tipo               ENUM('acesso','correcao','exclusao','portabilidade','revogacao','informacao','outro') NOT NULL,
+  descricao          TEXT         NOT NULL,
+  status             ENUM('aberta','em_andamento','concluida','recusada') NOT NULL DEFAULT 'aberta',
+  resposta           TEXT         NULL,
+  respondida_por     INT UNSIGNED NULL,
+  respondida_em      DATETIME     NULL,
+  criada_em          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  prazo              DATE         NOT NULL COMMENT '15 dias (art. 19 da LGPD)',
+  PRIMARY KEY (id),
+  KEY idx_sol_colegio (colegio_id, status, criada_em),
+  KEY idx_sol_usuario (usuario_id),
+  CONSTRAINT fk_sol_colegio FOREIGN KEY (colegio_id) REFERENCES colegios (id) ON DELETE CASCADE,
+  CONSTRAINT fk_sol_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios (id) ON DELETE SET NULL,
+  CONSTRAINT fk_sol_aluno FOREIGN KEY (aluno_id) REFERENCES alunos (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

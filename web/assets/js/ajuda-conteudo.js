@@ -17,7 +17,7 @@
     { id: 'financeiro', titulo: 'Financeiro', icone: 'ti-coin', desc: 'Mensalidades, cobrança com PIX, bolsas, contas a pagar, fluxo de caixa, relatórios e conciliação bancária.' },
     { id: 'captacao', titulo: 'Captação e comunicação', icone: 'ti-speakerphone', desc: 'Funil de matrículas, formulário de interesse e comunicados para as famílias.' },
     { id: 'ano', titulo: 'Virada e início do ano', icone: 'ti-calendar-repeat', desc: 'Rematrícula, troca do ano letivo e importação de alunos por planilha.' },
-    { id: 'sistema', titulo: 'Administração', icone: 'ti-settings', desc: 'Usuários e permissões, log de segurança e gestão de colégios.' },
+    { id: 'sistema', titulo: 'Administração e privacidade', icone: 'ti-settings', desc: 'Usuários e permissões, log de segurança, privacidade e LGPD, e gestão de colégios.' },
     { id: 'portal', titulo: 'Portal do responsável', icone: 'ti-home-heart', desc: 'Como as famílias criam a conta e acompanham boletim, faltas, mensalidades e comunicados.' },
     { id: 'duvidas', titulo: 'Perguntas frequentes', icone: 'ti-help-circle', desc: 'Respostas rápidas para as situações mais comuns do dia a dia.' }
   ];
@@ -214,7 +214,8 @@
           '**Dados do colégio**: nome, CNPJ, telefone e endereço (saem nos documentos e cobranças).',
           '**Parâmetros**: ano letivo, mensalidade padrão, dia de vencimento, média para aprovação e frequência mínima.',
           '**Cobrança e PIX**: chave PIX e cidade, para as cobranças saírem com QR Code.',
-          '**Logotipo e documentos oficiais**: logotipo, INEP, ato de autorização, diretor(a) e secretário(a).'
+          '**Logotipo e documentos oficiais**: logotipo, INEP, ato de autorização, diretor(a) e secretário(a).',
+          '**Encarregado de dados (LGPD)**: em Sistema › Privacidade (LGPD), quem responde pelos dados pessoais no colégio.'
         ]],
         ['h', '2. Estrutura do ano letivo'],
         ['passos', [
@@ -238,7 +239,7 @@
         ]],
         ['dica', 'Cadastre as bolsas antes de gerar as mensalidades. Se gerar antes, não tem problema: ao salvar a bolsa, as mensalidades em aberto do aluno são recalculadas.']
       ],
-      relacionados: ['implantacao-dados', 'implantacao-parametros', 'importar-planilha', 'implantacao-equipe']
+      relacionados: ['implantacao-dados', 'implantacao-parametros', 'importar-planilha', 'implantacao-equipe', 'lgpd-encarregado']
     },
     {
       id: 'implantacao-dados', titulo: 'Dados do colégio, logotipo e documentos oficiais', tela: 'config', perfis: ['admin'],
@@ -1223,6 +1224,115 @@
       ]
     },
     {
+      id: 'lgpd-visao', titulo: 'A LGPD no colégio: o que cada um precisa saber', perfis: ['equipe'],
+      resumo: 'Quem responde pelos dados, o que é dado pessoal e os cuidados do dia a dia de quem usa o EduGest.',
+      palavras: ['lgpd', 'privacidade', 'protecao de dados', 'dados pessoais', 'anpd', 'sigilo'],
+      corpo: [
+        ['p', 'A Lei Geral de Proteção de Dados (Lei 13.709/2018) vale para todo dado que identifica uma pessoa: nome, CPF, endereço, telefone, notas, faltas, mensalidades. Num colégio, a maior parte é de **crianças e adolescentes**, que a lei protege ainda mais.'],
+        ['h', 'Quem é quem'],
+        ['tabela', [
+          ['Papel', 'Quem é', 'O que faz'],
+          ['Controlador', 'O colégio', 'Decide quais dados coletar e para quê; responde às famílias e à ANPD.'],
+          ['Operadora', 'Reis Tecnologia', 'Fornece o EduGest e trata os dados só a serviço do colégio.'],
+          ['Encarregado', 'Indicado pelo colégio', 'Recebe os pedidos das famílias e fala com a ANPD. Fica em Sistema › Privacidade (LGPD).']
+        ]],
+        ['h', 'Cuidados no dia a dia'],
+        ['lista', [
+          'Não compartilhe a sua senha e não deixe o sistema aberto em computador de uso comum: saia ou bloqueie a tela.',
+          'Não fotografe telas nem mande listas de alunos, notas ou telefones pelo seu WhatsApp pessoal ou e-mail particular.',
+          'Não registre dados de saúde, religião ou situação familiar delicada em campos de observação, conteúdo de aula ou comunicados.',
+          'Use os dados só para o trabalho no colégio. Acesse apenas o que a sua função precisa.',
+          'Pedido de uma família sobre dados (cópia, correção, exclusão)? Peça para ela usar **Privacidade e meus dados** no portal ou encaminhe ao encarregado.'
+        ]],
+        ['h', 'O que o EduGest já faz'],
+        ['lista', [
+          'Termos de uso e política de privacidade aceitos por cada pessoa, com data, IP e dispositivo.',
+          'CPF e RG criptografados; acesso por perfil e módulos; responsável vê só os próprios filhos.',
+          'Log de segurança que não pode ser apagado, com as ações de privacidade.',
+          'Para as famílias: cópia dos dados na hora e pedidos ao colégio com prazo de 15 dias.'
+        ]],
+        ['dica', 'Os textos completos estão nos links **Termos de uso** e **Privacidade**, no rodapé da tela de acesso.']
+      ],
+      relacionados: ['lgpd-encarregado', 'lgpd-pedidos', 'lgpd-termos']
+    },
+    {
+      id: 'lgpd-encarregado', titulo: 'Definir o encarregado de dados', tela: 'lgpd', perfis: ['admin'],
+      resumo: 'Quem recebe os pedidos das famílias e fala com a ANPD em nome do colégio.',
+      palavras: ['encarregado', 'dpo', 'lgpd', 'contato de privacidade'],
+      corpo: [
+        ['onde', 'Sistema › Privacidade (LGPD) › Encarregado pelo tratamento de dados'],
+        ['p', 'A LGPD (art. 41) pede que o colégio indique um **encarregado**: a pessoa que recebe os pedidos dos titulares, responde dúvidas e fala com a Autoridade Nacional de Proteção de Dados (ANPD). Pode ser alguém da direção ou da secretaria.'],
+        ['passos', [
+          'Abra Sistema › Privacidade (LGPD).',
+          'Preencha **nome** e **e-mail** (o telefone é opcional). Prefira um e-mail do colégio, como privacidade@ ou secretaria@.',
+          'Clique em {{Salvar encarregado}}.'
+        ]],
+        ['p', 'O contato aparece na hora para as famílias, em **Privacidade e meus dados**. Se o colégio tiver site, publique o mesmo contato lá.'],
+        ['dica', 'Enquanto não houver encarregado, o portal mostra o e-mail e o telefone do colégio. O item também aparece na lista de Implantação do Dashboard.']
+      ],
+      relacionados: ['lgpd-pedidos', 'lgpd-visao']
+    },
+    {
+      id: 'lgpd-pedidos', titulo: 'Responder os pedidos de privacidade das famílias', tela: 'lgpd', perfis: ['admin'],
+      resumo: 'Pedidos de acesso, correção, exclusão e outros, com prazo de 15 dias e resposta pelo portal.',
+      palavras: ['pedido', 'titular', 'lgpd', 'excluir dados', 'corrigir dados', 'prazo', 'art 18'],
+      corpo: [
+        ['onde', 'Sistema › Privacidade (LGPD) › Pedidos dos titulares'],
+        ['p', 'O responsável faz o pedido pelo portal. O Dashboard e o menu avisam quantos estão em aberto. O prazo é de **15 dias** (art. 19 da LGPD) e a resposta aparece para a família no portal.'],
+        ['passos', [
+          'Em **Em aberto**, clique em {{Responder}} no pedido.',
+          'Leia o pedido e a orientação do tipo. Se precisar de tempo, mude a situação para **Em andamento** e salve.',
+          'Faça o que foi pedido (corrigir o cadastro, baixar a cópia, ajustar o envio de mensagens...).',
+          'Escreva a resposta para a família, escolha **Concluída** (ou **Recusada**, explicando o motivo) e clique em {{Salvar resposta}}.'
+        ]],
+        ['h', 'O que fazer em cada tipo'],
+        ['tabela', [
+          ['Pedido', 'Como atender'],
+          ['Saber quais dados o colégio tem', 'Baixe a cópia dos dados do aluno no próprio pedido e entregue, ou oriente a usar **Baixar meus dados** no portal.'],
+          ['Corrigir dados', 'Corrija o cadastro (Alunos, por exemplo) e conte na resposta o que mudou.'],
+          ['Excluir dados', 'Apague o que não é obrigatório (telefones antigos, autorizados a buscar, dados da captação). Notas, frequência, histórico e financeiro a escola precisa guardar: explique isso.'],
+          ['Receber uma cópia dos dados', 'Baixe a cópia (arquivo JSON). Histórico e transferência saem em Documentos.'],
+          ['Revogar consentimento', 'Faça o ajuste (por exemplo, não enviar WhatsApp) e confirme. O que é contrato ou obrigação legal continua.'],
+          ['Com quem os dados são compartilhados', 'EduGest (Reis Tecnologia), serviço de login (Google Firebase), hospedagem do sistema e órgãos públicos quando a lei exige (Censo Escolar).']
+        ]],
+        ['atencao', 'Pedido com prazo vencido fica em vermelho. Responder fora do prazo pode gerar reclamação à ANPD.']
+      ],
+      relacionados: ['lgpd-exportar', 'faq-apagar-dados', 'portal-privacidade']
+    },
+    {
+      id: 'lgpd-exportar', titulo: 'Cópia dos dados de um aluno (acesso e portabilidade)', tela: 'lgpd', perfis: ['admin'],
+      resumo: 'Um arquivo com tudo o que o EduGest guarda sobre o aluno, para entregar à família.',
+      palavras: ['exportar', 'copia dos dados', 'portabilidade', 'json', 'baixar dados'],
+      corpo: [
+        ['onde', 'Sistema › Privacidade (LGPD) › Cópia dos dados de um aluno (ou o botão dentro do pedido)'],
+        ['passos', [
+          'Digite o nome ou o RA do aluno.',
+          'Clique em {{Baixar dados}} ao lado do aluno certo.',
+          'Entregue o arquivo só ao titular ou ao responsável e apague a cópia do computador depois.'
+        ]],
+        ['p', 'O arquivo (formato JSON, abre no bloco de notas) tem: cadastro com CPF e RG, responsável cadastrado, responsáveis no portal, autorizados a buscar, notas, frequência, mensalidades, documentos emitidos e anos anteriores do histórico.'],
+        ['dica', 'O responsável consegue a mesma cópia sozinho, na hora, em **Privacidade e meus dados** › {{Baixar meus dados}}.'],
+        ['atencao', 'Cada cópia fica registrada no Log de segurança com o nome de quem baixou.']
+      ],
+      relacionados: ['lgpd-pedidos']
+    },
+    {
+      id: 'lgpd-captacao', titulo: 'Apagar interessados antigos da captação', tela: 'lgpd', telas: ['funil'], perfis: ['admin'],
+      resumo: 'Contatos de quem não se matriculou não devem ficar guardados para sempre.',
+      palavras: ['captacao', 'funil', 'interessado', 'apagar', 'perdido', 'minimizacao'],
+      corpo: [
+        ['p', 'O formulário de interesse pede autorização para contato **sobre a matrícula**. Se a família não se matriculou, guardar nome e telefone por anos não tem mais finalidade.'],
+        ['passos', [
+          'No Funil de Matrículas, marque como **perdido** quem desistiu.',
+          'De tempos em tempos (por exemplo, a cada semestre), abra Sistema › Privacidade (LGPD) › Captação.',
+          'Confira quantos interessados estão perdidos há mais de 12 meses e clique em {{Apagar}}.',
+          'Digite APAGAR para confirmar.'
+        ]],
+        ['atencao', 'Apaga de vez, sem desfazer. Quem está em andamento no funil ou foi perdido há menos de 12 meses não muda.']
+      ],
+      relacionados: ['lgpd-visao']
+    },
+    {
       id: 'colegios-gestao', titulo: 'Gestão de colégios', tela: 'colegios', perfis: ['proprietario'],
       resumo: 'Cadastrar colégios novos, convidar o diretor, aprovar cadastros, desativar e dar suporte.',
       palavras: ['novo colegio', 'cliente', 'suporte', 'proprietario'],
@@ -1327,6 +1437,29 @@
         ['p', 'Os comunicados do colégio para a turma do seu filho aparecem aqui e no Início. Os novos ficam destacados.'],
         ['p', 'Quando o colégio pede confirmação (passeio, mudança de horário...), clique em {{Estou ciente}}. O colégio vê quem confirmou.']
       ]
+    },
+    {
+      id: 'portal-privacidade', titulo: 'Privacidade e meus dados: cópia, pedidos e encerrar o acesso', tela: 'portal-privacidade', perfis: ['responsavel'],
+      resumo: 'Baixar tudo o que o colégio guarda sobre você e seus filhos, fazer pedidos de correção ou exclusão e encerrar o acesso ao portal.',
+      palavras: ['privacidade', 'lgpd', 'meus dados', 'baixar dados', 'corrigir', 'excluir', 'encerrar conta', 'sair do portal'],
+      corpo: [
+        ['onde', 'Menu › Privacidade e meus dados'],
+        ['h', 'Quem cuida dos seus dados'],
+        ['p', 'Mostra o colégio (que decide sobre os dados), o **encarregado de dados** com e-mail e telefone, e a Reis Tecnologia, que fornece o sistema.'],
+        ['h', 'Baixar meus dados'],
+        ['p', 'Clique em {{Baixar meus dados}}: na hora, você recebe um arquivo com o seu cadastro e, de cada filho, o cadastro, notas, frequência, mensalidades e documentos. O arquivo tem dados pessoais: guarde em lugar seguro.'],
+        ['h', 'Fazer um pedido ao colégio'],
+        ['passos', [
+          'Clique em {{Fazer um pedido}}.',
+          'Escolha o que precisa (corrigir, excluir, saber com quem os dados são compartilhados, não receber mais mensagens...) e sobre quem é o pedido.',
+          'Descreva com detalhes e clique em {{Enviar pedido}}.',
+          'Acompanhe em **Meus pedidos**: o colégio tem até 15 dias para responder, e a resposta aparece ali.'
+        ]],
+        ['p', 'Notas, frequência, histórico e registros financeiros a escola é obrigada por lei a guardar; nesses casos, o colégio explica na resposta.'],
+        ['h', 'Encerrar meu acesso'],
+        ['p', 'Você deixa de acompanhar os alunos pelo portal deste colégio. Os registros escolares continuam com o colégio. Para voltar, use de novo o código de acesso (PAI).']
+      ],
+      relacionados: ['lgpd-termos', 'portal-filhos']
     },
     {
       id: 'portal-calendario', titulo: 'Calendário do colégio', tela: 'portal-calendario', perfis: ['responsavel'],
@@ -1490,6 +1623,39 @@
       relacionados: ['mensalidades-cobrar', 'relatorios-financeiros']
     },
     {
+      id: 'faq-apagar-dados', titulo: 'Uma família pediu para apagar os dados do aluno', perfis: ['admin'],
+      resumo: 'O que pode e o que não pode ser apagado, e como responder.',
+      palavras: ['apagar dados', 'excluir aluno', 'lgpd', 'esquecimento', 'eliminar'],
+      corpo: [
+        ['p', 'A LGPD dá o direito de pedir a eliminação, mas a própria lei (art. 16) permite guardar o que é **obrigação legal**. Na escola, isso inclui a vida escolar e o financeiro.'],
+        ['tabela', [
+          ['Pode apagar', 'Precisa guardar'],
+          ['Telefones e e-mails antigos, autorizados a buscar, dados da captação, acesso da família ao portal', 'Matrícula, notas, frequência, histórico escolar, documentos emitidos, mensalidades e recibos']
+        ]],
+        ['passos', [
+          'Apague ou corrija o que pode ser apagado.',
+          'Para o aluno que saiu, mude a situação para **Transferido** ou **Inativo** (não exclua o cadastro).',
+          'Responda o pedido explicando o que foi apagado e por que o restante precisa ficar guardado.'
+        ]]
+      ],
+      relacionados: ['lgpd-pedidos']
+    },
+    {
+      id: 'lgpd-termos', titulo: 'Termos de uso e política de privacidade', perfis: ['equipe', 'responsavel'],
+      resumo: 'A janela de aceite no primeiro acesso, onde ler os textos e quando ela aparece de novo.',
+      palavras: ['termos', 'aceite', 'politica de privacidade', 'concordo'],
+      corpo: [
+        ['p', 'No primeiro acesso, o EduGest mostra um resumo de como os dados são tratados. Para continuar, marque **Li e concordo** e clique em {{Aceitar e continuar}}. Quem não quiser aceitar pode {{Sair}}.'],
+        ['p', 'O aceite fica registrado com data, IP e dispositivo. Quando os textos mudam, a janela aparece de novo, uma vez, no próximo acesso.'],
+        ['lista', [
+          'Os textos completos ficam nos links **Termos de uso** e **Privacidade**, no rodapé da tela de acesso.',
+          'O responsável vê a data do aceite em **Privacidade e meus dados**.',
+          'O administrador vê quantas pessoas do colégio já aceitaram em Sistema › Privacidade (LGPD).'
+        ]]
+      ],
+      relacionados: ['lgpd-visao', 'portal-privacidade']
+    },
+    {
       id: 'faq-sessao', titulo: 'O sistema saiu sozinho', perfis: ['equipe', 'responsavel'],
       resumo: 'Encerramento por inatividade, para proteger os dados.',
       palavras: ['deslogou', 'saiu sozinho', 'sessao expirou'],
@@ -1598,6 +1764,13 @@
     seguranca: [
       { g: 1, alvo: ['.pagina .filtros', '.pagina .card'], titulo: 'Log de Segurança', texto: 'Entradas, senhas erradas, saídas e ações administrativas, com IP e dispositivo. Não pode ser apagado.' }
     ],
+    lgpd: [
+      { g: 1, alvo: ['.pagina .grade-kpi', '.pagina .card'], titulo: 'Privacidade (LGPD)', texto: 'Pedidos das famílias em aberto, quantas pessoas aceitaram os termos, o encarregado de dados e a captação antiga. Clique num indicador para ir ao bloco.' },
+      { g: 1, alvo: ['.pagina [data-bloco="encarregado"]', '.pagina .card'], titulo: 'Encarregado de dados', texto: 'Quem responde pelos dados no colégio. O contato aparece para as famílias no portal.' },
+      { alvo: '.pagina [data-bloco="pedidos"]', titulo: 'Pedidos dos titulares', texto: 'Correção, exclusão, cópia dos dados e outros pedidos das famílias. Prazo de **15 dias**; a resposta aparece para a família no portal.' },
+      { alvo: '.pagina [data-bloco="exportar"]', titulo: 'Cópia dos dados de um aluno', texto: 'Busque o aluno e baixe o arquivo com tudo o que o sistema guarda sobre ele. Fica registrado no log de segurança.' },
+      { alvo: '.pagina [data-bloco="captacao"]', titulo: 'Captação antiga', texto: 'Apague de tempos em tempos os interessados perdidos há mais de 12 meses.' }
+    ],
     colegios: [
       { g: 1, alvo: '.pagina .card', titulo: 'Gestão de Colégios', texto: 'Só para o proprietário do sistema: cadastrar colégios, convidar o diretor, aprovar cadastros e dar suporte.' }
     ],
@@ -1622,6 +1795,11 @@
     ],
     'portal-calendario': [
       { g: 1, alvo: '.pagina .card', titulo: 'Calendário', texto: 'Provas, reuniões, eventos e feriados da turma do seu filho.' }
+    ],
+    'portal-privacidade': [
+      { g: 1, alvo: ['.pagina [data-bloco="quem"]', '.pagina .card'], titulo: 'Privacidade e meus dados', texto: 'Quem cuida dos seus dados no colégio e o contato do encarregado.' },
+      { g: 1, alvo: ['.pagina .priv-acoes', '.pagina .card'], titulo: 'Seus direitos', texto: 'Baixe na hora a cópia dos seus dados e dos seus filhos, ou faça um pedido ao colégio (correção, exclusão e outros). A resposta chega em até 15 dias, em **Meus pedidos**.' },
+      { alvo: '.pagina [data-bloco="encerrar"]', titulo: 'Encerrar o acesso', texto: 'Se não quiser mais usar o portal deste colégio. Os registros escolares continuam com o colégio.' }
     ]
   };
 
@@ -1636,22 +1814,22 @@
     ],
     responsavel: [
       { titulo: 'Bem-vindo(a) ao portal do colégio', texto: ['Vamos mostrar onde ver o boletim, as faltas, as mensalidades, os comunicados e o calendário.', 'Use **Próximo** e **Voltar**. **Esc** sai a qualquer momento.'] },
-      { alvo: '#menu', celular: '.btn-menu', titulo: 'Menu', texto: 'Início, Boletim, Frequência, Horário de aulas, Financeiro, Comunicados e Calendário.' }
+      { alvo: '#menu', celular: '.btn-menu', titulo: 'Menu', texto: 'Início, Boletim, Frequência, Horário de aulas, Financeiro, Comunicados, Calendário e Privacidade e meus dados.' }
     ]
   };
   const tourFim = [
     { alvo: '[data-action="ajuda"]', celular: '.usuario-botao', titulo: 'Central de ajuda', texto: ['Pronto! Quando tiver dúvida, use o botão **?**: ele abre o manual já na tela em que você está.', 'Na Central de ajuda há o passo a passo de cada tela, as perguntas frequentes, o manual em PDF e este tour para rever quando quiser.'] }
   ];
   const ordemEquipe = ['dashboard', 'alunos', 'professores', 'turmas', 'diario', 'notas', 'boletim', 'calendario', 'grade', 'documentos',
-    'mensalidades', 'contas', 'fluxo', 'bolsas', 'relatorios', 'conciliacao', 'funil', 'comunicados', 'config', 'usuarios', 'virada', 'seguranca', 'colegios'];
-  const ordemPortal = ['portal', 'portal-boletim', 'portal-frequencia', 'portal-financeiro', 'portal-comunicados', 'portal-calendario'];
+    'mensalidades', 'contas', 'fluxo', 'bolsas', 'relatorios', 'conciliacao', 'funil', 'comunicados', 'config', 'usuarios', 'virada', 'seguranca', 'lgpd', 'colegios'];
+  const ordemPortal = ['portal', 'portal-boletim', 'portal-frequencia', 'portal-financeiro', 'portal-comunicados', 'portal-calendario', 'portal-privacidade'];
 
   /* "Comece por aqui": o essencial de cada perfil, na ordem de uso */
   const trilhas = {
-    admin: ['comecar-tela', 'implantacao-ordem', 'comecar-perfis', 'implantacao-parametros', 'turmas-criar', 'importar-planilha', 'mensalidades-gerar', 'implantacao-equipe', 'implantacao-familias', 'virada-quando'],
+    admin: ['comecar-tela', 'implantacao-ordem', 'comecar-perfis', 'implantacao-parametros', 'turmas-criar', 'importar-planilha', 'mensalidades-gerar', 'implantacao-equipe', 'implantacao-familias', 'lgpd-encarregado', 'virada-quando'],
     professor: ['comecar-tela', 'diario-chamada', 'notas-lancar', 'notas-media', 'boletim-emitir', 'grade-minha', 'calendario-eventos', 'comunicados-publicar'],
     financeiro: ['comecar-tela', 'mensalidades-gerar', 'mensalidades-receber', 'mensalidades-cobrar', 'bolsas-cadastrar', 'contas-pagar', 'conciliacao-conta', 'relatorios-financeiros'],
-    responsavel: ['portal-primeiro-acesso', 'app-instalar', 'portal-filhos', 'portal-boletim', 'portal-financeiro', 'portal-comunicados']
+    responsavel: ['portal-primeiro-acesso', 'app-instalar', 'portal-filhos', 'portal-boletim', 'portal-financeiro', 'portal-comunicados', 'portal-privacidade']
   };
 
   /* Implantação do colégio: o que a API confere (GET /colegios/atual/implantacao) */
@@ -1660,6 +1838,7 @@
     { id: 'mensalidade', fase: '1. O colégio', titulo: 'Mensalidade padrão', texto: 'Valor e dia de vencimento em Parâmetros.', pagina: 'config', artigo: 'implantacao-parametros' },
     { id: 'pix', fase: '1. O colégio', titulo: 'Cobrança e PIX', texto: 'Chave PIX e cidade, para as cobranças saírem com QR Code.', pagina: 'config', artigo: 'implantacao-pix' },
     { id: 'documentos', fase: '1. O colégio', titulo: 'Logotipo e documentos oficiais', texto: 'Logotipo, INEP, ato de autorização, diretor(a) e secretário(a).', pagina: 'config', artigo: 'implantacao-dados' },
+    { id: 'lgpd', fase: '1. O colégio', titulo: 'Encarregado de dados (LGPD)', texto: 'Quem responde pelos dados pessoais no colégio; o contato aparece para as famílias.', pagina: 'lgpd', artigo: 'lgpd-encarregado' },
     { id: 'turmas', fase: '2. Estrutura do ano', titulo: 'Turmas do ano letivo', texto: 'Nome, série, turno e vagas de cada turma.', pagina: 'turmas', artigo: 'turmas-criar' },
     { id: 'professores', fase: '2. Estrutura do ano', titulo: 'Professores', texto: 'Com as disciplinas e o login de cada um.', pagina: 'professores', artigo: 'professores-cadastrar' },
     { id: 'atribuicoes', fase: '2. Estrutura do ano', titulo: 'Professores nas turmas', texto: 'Quem dá cada disciplina em cada turma (botão Professores da turma).', pagina: 'turmas', artigo: 'turmas-professores' },

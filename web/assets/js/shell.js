@@ -38,13 +38,15 @@
       { id: 'portal-grade', modulo: 'portal', rotulo: 'Horário de aulas', icone: 'ti-clock-hour-3', pronto: true },
       { id: 'portal-financeiro', modulo: 'portal', rotulo: 'Financeiro', icone: 'ti-receipt', pronto: true },
       { id: 'portal-comunicados', modulo: 'portal', rotulo: 'Comunicados', icone: 'ti-speakerphone', pronto: true },
-      { id: 'portal-calendario', modulo: 'portal', rotulo: 'Calendário', icone: 'ti-calendar-event', pronto: true }
+      { id: 'portal-calendario', modulo: 'portal', rotulo: 'Calendário', icone: 'ti-calendar-event', pronto: true },
+      { id: 'portal-privacidade', modulo: 'portal', rotulo: 'Privacidade e meus dados', icone: 'ti-shield-lock', pronto: true }
     ] },
     { secao: 'Sistema', itens: [
       { id: 'config', rotulo: 'Configurações', icone: 'ti-settings', pronto: true },
       { id: 'usuarios', rotulo: 'Usuários', icone: 'ti-users-group', pronto: true },
       { id: 'virada', rotulo: 'Virada do ano letivo', icone: 'ti-calendar-repeat', pronto: true, soAdmin: true },
       { id: 'seguranca', rotulo: 'Log de Segurança', icone: 'ti-shield-lock', pronto: true, soAdmin: true },
+      { id: 'lgpd', rotulo: 'Privacidade (LGPD)', icone: 'ti-user-shield', pronto: true, soAdmin: true },
       // Só o proprietário do sistema (PROPRIETARIO_EMAILS no .env da API)
       { id: 'colegios', rotulo: 'Gestão de Colégios', icone: 'ti-building-community', pronto: true, soProprietario: true }
     ] },
@@ -98,7 +100,9 @@
     EG.carregando(true, 'Tudo pronto!', 100);
     await new Promise((ok) => setTimeout(ok, 200));
     EG.carregando(false);
-    if (EG.boasVindas) setTimeout(() => EG.boasVindas(), 700); // primeiro acesso: convite para o tour
+    // Termos de uso e privacidade (uma vez por versão); depois, no primeiro acesso, o convite para o tour
+    const termos = EG.exigirTermos ? EG.exigirTermos() : Promise.resolve();
+    termos.then(() => { if (EG.boasVindas) setTimeout(() => EG.boasVindas(), 700); });
   };
 
   function montarSeletor() {
@@ -131,6 +135,8 @@
     });
     EG.$('#menu').innerHTML = html;
     const p = EG.estado.colegio.pendentes;
+    const priv = EG.estado.colegio.privacidade;
+    if (priv && priv.abertas) EG.contadorMenu('lgpd', priv.abertas, `${priv.abertas} pedido(s) de privacidade aguardando resposta`);
     EG.atualizarPendentes(p ? p.total : 0);
   }
 
@@ -173,11 +179,14 @@
     const item = EG.$('.menu-item[data-pagina="usuarios"]');
     if (!item) return;
     // Com o grupo fechado, o número aparece no título para o aviso não sumir
+    // (cadastros aguardando aprovação + pedidos de privacidade em aberto)
     const titulo = item.closest('.menu-grupo') && item.closest('.menu-grupo').querySelector('.menu-grupo-titulo .contador');
     if (titulo) {
-      titulo.hidden = !total;
-      titulo.textContent = total || '';
-      titulo.title = total ? `${total} cadastro(s) aguardando aprovação` : '';
+      const priv = (EG.estado.colegio && EG.estado.colegio.privacidade && EG.estado.colegio.privacidade.abertas) || 0;
+      const soma = total + priv;
+      titulo.hidden = !soma;
+      titulo.textContent = soma || '';
+      titulo.title = [total ? `${total} cadastro(s) aguardando aprovação` : '', priv ? `${priv} pedido(s) de privacidade aguardando resposta` : ''].filter(Boolean).join(' · ');
     }
     let c = item.querySelector('.contador');
     if (!total) { if (c) c.remove(); return; }

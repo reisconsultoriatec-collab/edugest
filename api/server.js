@@ -110,6 +110,9 @@ app.use('/api/virada', autenticar, carregarUsuario, exigirColegio, exigirPerfil(
 // Portal do responsável — só os filhos vinculados ao usuário
 app.use('/api/portal', autenticar, carregarUsuario, exigirColegio, exigirPerfil('responsavel'), require('./src/routes/portal'));
 
+// Privacidade (LGPD): encarregado, pedidos dos titulares, cópia dos dados — só administrador
+app.use('/api/lgpd', autenticar, carregarUsuario, exigirColegio, exigirPerfil('admin'), require('./src/routes/lgpd'));
+
 // Sem login: PDFs por link assinado e com validade (enviados por WhatsApp)
 app.use('/api/publico', require('./src/routes/publico'));
 

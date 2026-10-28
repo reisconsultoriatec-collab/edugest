@@ -27,6 +27,7 @@ const { codigoConvite } = require('../utils/codigos');
 const { lerDadosColegio, salvarDadosColegio } = require('../services/colegios');
 const { hojeSP } = require('../utils/datas');
 const { TIPOS_CHAVE, normalizarChave } = require('../utils/pix');
+const { contarAbertas } = require('../services/lgpd');
 
 const soAdmin = [exigirColegio, exigirPerfil('admin')];
 
@@ -100,6 +101,7 @@ router.get('/atual', exigirColegio, assincrono(async (req, res) => {
     disciplinas: disciplinas.map((d) => ({ id: d.id, nome: d.nome, ordem: d.ordem, ativo: !!d.ativo })),
     periodos: periodos.map((p) => ({ bimestre: Number(p.bimestre), inicio: p.inicio, fim: p.fim })),
     pendentes: admin ? await contarPendentes(req.colegioId) : undefined,
+    privacidade: admin ? await contarAbertas(req.colegioId) : undefined, // pedidos LGPD em aberto (menu)
     perfil: req.perfil,
     modulos: req.modulos
   });
@@ -250,7 +252,7 @@ router.delete('/atual/disciplinas/:id', soAdmin, assincrono(async (req, res) => 
  * mostrarem os próximos passos. Só contagens: nenhum dado pessoal. */
 router.get('/atual/implantacao', soAdmin, assincrono(async (req, res) => {
   const c = req.colegioId;
-  const cfg = await queryUm('SELECT ano_letivo, valor_mensalidade, pix_chave, cidade FROM config_colegio WHERE colegio_id = ?', [c]);
+  const cfg = await queryUm('SELECT ano_letivo, valor_mensalidade, pix_chave, cidade, encarregado_nome, encarregado_email FROM config_colegio WHERE colegio_id = ?', [c]);
   const ano = cfg ? Number(cfg.ano_letivo) : Number(hojeSP().slice(0, 4));
   const n = await queryUm(
     `SELECT
@@ -285,7 +287,8 @@ router.get('/atual/implantacao', soAdmin, assincrono(async (req, res) => {
     enturmados: num.alunos > 0 && num.sem_turma === 0,
     mensalidades: num.mensalidades > 0,
     equipe: num.equipe >= 2,
-    familias: num.familias > 0
+    familias: num.familias > 0,
+    lgpd: !!(cfg && cfg.encarregado_nome && cfg.encarregado_email)
   };
   res.json({
     anoLetivo: ano,
@@ -317,7 +320,8 @@ router.get('/atual/resumo', soEquipe, exigirModulo('dashboard'), assincrono(asyn
     professores: Number(r.professores),
     turmas: Number(r.turmas),
     inadimplentes: Number(r.inadimplentes),
-    pendentes: req.perfil === 'admin' ? await contarPendentes(req.colegioId) : undefined
+    pendentes: req.perfil === 'admin' ? await contarPendentes(req.colegioId) : undefined,
+    privacidade: req.perfil === 'admin' ? await contarAbertas(req.colegioId) : undefined
   });
 }));
 

@@ -61,7 +61,8 @@
       <div class="msg-erro" id="authErro" hidden></div>
       ${conteudo}
       <div class="auth-seguro"><i class="ti ti-lock"></i> Conexão segura e dados protegidos</div>
-      <div class="auth-rodape">v${EG.VERSAO.split('.').slice(0, 2).join('.')} Reis Tecnologia © ${new Date().getFullYear()}</div>`;
+      <div class="auth-rodape">v${EG.VERSAO.split('.').slice(0, 2).join('.')} Reis Tecnologia © ${new Date().getFullYear()}
+        · <a href="termos.html" target="_blank" rel="noopener">Termos de uso</a> · <a href="privacidade.html" target="_blank" rel="noopener">Privacidade</a></div>`;
   }
   /** Coloca o conteúdo no cartão. Na 1ª vez (ou voltando do sistema) monta a tela inteira, com a entrada animada. */
   function preencher(html) {

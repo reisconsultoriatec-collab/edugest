@@ -15,6 +15,10 @@
  *  GET  /calendario?inicio=&fim=       eventos visíveis às famílias dos filhos
  *  GET  /calendario/proximos           próximas datas (Início)
  *  GET  /alunos/:id/grade              horário de aulas da turma atual do aluno
+ *  GET  /privacidade                   contato do encarregado, aceite dos termos e meus pedidos (LGPD)
+ *  GET  /meus-dados                    cópia de tudo o que o sistema guarda sobre mim e meus filhos (JSON)
+ *  POST /solicitacoes                  pedido do titular (acesso, correção, exclusão...)
+ *  POST /encerrar-acesso               desfaz o vínculo com o colégio (os registros escolares ficam)
  *
  *  Segurança: TODA consulta passa por meuFilho(), que só aceita alunos
  *  ligados a este usuário (responsavel_aluno) neste colégio.
@@ -33,6 +37,8 @@ const { TIPOS, DocErro } = require('../services/documentos');
 const { visiveisParaResponsavel } = require('../services/comunicados');
 const cal = require('../services/calendario');
 const { gradeDaTurma } = require('../services/grade');
+const lgpd = require('../services/lgpd');
+const { seguranca, atividade } = require('../utils/auditoria');
 
 async function filhos(req) {
   return query(
@@ -369,6 +375,54 @@ router.get('/calendario/proximos', assincrono(async (req, res) => {
   const hoje = hojeSP();
   const itens = await cal.eventosDaFamilia(req.colegioId, await filhos(req), hoje, cal.somarDias(hoje, 45));
   res.json({ itens: itens.slice(0, 5) });
+}));
+
+/* ---------------- Privacidade (LGPD) ---------------- */
+router.get('/privacidade', assincrono(async (req, res) => {
+  const [encarregado, termos, solicitacoes] = await Promise.all([
+    lgpd.encarregado(req.colegioId), lgpd.termosDoUsuario(req.usuario.id), lgpd.listarSolicitacoes(req.colegioId, { usuarioId: req.usuario.id })
+  ]);
+  res.json({ encarregado, termos, solicitacoes, tipos: lgpd.TIPOS, prazoDias: lgpd.PRAZO_DIAS });
+}));
+
+router.get('/meus-dados', assincrono(async (req, res) => {
+  const dados = await lgpd.exportarResponsavel(req.usuario.id, req.colegioId);
+  await seguranca(req, {
+    tipo: 'privacidade', colegioId: req.colegioId, usuarioId: req.usuario.id, email: req.usuario.email,
+    detalhes: `Baixou a cópia dos próprios dados (${dados.alunos.length} aluno${dados.alunos.length === 1 ? '' : 's'})`
+  });
+  res.set('Cache-Control', 'no-store');
+  res.json(dados);
+}));
+
+router.post('/solicitacoes', assincrono(async (req, res) => {
+  const b = req.body || {};
+  let aluno = null;
+  if (b.alunoId) {
+    const id = v.id(b.alunoId);
+    aluno = (await filhos(req)).find((x) => x.id === id);
+    if (!aluno) throw new HttpErro(404, 'Aluno não encontrado', 'nao_encontrado');
+  }
+  const s = await lgpd.criarSolicitacao({ colegioId: req.colegioId, usuario: req.usuario, aluno, tipo: b.tipo, descricao: b.descricao });
+  await seguranca(req, {
+    tipo: 'privacidade', colegioId: req.colegioId, usuarioId: req.usuario.id, email: req.usuario.email,
+    detalhes: `Pedido de privacidade nº ${s.id}: ${s.tipoRotulo}`
+  });
+  await atividade(req.colegioId, req.usuario.id, `Novo pedido de privacidade (LGPD): ${s.tipoRotulo}`);
+  res.status(201).json(s);
+}));
+
+router.post('/encerrar-acesso', assincrono(async (req, res) => {
+  if (String((req.body && req.body.confirmacao) || '').trim().toUpperCase() !== 'ENCERRAR') {
+    throw new HttpErro(400, 'Digite ENCERRAR para confirmar', 'validacao');
+  }
+  const r = await lgpd.encerrarAcesso(req.usuario.id, req.colegioId);
+  await seguranca(req, {
+    tipo: 'privacidade', colegioId: req.colegioId, usuarioId: req.usuario.id, email: req.usuario.email,
+    detalhes: `Encerrou o próprio acesso ao portal (${r.alunosDesvinculados} aluno${r.alunosDesvinculados === 1 ? '' : 's'} desvinculado${r.alunosDesvinculados === 1 ? '' : 's'})`
+  });
+  await atividade(req.colegioId, req.usuario.id, 'Responsável encerrou o próprio acesso ao portal');
+  res.json(r);
 }));
 
 module.exports = router;

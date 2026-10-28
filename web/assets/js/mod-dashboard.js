@@ -16,6 +16,7 @@
       ]);
       const nome = (e.me.usuario.nome || '').split(' ')[0];
       if (r.pendentes) EG.atualizarPendentes(r.pendentes.total);
+      if (r.privacidade && EG.atualizarPrivacidade) EG.atualizarPrivacidade(r.privacidade.abertas);
       // "Inadimplentes" abre as mensalidades vencidas de todos os meses
       // (este clique roda antes da navegação, que fica no document)
       el.onclick = (ev) => {
@@ -26,6 +27,7 @@
 
       el.innerHTML = `
         ${avisoPendentes(r.pendentes)}
+        ${avisoPrivacidade(r.privacidade)}
         <div class="card" style="background:linear-gradient(135deg,#1A2744,#2D3F63);color:#fff;border:none">
           <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
             <div class="avatar" style="width:56px;height:56px;font-size:22px">${EG.esc(EG.iniciais(e.me.usuario.nome))}</div>
@@ -132,6 +134,20 @@
         <span class="sub">${EG.esc(partes.join(' e '))} · essas pessoas só acessam o sistema depois de aprovadas</span>
       </div>
       <button class="btn btn-primario" data-action="ir" data-pagina="usuarios"><i class="ti ti-user-check"></i> Revisar agora</button>
+    </div>`;
+  }
+
+  /** Pedidos de privacidade (LGPD) das famílias aguardando resposta (só o admin recebe). */
+  function avisoPrivacidade(p) {
+    if (!p || !p.abertas) return '';
+    const prazo = p.atrasadas ? `${p.atrasadas} com o prazo de 15 dias vencido` : p.proximoPrazo ? `responder até ${EG.data(p.proximoPrazo)}` : '';
+    return `<div class="pendente-item ${p.atrasadas ? 'pendente-urgente' : ''}" style="margin-bottom:20px">
+      <span class="avatar"><i class="ti ti-user-shield"></i></span>
+      <div class="pendente-info">
+        <strong>${p.abertas === 1 ? '1 pedido de privacidade' : `${p.abertas} pedidos de privacidade`} aguardando resposta</strong>
+        <span class="sub">Pedidos das famílias pela LGPD (cópia, correção, exclusão de dados...)${prazo ? ' · ' + EG.esc(prazo) : ''}</span>
+      </div>
+      <button class="btn btn-primario" data-action="ir" data-pagina="lgpd"><i class="ti ti-message-reply"></i> Responder</button>
     </div>`;
   }
 

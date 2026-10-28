@@ -18,7 +18,7 @@ Reis Tecnologia · https://edugest.reisconsultoriatec.com
 
 Baixa a versão mais recente, copia API e front, instala dependências se o `package.json` mudou e reinicia a API.
 
-Monitor de disponibilidade, tamanho dos logs e política de senha: [`docs/GUIA-OPERACAO.md`](docs/GUIA-OPERACAO.md).
+Monitor de disponibilidade, tamanho dos logs, política de senha e termos de uso/privacidade (LGPD): [`docs/GUIA-OPERACAO.md`](docs/GUIA-OPERACAO.md).
 
 ## Nunca vão para o repositório
 

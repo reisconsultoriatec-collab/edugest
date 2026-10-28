@@ -47,3 +47,11 @@ A tela de cadastro do EduGest já exige **8 caracteres, uma letra maiúscula e u
 5. **Save**.
 
 Se essa opção não aparecer no seu plano, não tem problema: o cadastro do EduGest continua exigindo a senha forte.
+
+## 4. Privacidade (LGPD): termos e política
+
+- Textos públicos: `web/termos.html` e `web/privacidade.html` (links no rodapé da tela de acesso e no formulário de interesse).
+- No primeiro acesso, cada pessoa aceita a versão em vigor. O aceite fica na tabela `termos_aceites` (data, IP e dispositivo) e no Log de Segurança.
+- **Mudou o texto?** Troque a versão nos três lugares, publique e atualize o servidor: `TERMOS_VERSAO` em `api/src/services/lgpd.js` e a linha "Versão …" no topo das duas páginas. No próximo acesso, todos aceitam de novo.
+- Os textos são um modelo: vale a revisão de um advogado. Confira também o que depende da infraestrutura (região do servidor, Cloudflare, cópias de segurança) e ajuste o item "Com quem compartilhamos" da política se precisar.
+- Cada colégio define o encarregado de dados em Sistema › Privacidade (LGPD); o item entra na lista de Implantação.

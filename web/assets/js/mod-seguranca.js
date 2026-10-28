@@ -7,7 +7,8 @@
     logout: { rotulo: 'Logout', icone: 'ti-logout', cor: 'var(--muted)' },
     timeout: { rotulo: 'Inatividade', icone: 'ti-clock-pause', cor: 'var(--aviso)' },
     cadastro: { rotulo: 'Cadastro', icone: 'ti-user-plus', cor: 'var(--info)' },
-    admin: { rotulo: 'Ação de admin', icone: 'ti-shield-check', cor: 'var(--roxo)' }
+    admin: { rotulo: 'Ação de admin', icone: 'ti-shield-check', cor: 'var(--roxo)' },
+    privacidade: { rotulo: 'Privacidade', icone: 'ti-user-shield', cor: 'var(--info)' }
   };
   const POR_PAGINA = 50;
   let filtro = '';
