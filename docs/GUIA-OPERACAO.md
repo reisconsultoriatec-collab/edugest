@@ -1,0 +1,49 @@
+# EduGest — Operação do servidor
+
+Reis Tecnologia · cuidados para o sistema não sair do ar sem ninguém perceber.
+
+## 1. Monitor de disponibilidade (UptimeRobot, gratuito)
+
+Avisa por e-mail (ou aplicativo/Telegram) quando o EduGest para de responder.
+
+1. Crie a conta em https://uptimerobot.com (plano Free).
+2. **Add New Monitor**
+   - Monitor Type: **HTTP(s)**
+   - Friendly Name: `EduGest`
+   - URL: `https://edugest.reisconsultoriatec.com/api/health`
+   - Monitoring Interval: **5 minutes**
+3. Em **Alert Contacts**, marque o seu e-mail e clique em **Create Monitor**.
+
+O endereço `/api/health` responde **200** quando a API e o banco estão no ar e **503** quando o banco não responde. As duas situações de problema (servidor fora do ar ou MySQL parado) geram alerta. Essa verificação não conta no limite de requisições da API.
+
+Se o monitor acusar "fora do ar" com o sistema funcionando, a Cloudflare pode estar barrando o robô: na Cloudflare, em **Security**, libere o caminho `/api/health` (ou desative o *Bot Fight Mode*).
+
+## 2. Tamanho dos logs (automático)
+
+O `~/atualizar-edugest.sh` instala o **pm2-logrotate** na primeira vez que roda depois desta versão:
+
+- cada arquivo de log fecha ao chegar em **10 MB** (e também todo dia às 3h);
+- ficam os **14 últimos**, compactados; os mais antigos são apagados.
+
+Vale para todos os sistemas do PM2 do servidor. Não muda o desempenho nem o Log de Segurança do EduGest (que fica no banco).
+
+Para conferir:
+
+```bash
+du -sh ~/.pm2/logs          # quanto os logs ocupam
+pm2 conf pm2-logrotate      # configuração em uso
+```
+
+Para desfazer: `pm2 uninstall pm2-logrotate && rm ~/.edugest-logrotate`.
+
+## 3. Política de senha no Firebase
+
+A tela de cadastro do EduGest já exige **8 caracteres, uma letra maiúscula e um número**. Para valer também na página de "Esqueci minha senha" do Firebase:
+
+1. Console do Firebase › projeto `edugest-80e0f` › **Authentication** › **Settings** (Configurações) › **Password policy** (Política de senha).
+2. Marque: **Require uppercase character** e **Require numeric character**; **Minimum password length: 8**.
+3. Enforcement mode: **Require** (Exigir).
+4. Deixe **desligado** o "forçar atualização da senha no login" — quem já tem senha continua entrando normalmente.
+5. **Save**.
+
+Se essa opção não aparecer no seu plano, não tem problema: o cadastro do EduGest continua exigindo a senha forte.

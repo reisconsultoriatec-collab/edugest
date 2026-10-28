@@ -15,6 +15,7 @@
     'auth/too-many-requests': 'Muitas tentativas. Aguarde alguns minutos e tente de novo.',
     'auth/email-already-in-use': 'Este e-mail já tem conta. Use a aba "Entrar" com a sua senha.',
     'auth/weak-password': 'Senha fraca: use pelo menos 8 caracteres, com uma letra maiúscula e um número.',
+    'auth/password-does-not-meet-requirements': 'Senha fraca: use pelo menos 8 caracteres, com uma letra maiúscula e um número.',
     'auth/network-request-failed': 'Sem conexão. Verifique sua internet.'
   };
   const msgFirebase = (e) => MSG_FIREBASE[e && e.code] || 'Não foi possível concluir. Tente novamente.';

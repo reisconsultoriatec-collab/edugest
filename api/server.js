@@ -53,6 +53,8 @@ app.use('/api', rateLimit({
   standardHeaders: 'draft-7',
   legacyHeaders: false,
   keyGenerator: ipCliente,
+  // O monitor de disponibilidade (UptimeRobot) e o indicador de conexão do topo não contam
+  skip: (req) => req.path === '/health',
   validate: false,
   message: { erro: 'Muitas requisições. Aguarde alguns minutos.' }
 }));

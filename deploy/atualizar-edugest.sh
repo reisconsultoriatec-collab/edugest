@@ -13,6 +13,7 @@
 #  3. Copia o front para /var/www/edugest
 #  3b. Pergunta (uma vez) o e-mail do proprietário do sistema e grava
 #      PROPRIETARIO_EMAILS no .env — só ele cadastra colégios novos
+#  3c. Na primeira vez, instala o pm2-logrotate (logs com tamanho limitado)
 #  4. Reinicia a API no PM2 e confere o /api/health
 # =====================================================================
 
@@ -98,6 +99,22 @@ main() {
     else
       echo "!!  Nenhum e-mail válido informado. Ninguém conseguirá cadastrar colégios"
       echo "    até você rodar o script de novo (ou preencher PROPRIETARIO_EMAILS em $API/.env)."
+    fi
+  fi
+
+  # Logs do PM2: tamanho limitado para o disco nunca encher (vale para todos os
+  # sistemas do PM2 deste usuário). Instala uma vez só; se falhar, tenta na próxima.
+  if [ ! -f "$HOME/.edugest-logrotate" ]; then
+    echo "==> Limitando o tamanho dos logs (pm2-logrotate, só desta vez)..."
+    if pm2 install pm2-logrotate > /dev/null 2>&1 \
+      && pm2 set pm2-logrotate:max_size 10M > /dev/null \
+      && pm2 set pm2-logrotate:retain 14 > /dev/null \
+      && pm2 set pm2-logrotate:compress true > /dev/null \
+      && pm2 set pm2-logrotate:rotateInterval '0 3 * * *' > /dev/null; then
+      touch "$HOME/.edugest-logrotate"
+      echo "    ✓ Cada log com no máximo 10 MB; ficam os 14 últimos, compactados"
+    else
+      echo "    (não deu para instalar agora; o script tenta de novo na próxima atualização)"
     fi
   fi
 
