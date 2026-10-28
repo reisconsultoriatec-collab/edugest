@@ -1168,3 +1168,10 @@ body.em-tour .aviso-versao { display: none; }
   #manualImpressao th, #manualImpressao td { border: 1px solid #ddd; padding: 4px 6px; text-align: left; }
   #manualImpressao .tabela-wrap { overflow: visible; }
 }
+
+/* ---------- Aplicativo instalável ---------- */
+.aviso-instalar > i { color: var(--amber); }
+@media (display-mode: standalone) {
+  /* Aberto como aplicativo: não há barra do navegador; o topo respeita a área do relógio no iPhone */
+  .topo { padding-top: env(safe-area-inset-top); height: calc(60px + env(safe-area-inset-top)); }
+}

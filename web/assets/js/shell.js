@@ -91,6 +91,7 @@
     EG.$('#app').hidden = false;
     iniciarSessao(col.config ? col.config.timeoutSessaoMin : 15);
     if (EG.iniciarTopo) EG.iniciarTopo(); // conexão, tempo conectado e aviso de nova versão
+    if (EG.iniciarPwa) EG.iniciarPwa();   // "Instalar o aplicativo" no menu do usuário
     // A tela de carregamento só sai quando a primeira página estiver pronta (no máximo 6 s)
     EG.carregando(true, 'Preparando o seu painel...', 80);
     await Promise.race([navegarPelaUrl(), new Promise((ok) => setTimeout(ok, 6000))]);

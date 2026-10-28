@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1A2744">
+<title>EduGest — sem conexão</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; background: #0E1730; color: #E2E8F0;
+    display: flex; align-items: center; justify-content: center; padding: 24px; text-align: center; }
+  .caixa { max-width: 380px; }
+  .marca { width: 72px; height: 72px; margin: 0 auto 20px; border-radius: 18px; background: linear-gradient(135deg, #243352, #121C33);
+    display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 30px -10px rgba(0, 0, 0, .6); }
+  .marca svg { width: 46px; height: 46px; }
+  h1 { font-size: 21px; margin-bottom: 10px; color: #fff; }
+  p { font-size: 14.5px; line-height: 1.55; color: #94A3B8; margin-bottom: 22px; }
+  button { font: inherit; font-weight: 600; font-size: 15px; padding: 12px 22px; border-radius: 10px; border: 0; background: #F59E0B; color: #1A2744; cursor: pointer; }
+  button:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+  small { display: block; margin-top: 18px; color: #64748B; font-size: 12px; }
+</style>
+</head>
+<body>
+  <div class="caixa" role="status" aria-live="polite">
+    <div class="marca" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M16 7 4 13l12 6 12-6z" fill="#F59E0B"/><path d="M9 16v5c0 2 3.5 4 7 4s7-2 7-4v-5l-7 3.5z" fill="#F59E0B" opacity=".85"/><path d="M26.5 14v6.2" stroke="#F59E0B" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+    <h1>Sem conexão com a internet</h1>
+    <p>O EduGest precisa de internet para mostrar os dados do colégio. Confira o Wi-Fi ou os dados móveis: assim que a conexão voltar, a página abre sozinha.</p>
+    <button type="button" onclick="location.reload()">Tentar de novo</button>
+    <small>EduGest · Reis Tecnologia</small>
+  </div>
+  <script>window.addEventListener('online', function () { location.reload(); });</script>
+</body>
+</html>

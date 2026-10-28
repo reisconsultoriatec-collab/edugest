@@ -157,6 +157,32 @@
       relacionados: ['faq-pdf', 'faq-whatsapp']
     },
     {
+      id: 'app-instalar', titulo: 'Instalar o EduGest como aplicativo (celular e computador)', perfis: ['equipe', 'responsavel'],
+      resumo: 'Ícone na tela inicial do celular ou na área de trabalho, abrindo em tela cheia como um aplicativo.',
+      palavras: ['aplicativo', 'app', 'instalar', 'celular', 'tela inicial', 'atalho', 'android', 'iphone', 'pwa'],
+      corpo: [
+        ['p', 'O EduGest pode ser instalado como aplicativo, sem loja: ganha um ícone na tela inicial e abre em tela cheia, sem a barra do navegador. É o mesmo sistema, sempre atualizado.'],
+        ['h', 'Android (Chrome)'],
+        ['passos', [
+          'Entre no EduGest pelo Chrome.',
+          'Toque em {{Instalar}} no convite que aparece embaixo da tela, ou no menu do seu nome › {{Instalar o aplicativo}}.',
+          'Confirme. O ícone aparece na tela inicial.'
+        ]],
+        ['p', 'Se não aparecer a opção, use o menu ⋮ do Chrome › **Instalar app** (ou "Adicionar à tela inicial").'],
+        ['h', 'iPhone e iPad (Safari)'],
+        ['passos', [
+          'Abra o EduGest no **Safari**.',
+          'Toque em **Compartilhar** (o quadrado com a seta para cima).',
+          'Toque em **Adicionar à Tela de Início** e depois em **Adicionar**.'
+        ]],
+        ['h', 'Computador (Chrome ou Edge)'],
+        ['p', 'Clique no ícone de instalar na barra de endereço ou no menu do seu nome › {{Instalar o aplicativo}}. O EduGest abre numa janela própria e pode ser fixado na barra de tarefas.'],
+        ['dica', 'O aplicativo precisa de internet, como o site. Os dados do colégio não ficam guardados no aparelho: se o celular for perdido, basta trocar a senha.'],
+        ['p', 'Para sair da conta no aplicativo, use o menu do seu nome › {{Sair}}. Para remover, desinstale como qualquer aplicativo.']
+      ],
+      relacionados: ['comecar-tela', 'faq-sem-conexao']
+    },
+    {
       id: 'comecar-dashboard', titulo: 'Dashboard: os números do colégio', tela: 'dashboard',
       resumo: 'Alunos, professores, turmas, inadimplentes, aulas do dia, captação, comunicados, próximos eventos e atividade recente.',
       palavras: ['inicio', 'painel', 'indicadores'],
@@ -1625,7 +1651,7 @@
     admin: ['comecar-tela', 'implantacao-ordem', 'comecar-perfis', 'implantacao-parametros', 'turmas-criar', 'importar-planilha', 'mensalidades-gerar', 'implantacao-equipe', 'implantacao-familias', 'virada-quando'],
     professor: ['comecar-tela', 'diario-chamada', 'notas-lancar', 'notas-media', 'boletim-emitir', 'grade-minha', 'calendario-eventos', 'comunicados-publicar'],
     financeiro: ['comecar-tela', 'mensalidades-gerar', 'mensalidades-receber', 'mensalidades-cobrar', 'bolsas-cadastrar', 'contas-pagar', 'conciliacao-conta', 'relatorios-financeiros'],
-    responsavel: ['portal-primeiro-acesso', 'portal-filhos', 'portal-boletim', 'portal-financeiro', 'portal-comunicados']
+    responsavel: ['portal-primeiro-acesso', 'app-instalar', 'portal-filhos', 'portal-boletim', 'portal-financeiro', 'portal-comunicados']
   };
 
   /* Implantação do colégio: o que a API confere (GET /colegios/atual/implantacao) */

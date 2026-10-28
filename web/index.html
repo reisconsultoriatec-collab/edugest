@@ -6,13 +6,19 @@
 <title>EduGest — Gestão Educacional</title>
 <meta name="description" content="EduGest — Gestão Educacional Multi-Colégio · Reis Tecnologia">
 <meta name="theme-color" content="#1A2744">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="assets/icones/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="EduGest">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <style>html{background:#0E1730}</style>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231A2744'/%3E%3Cpath d='M16 7 4 13l12 6 12-6z' fill='%23F59E0B'/%3E%3Cpath d='M9 16v5c0 2 3.5 4 7 4s7-2 7-4v-5l-7 3.5z' fill='%23F59E0B' opacity='.85'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
-<link rel="stylesheet" href="assets/app.css?v=1.20.0">
+<link rel="stylesheet" href="assets/app.css?v=1.21.0">
 </head>
 <body>
 
@@ -69,6 +75,7 @@
             <button data-action="tema" class="so-celular"><i class="ti ti-contrast-2"></i> Tema claro/escuro</button>
             <button data-action="ajuda-central"><i class="ti ti-help"></i> Central de ajuda</button>
             <button data-action="tour"><i class="ti ti-route"></i> Fazer o tour guiado</button>
+            <button data-action="instalar-app" hidden><i class="ti ti-device-mobile-down"></i> Instalar o aplicativo</button>
             <button data-action="recarregar-sistema"><i class="ti ti-reload"></i> Recarregar o sistema</button>
             <button data-action="sair"><i class="ti ti-logout"></i> Sair</button>
           </div>
@@ -92,39 +99,40 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="assets/js/core.js?v=1.20.0"></script>
-<script src="assets/js/auth.js?v=1.20.0"></script>
-<script src="assets/js/shell.js?v=1.20.0"></script>
-<script src="assets/js/topo.js?v=1.20.0"></script>
-<script src="assets/js/tour.js?v=1.20.0"></script>
-<script src="assets/js/ajuda-conteudo.js?v=1.20.0"></script>
-<script src="assets/js/mod-ajuda.js?v=1.20.0"></script>
-<script src="assets/js/mod-dashboard.js?v=1.20.0"></script>
-<script src="assets/js/mod-turmas.js?v=1.20.0"></script>
-<script src="assets/js/planilha.js?v=1.20.0"></script>
-<script src="assets/js/mod-importar-alunos.js?v=1.20.0"></script>
-<script src="assets/js/mod-alunos.js?v=1.20.0"></script>
-<script src="assets/js/mod-professores.js?v=1.20.0"></script>
-<script src="assets/js/mod-diario.js?v=1.20.0"></script>
-<script src="assets/js/mod-notas.js?v=1.20.0"></script>
-<script src="assets/js/mod-boletim.js?v=1.20.0"></script>
-<script src="assets/js/mod-mensalidades.js?v=1.20.0"></script>
-<script src="assets/js/mod-bolsas.js?v=1.20.0"></script>
-<script src="assets/js/mod-contas.js?v=1.20.0"></script>
-<script src="assets/js/mod-fluxo.js?v=1.20.0"></script>
-<script src="assets/js/mod-relatorios.js?v=1.20.0"></script>
-<script src="assets/js/mod-conciliacao.js?v=1.20.0"></script>
-<script src="assets/js/mod-comunicados.js?v=1.20.0"></script>
-<script src="assets/js/mod-calendario.js?v=1.20.0"></script>
-<script src="assets/js/mod-grade.js?v=1.20.0"></script>
-<script src="assets/js/mod-documentos.js?v=1.20.0"></script>
-<script src="assets/js/mod-funil.js?v=1.20.0"></script>
-<script src="assets/js/mod-portal.js?v=1.20.0"></script>
-<script src="assets/js/mod-config.js?v=1.20.0"></script>
-<script src="assets/js/mod-usuarios.js?v=1.20.0"></script>
-<script src="assets/js/mod-virada.js?v=1.20.0"></script>
-<script src="assets/js/mod-seguranca.js?v=1.20.0"></script>
-<script src="assets/js/mod-colegios.js?v=1.20.0"></script>
+<script src="assets/js/core.js?v=1.21.0"></script>
+<script src="assets/js/auth.js?v=1.21.0"></script>
+<script src="assets/js/shell.js?v=1.21.0"></script>
+<script src="assets/js/topo.js?v=1.21.0"></script>
+<script src="assets/js/pwa.js?v=1.21.0"></script>
+<script src="assets/js/tour.js?v=1.21.0"></script>
+<script src="assets/js/ajuda-conteudo.js?v=1.21.0"></script>
+<script src="assets/js/mod-ajuda.js?v=1.21.0"></script>
+<script src="assets/js/mod-dashboard.js?v=1.21.0"></script>
+<script src="assets/js/mod-turmas.js?v=1.21.0"></script>
+<script src="assets/js/planilha.js?v=1.21.0"></script>
+<script src="assets/js/mod-importar-alunos.js?v=1.21.0"></script>
+<script src="assets/js/mod-alunos.js?v=1.21.0"></script>
+<script src="assets/js/mod-professores.js?v=1.21.0"></script>
+<script src="assets/js/mod-diario.js?v=1.21.0"></script>
+<script src="assets/js/mod-notas.js?v=1.21.0"></script>
+<script src="assets/js/mod-boletim.js?v=1.21.0"></script>
+<script src="assets/js/mod-mensalidades.js?v=1.21.0"></script>
+<script src="assets/js/mod-bolsas.js?v=1.21.0"></script>
+<script src="assets/js/mod-contas.js?v=1.21.0"></script>
+<script src="assets/js/mod-fluxo.js?v=1.21.0"></script>
+<script src="assets/js/mod-relatorios.js?v=1.21.0"></script>
+<script src="assets/js/mod-conciliacao.js?v=1.21.0"></script>
+<script src="assets/js/mod-comunicados.js?v=1.21.0"></script>
+<script src="assets/js/mod-calendario.js?v=1.21.0"></script>
+<script src="assets/js/mod-grade.js?v=1.21.0"></script>
+<script src="assets/js/mod-documentos.js?v=1.21.0"></script>
+<script src="assets/js/mod-funil.js?v=1.21.0"></script>
+<script src="assets/js/mod-portal.js?v=1.21.0"></script>
+<script src="assets/js/mod-config.js?v=1.21.0"></script>
+<script src="assets/js/mod-usuarios.js?v=1.21.0"></script>
+<script src="assets/js/mod-virada.js?v=1.21.0"></script>
+<script src="assets/js/mod-seguranca.js?v=1.21.0"></script>
+<script src="assets/js/mod-colegios.js?v=1.21.0"></script>
 <script>EG.iniciar();</script>
 </body>
 </html>
