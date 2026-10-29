@@ -30,6 +30,7 @@ const { HttpErro, assincrono } = require('../middleware/erros');
 const v = require('../utils/validar');
 const { atividade } = require('../utils/auditoria');
 const { hojeSP, agoraSP } = require('../utils/datas');
+const categoriasContas = require('../services/categoriasContas');
 const f = require('../services/financeiro');
 const baixas = require('../services/baixas');
 const motor = require('../services/conciliacao');
@@ -348,7 +349,7 @@ router.get('/lancamentos', assincrono(async (req, res) => {
   res.json({
     resumo,
     categorias: motor.CATEGORIAS_MANUAIS,
-    categoriasContas: f.CATEGORIAS_CONTAS,
+    categoriasContas: await categoriasContas.nomes(req.colegioId),
     itens: linhas.map((l) => ({
       id: l.id,
       contaBancoId: l.conta_banco_id,
@@ -454,7 +455,7 @@ async function conciliarLancamento(conn, req, l, alvo) {
   } else if (vinculo === 'nova_conta') {
     if (l.tipo !== 'debito') throw new HttpErro(400, 'Só um débito (saída) pode virar uma conta paga', 'validacao');
     const desc = v.texto(alvo.descricao, 'Descrição', { max: 150, min: 3 }) || l.descricao.slice(0, 150);
-    const cat = v.umDe(alvo.categoria || 'Outros', f.CATEGORIAS_CONTAS, 'Categoria');
+    const cat = await categoriasContas.validar(colegioId, alvo.categoria, { conn });
     const forn = v.texto(alvo.fornecedor, 'Fornecedor', { max: 100 });
     const [ins] = await conn.query(
       `INSERT INTO contas_pagar (colegio_id, descricao, categoria, fornecedor, valor, vencimento, recorrencia, status, data_pagamento, obs)

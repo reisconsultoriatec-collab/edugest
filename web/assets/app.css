@@ -1482,3 +1482,23 @@ body.modo-tv.cursor-oculto, body.modo-tv.cursor-oculto * { cursor: none !importa
   body.modo-tv .conteudo { padding: 84px 12px 16px; }
 }
 @media print { .dir-cab-acoes, .dir-so-tela { display: none !important; } .dir-card, .dir-kpi { break-inside: avoid; } }
+
+/* ---------- Contas a pagar: categorias ---------- */
+.rotulo-com-acao { display: flex !important; align-items: center; justify-content: space-between; gap: 8px; }
+.rotulo-com-acao .link-sutil { text-transform: none; letter-spacing: 0; font-weight: 600; text-decoration: none; color: var(--amber-d); font-size: 12px; }
+.cat-nova { display: flex; gap: 6px; align-items: center; margin-top: 8px; }
+.cat-nova .input { flex: 1; min-width: 0; }
+.cat-add { display: flex; gap: 8px; margin-bottom: 14px; }
+.cat-add .input { flex: 1; min-width: 0; }
+.cat-lista { border: 1px solid var(--border); border-radius: 10px; max-height: 380px; overflow-y: auto; }
+.cat-linha { display: grid; grid-template-columns: minmax(0, 1fr) auto 76px; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--border); min-height: 48px; }
+.cat-linha:last-child { border-bottom: 0; }
+.cat-linha:hover { background: var(--hover); }
+.cat-nome { font-weight: 600; overflow-wrap: anywhere; }
+.cat-uso { font-size: 12px; color: var(--text-2); white-space: nowrap; }
+.cat-acoes { display: flex; gap: 4px; justify-content: flex-end; }
+.cat-acoes .btn-icone:disabled { opacity: .35; cursor: not-allowed; }
+.cat-linha.editando, .cat-linha.confirmando { grid-template-columns: minmax(0, 1fr) auto auto; background: var(--hover); }
+.cat-linha.confirmando > span { overflow-wrap: anywhere; }
+.cat-aviso { grid-column: 1 / -1; font-size: 12px; color: var(--text-2); }
+@media (max-width: 520px) { .cat-linha { grid-template-columns: minmax(0, 1fr) 76px; } .cat-uso { grid-column: 1; grid-row: 2; } .cat-acoes { grid-row: 1 / span 2; grid-column: 2; } }

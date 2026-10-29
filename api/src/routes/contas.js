@@ -9,6 +9,12 @@
  *                                           é recorrente, cria a próxima
  *  POST   /:id/estornar                     desfaz o pagamento
  *  DELETE /:id                              exclui
+ *
+ *  Categorias (cada colégio tem a sua lista):
+ *  GET    /categorias        lista com quantas contas usam cada uma
+ *  POST   /categorias        { nome } cria
+ *  PUT    /categorias/:id    { nome } renomeia (as contas vão junto)
+ *  DELETE /categorias/:id    exclui (só sem contas; "Outros" é fixa)
  * ===================================================================== */
 const router = require('express').Router();
 const { query, transacao } = require('../db');
@@ -19,10 +25,9 @@ const { atividade } = require('../utils/auditoria');
 const { hojeSP, dataValida } = require('../utils/datas');
 const f = require('../services/financeiro');
 const baixas = require('../services/baixas');
+const categorias = require('../services/categoriasContas');
 
 router.use(exigirModulo('contas'));
-
-const CATEGORIAS = f.CATEGORIAS_CONTAS;
 
 function lerData(valor, campo, { naoFutura = false } = {}) {
   const d = String(valor || '');
@@ -31,10 +36,11 @@ function lerData(valor, campo, { naoFutura = false } = {}) {
   return d;
 }
 
-function lerConta(b) {
+/** atual: a categoria que a conta já tinha (editar sem trocar a categoria sempre vale). */
+async function lerConta(colegioId, b, atual = null) {
   return {
     descricao: v.texto(b.descricao, 'Descrição', { max: 150, min: 3, obrigatorio: true }),
-    categoria: v.texto(b.categoria, 'Categoria', { max: 40 }) || 'Outros',
+    categoria: await categorias.validar(colegioId, b.categoria, { atual }),
     fornecedor: v.texto(b.fornecedor, 'Fornecedor', { max: 100 }),
     valor: v.decimal(b.valor, 'Valor', { min: 0.01, max: 99999999, obrigatorio: true }),
     vencimento: lerData(b.vencimento, 'Data de vencimento'),
@@ -48,6 +54,31 @@ async function buscarConta(conn, colegioId, id) {
   if (!c) throw new HttpErro(404, 'Conta não encontrada', 'nao_encontrado');
   return c;
 }
+
+/* ---------------- Categorias ---------------- */
+router.get('/categorias', assincrono(async (req, res) => {
+  res.json({ categorias: await categorias.listar(req.colegioId) });
+}));
+
+router.post('/categorias', assincrono(async (req, res) => {
+  const c = await categorias.criar(req.colegioId, (req.body || {}).nome);
+  await atividade(req.colegioId, req.usuario.id, `Categoria de contas criada: ${c.nome}`);
+  res.status(201).json(c);
+}));
+
+router.put('/categorias/:id', assincrono(async (req, res) => {
+  const r = await categorias.renomear(req.colegioId, v.id(req.params.id), (req.body || {}).nome);
+  if (r.antes !== r.nome) {
+    await atividade(req.colegioId, req.usuario.id, `Categoria de contas renomeada: ${r.antes} → ${r.nome}${r.contas ? ` (${r.contas} conta(s))` : ''}`);
+  }
+  res.json(r);
+}));
+
+router.delete('/categorias/:id', assincrono(async (req, res) => {
+  const c = await categorias.excluir(req.colegioId, v.id(req.params.id));
+  await atividade(req.colegioId, req.usuario.id, `Categoria de contas excluída: ${c.nome}`);
+  res.status(204).end();
+}));
 
 /* ---------------- Listar ---------------- */
 router.get('/', assincrono(async (req, res) => {
@@ -67,7 +98,7 @@ router.get('/', assincrono(async (req, res) => {
 
   const [linhas, cats] = await Promise.all([
     query(`SELECT * FROM contas_pagar WHERE ${cond.join(' AND ')} ORDER BY vencimento, descricao LIMIT 3000`, params),
-    query('SELECT DISTINCT categoria FROM contas_pagar WHERE colegio_id = ? ORDER BY categoria', [req.colegioId])
+    categorias.nomes(req.colegioId)
   ]);
   const hoje = hojeSP();
   const resumo = { aPagar: 0, vencidas: 0, pagas: 0, quantidade: {} };
@@ -92,13 +123,12 @@ router.get('/', assincrono(async (req, res) => {
     };
   });
   ['aPagar', 'vencidas', 'pagas'].forEach((k) => { resumo[k] /= 100; });
-  const categorias = [...new Set([...CATEGORIAS, ...cats.map((x) => x.categoria)])];
-  res.json({ resumo, categorias, itens });
+  res.json({ resumo, categorias: cats, itens });
 }));
 
 /* ---------------- Criar / editar ---------------- */
 router.post('/', assincrono(async (req, res) => {
-  const c = lerConta(req.body);
+  const c = await lerConta(req.colegioId, req.body);
   const r = await query(
     `INSERT INTO contas_pagar (colegio_id, descricao, categoria, fornecedor, valor, vencimento, recorrencia, obs)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -110,7 +140,8 @@ router.post('/', assincrono(async (req, res) => {
 
 router.put('/:id', assincrono(async (req, res) => {
   const id = v.id(req.params.id);
-  const c = lerConta(req.body);
+  const [antes] = await query('SELECT categoria FROM contas_pagar WHERE id = ? AND colegio_id = ?', [id, req.colegioId]);
+  const c = await lerConta(req.colegioId, req.body, antes ? antes.categoria : null);
   await transacao(async (conn) => {
     await buscarConta(conn, req.colegioId, id);
     await conn.query(

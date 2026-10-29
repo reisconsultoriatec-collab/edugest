@@ -431,6 +431,17 @@ CREATE TABLE IF NOT EXISTS mensalidades (
   CONSTRAINT ck_mens_valor CHECK (valor >= 0 AND desconto >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- Categorias das contas a pagar (cada colégio tem a sua lista; a API cria a lista no primeiro uso)
+CREATE TABLE IF NOT EXISTS categorias_contas (
+  id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  colegio_id  INT UNSIGNED NOT NULL,
+  nome        VARCHAR(40)  NOT NULL,
+  criado_em   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_categorias_contas_nome (colegio_id, nome),
+  CONSTRAINT fk_categorias_contas_colegio FOREIGN KEY (colegio_id) REFERENCES colegios (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 CREATE TABLE IF NOT EXISTS contas_pagar (
   id               INT UNSIGNED  NOT NULL AUTO_INCREMENT,
   colegio_id       INT UNSIGNED  NOT NULL,

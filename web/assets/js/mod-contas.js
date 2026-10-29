@@ -1,6 +1,8 @@
 /* =====================================================================
  *  EduGest — Contas a Pagar
  *  Pagamento de conta recorrente já lança a próxima.
+ *  Categorias: cada colégio cadastra e renomeia as suas (botão Categorias
+ *  e "+ Nova" na janela da conta). Renomear leva junto as contas.
  * ===================================================================== */
 'use strict';
 (function (EG) {
@@ -43,7 +45,8 @@
       <div class="card">
         <div class="card-cab">
           <div class="card-titulo"><i class="ti ti-file-invoice"></i> Contas a pagar</div>
-          <div class="acoes-topo"><button class="btn btn-primario" data-action="nova"><i class="ti ti-plus"></i> Nova conta</button></div>
+          <div class="acoes-topo"><button class="btn btn-secundario" data-action="categorias"><i class="ti ti-tags"></i> Categorias</button>
+            <button class="btn btn-primario" data-action="nova"><i class="ti ti-plus"></i> Nova conta</button></div>
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
           <select class="select" data-filtro="mes" style="width:auto;min-width:170px">${opcoesMes()}</select>
@@ -90,7 +93,11 @@
       corpo: `
         <div class="campo"><label>Descrição *</label><input class="input" name="descricao" maxlength="150" value="${EG.esc(c.descricao)}" placeholder="Ex.: Conta de energia"></div>
         <div class="linha-2">
-          <div class="campo"><label>Categoria</label><select class="select" name="categoria">${EG.opcoes(cats.map((x) => ({ value: x, label: x })), c.categoria)}</select></div>
+          <div class="campo"><label class="rotulo-com-acao">Categoria <button type="button" class="link-sutil" data-nova-categoria><i class="ti ti-plus"></i> Nova</button></label>
+            <select class="select" name="categoria">${EG.opcoes(cats.map((x) => ({ value: x, label: x })), c.categoria)}</select>
+            <div class="cat-nova" data-cat-nova hidden><input class="input" maxlength="40" placeholder="Nome da nova categoria" data-cat-nome>
+              <button type="button" class="btn btn-primario btn-pequeno" data-cat-criar><i class="ti ti-check"></i> Criar</button>
+              <button type="button" class="btn-icone" data-cat-cancelar title="Cancelar" aria-label="Cancelar"><i class="ti ti-x"></i></button></div></div>
           <div class="campo"><label>Fornecedor</label><input class="input" name="fornecedor" maxlength="100" value="${EG.esc(c.fornecedor)}"></div>
         </div>
         <div class="linha-3">
@@ -100,6 +107,7 @@
         </div>
         <div class="campo"><label>Observações</label><input class="input" name="obs" maxlength="500" value="${EG.esc(c.obs)}"></div>
         <div class="msg-info" style="margin:0">Conta que se repete: ao registrar o pagamento, a próxima já é lançada automaticamente.</div>`,
+      aoFechar: () => { if (criouCategoria) { carregar().then(() => render(el)).catch(() => {}); } },
       botoes: [
         { texto: 'Cancelar', acao: () => m.fechar() },
         { texto: 'Salvar', classe: 'btn-primario', icone: 'ti-device-floppy', acao: async () => {
@@ -112,6 +120,134 @@
         } }
       ]
     });
+    // "+ Nova" categoria sem sair da conta
+    let criouCategoria = false;
+    const caixa = m.el.querySelector('[data-cat-nova]'); const nome = m.el.querySelector('[data-cat-nome]'); const sel = m.el.querySelector('[name="categoria"]');
+    const abrir = (sim) => { caixa.hidden = !sim; if (sim) { nome.value = ''; nome.focus(); } };
+    const criar = async () => {
+      const btn = m.el.querySelector('[data-cat-criar]');
+      await EG.guarda(btn, async () => {
+        m.erro('');
+        try {
+          const nova = await EG.api('POST', '/contas/categorias', { nome: nome.value });
+          criouCategoria = true;
+          dados.categorias = [...dados.categorias.filter((x) => x !== 'Outros'), nova.nome].sort((a, b) => a.localeCompare(b, 'pt-BR')).concat(dados.categorias.includes('Outros') ? ['Outros'] : []);
+          const atual = sel.value;
+          sel.innerHTML = EG.opcoes([...new Set([atual, ...dados.categorias])].filter(Boolean).map((x) => ({ value: x, label: x })), nova.nome);
+          abrir(false); EG.toast(`Categoria "${nova.nome}" criada`);
+        } catch (e) { m.erro(e.message); nome.focus(); }
+      });
+    };
+    m.el.querySelector('[data-nova-categoria]').addEventListener('click', () => abrir(caixa.hidden));
+    m.el.querySelector('[data-cat-cancelar]').addEventListener('click', () => abrir(false));
+    m.el.querySelector('[data-cat-criar]').addEventListener('click', criar);
+    nome.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') { ev.preventDefault(); criar(); }
+      if (ev.key === 'Escape') { ev.stopPropagation(); abrir(false); }
+    });
+  }
+
+  /* ---------------- Categorias: cadastrar, renomear e excluir ---------------- */
+  function modalCategorias(el) {
+    let lista = []; let editando = null; let excluindo = null; let mudou = false;
+    const renomeadas = {};
+    const m = EG.modal({
+      titulo: 'Categorias das contas',
+      largura: 560,
+      corpo: `<p class="sub" style="margin:0 0 12px">As categorias aparecem na conta, nos filtros, nos relatórios e no fluxo de caixa.
+          Renomear muda também as contas que já usam a categoria.</p>
+        <div class="cat-add"><input class="input" maxlength="40" placeholder="Nova categoria (ex.: Uniformes)" data-cat-add-nome>
+          <button class="btn btn-primario" data-cat-acao="adicionar"><i class="ti ti-plus"></i> Adicionar</button></div>
+        <div class="cat-lista" data-cat-lista><div class="sub" style="padding:12px 0">Carregando...</div></div>`,
+      aoFechar: () => {
+        if (!mudou) return;
+        if (filtro.categoria && renomeadas[filtro.categoria]) filtro.categoria = renomeadas[filtro.categoria];
+        carregar().then(() => {
+          if (filtro.categoria && !dados.categorias.includes(filtro.categoria)) { filtro.categoria = ''; return carregar(); }
+          return null;
+        }).then(() => render(el)).catch((e) => EG.toast(e.message, 'erro'));
+      }
+    });
+    const caixa = m.el.querySelector('[data-cat-lista]'); const campoNovo = m.el.querySelector('[data-cat-add-nome]');
+    const usoTexto = (n) => (n ? `${n} conta${n === 1 ? '' : 's'}` : 'sem contas');
+    function desenhar() {
+      caixa.innerHTML = lista.map((c) => {
+        if (editando === c.id) {
+          return `<div class="cat-linha editando" data-cat-id="${c.id}">
+            <input class="input" maxlength="40" value="${EG.esc(c.nome)}" data-cat-renomear aria-label="Novo nome de ${EG.esc(c.nome)}">
+            <button class="btn btn-primario btn-pequeno" data-cat-acao="salvar"><i class="ti ti-check"></i> Salvar</button>
+            <button class="btn-icone" data-cat-acao="cancelar" title="Cancelar" aria-label="Cancelar"><i class="ti ti-x"></i></button>
+            ${c.contas ? `<small class="cat-aviso">${c.contas === 1 ? 'A conta desta categoria passa' : `As ${c.contas} contas desta categoria passam`} a usar o novo nome.</small>` : ''}</div>`;
+        }
+        if (excluindo === c.id) {
+          return `<div class="cat-linha confirmando" data-cat-id="${c.id}"><span>Excluir <strong>${EG.esc(c.nome)}</strong>?</span>
+            <button class="btn btn-perigo btn-pequeno" data-cat-acao="confirmar-exclusao"><i class="ti ti-trash"></i> Excluir</button>
+            <button class="btn btn-secundario btn-pequeno" data-cat-acao="cancelar">Cancelar</button></div>`;
+        }
+        const podeExcluir = !c.fixa && !c.contas;
+        return `<div class="cat-linha" data-cat-id="${c.id}">
+          <span class="cat-nome">${EG.esc(c.nome)}${c.fixa ? ' <span class="selo selo-neutro" title="Usada quando nenhuma categoria é escolhida">fixa</span>' : ''}</span>
+          <span class="cat-uso">${usoTexto(c.contas)}</span>
+          ${c.fixa ? '<span class="cat-acoes"></span>' : `<span class="cat-acoes">
+            <button class="btn-icone" data-cat-acao="editar" title="Renomear" aria-label="Renomear ${EG.esc(c.nome)}"><i class="ti ti-pencil"></i></button>
+            <button class="btn-icone perigo" data-cat-acao="excluir" ${podeExcluir ? '' : 'disabled'}
+              title="${podeExcluir ? 'Excluir' : `Em uso em ${usoTexto(c.contas)}: para excluir, mude a categoria dessas contas ou renomeie`}" aria-label="Excluir ${EG.esc(c.nome)}"><i class="ti ti-trash"></i></button></span>`}
+        </div>`;
+      }).join('');
+      const inp = caixa.querySelector('[data-cat-renomear]');
+      if (inp) { inp.focus(); inp.select(); }
+    }
+    async function recarregar() { lista = (await EG.api('GET', '/contas/categorias')).categorias; desenhar(); }
+    async function adicionar(btn) {
+      await EG.guarda(btn, async () => {
+        m.erro('');
+        try {
+          const c = await EG.api('POST', '/contas/categorias', { nome: campoNovo.value });
+          mudou = true; campoNovo.value = ''; EG.toast(`Categoria "${c.nome}" criada`);
+          await recarregar(); campoNovo.focus();
+        } catch (e) { m.erro(e.message); campoNovo.focus(); }
+      });
+    }
+    async function salvar(btn, id) {
+      const c = lista.find((x) => x.id === id); const novo = caixa.querySelector('[data-cat-renomear]').value;
+      await EG.guarda(btn, async () => {
+        m.erro('');
+        try {
+          const r = await EG.api('PUT', `/contas/categorias/${id}`, { nome: novo });
+          mudou = true; renomeadas[c.nome] = r.nome; editando = null;
+          EG.toast(r.antes === r.nome ? 'Nada mudou' : `Categoria renomeada para "${r.nome}"${r.contas ? ` · ${r.contas} conta(s) atualizada(s)` : ''}`);
+          await recarregar();
+        } catch (e) { m.erro(e.message); }
+      });
+    }
+    m.el.addEventListener('click', async (ev) => {
+      const b = ev.target.closest('[data-cat-acao]'); if (!b || b.disabled) return;
+      const linha = b.closest('[data-cat-id]'); const id = linha ? Number(linha.dataset.catId) : null;
+      const acao = b.dataset.catAcao;
+      if (acao === 'adicionar') return adicionar(b);
+      if (acao === 'editar') { editando = id; excluindo = null; m.erro(''); return desenhar(); }
+      if (acao === 'excluir') { excluindo = id; editando = null; m.erro(''); return desenhar(); }
+      if (acao === 'cancelar') { editando = null; excluindo = null; return desenhar(); }
+      if (acao === 'salvar') return salvar(b, id);
+      if (acao === 'confirmar-exclusao') {
+        const c = lista.find((x) => x.id === id);
+        return EG.guarda(b, async () => {
+          try {
+            await EG.api('DELETE', `/contas/categorias/${id}`);
+            mudou = true; excluindo = null; EG.toast(`Categoria "${c.nome}" excluída`); await recarregar();
+          } catch (e) { m.erro(e.message); excluindo = null; desenhar(); }
+        });
+      }
+      return null;
+    });
+    m.el.addEventListener('keydown', (ev) => {
+      if (ev.target === campoNovo && ev.key === 'Enter') { ev.preventDefault(); adicionar(m.el.querySelector('[data-cat-acao="adicionar"]')); }
+      if (ev.target.matches('[data-cat-renomear]')) {
+        if (ev.key === 'Enter') { ev.preventDefault(); salvar(caixa.querySelector('[data-cat-acao="salvar"]'), editando); }
+        if (ev.key === 'Escape') { ev.stopPropagation(); editando = null; desenhar(); }
+      }
+    });
+    recarregar().catch((e) => m.erro(e.message));
   }
 
   function modalPagar(c, el) {
@@ -148,6 +284,7 @@
         try {
           switch (b.dataset.action) {
             case 'nova': modalConta(null, el); break;
+            case 'categorias': modalCategorias(el); break;
             case 'editar': modalConta(c, el); break;
             case 'pagar': modalPagar(c, el); break;
             case 'status': filtro.status = b.dataset.status; render(el); break;

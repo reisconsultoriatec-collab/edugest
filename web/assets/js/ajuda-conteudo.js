@@ -934,7 +934,27 @@
         ]],
         ['p', 'As contas pagas entram no Fluxo de caixa e no DRE.']
       ],
-      relacionados: ['fluxo-caixa', 'conciliacao-conciliar']
+      relacionados: ['contas-categorias', 'fluxo-caixa', 'conciliacao-conciliar']
+    },
+    {
+      id: 'contas-categorias', titulo: 'Categorias das contas: cadastrar e renomear', tela: 'contas',
+      resumo: 'Criar as categorias de despesa do colégio, mudar o nome de uma categoria e excluir as que não são usadas.',
+      palavras: ['categoria', 'categorias', 'nova categoria', 'renomear', 'tipo de despesa', 'plano de contas'],
+      corpo: [
+        ['onde', 'Financeiro › Contas a Pagar › {{Categorias}}'],
+        ['p', 'Cada colégio tem a sua lista. Ela começa com as categorias padrão (aluguel, água, energia, folha de pagamento...) e as que o colégio já usava.'],
+        ['passos', [
+          '**Cadastrar**: digite o nome em "Nova categoria" e clique em {{Adicionar}} (ou aperte Enter).',
+          '**Renomear**: clique no lápis da categoria, digite o novo nome e clique em {{Salvar}}. As contas que já usavam a categoria passam a usar o novo nome, e os relatórios, o fluxo de caixa e o Painel da Direção continuam somando tudo junto.',
+          '**Excluir**: a lixeira só fica disponível para categorias sem nenhuma conta. Para tirar da lista uma categoria em uso, mude a categoria dessas contas ou renomeie.'
+        ]],
+        ['dica', 'Lançando uma conta e faltou a categoria? Na janela da conta, clique em {{Nova}} ao lado de "Categoria": ela é criada e já fica escolhida.'],
+        ['lista', [
+          '"Outros" é fixa: é a categoria usada quando nenhuma é escolhida.',
+          'Nomes que só mudam acento ou maiúscula ("agua" e "Água") contam como a mesma categoria.'
+        ]]
+      ],
+      relacionados: ['contas-pagar', 'relatorios-financeiros']
     },
     {
       id: 'fluxo-caixa', titulo: 'Fluxo de caixa', tela: 'fluxo',
@@ -1793,7 +1813,8 @@
       { alvo: '.pagina [data-action="documentos"]', titulo: 'Documentos', texto: 'Carnê do aluno, mensalidades do mês para imprimir e a declaração anual para o Imposto de Renda.' }
     ],
     contas: [
-      { g: 1, alvo: ['.pagina [data-action="nova"]', '.pagina .card'], titulo: 'Contas a Pagar', texto: 'Lance as despesas do colégio. Conta que se repete (mensal, trimestral, anual) lança a próxima sozinha ao ser paga.' }
+      { g: 1, alvo: ['.pagina [data-action="nova"]', '.pagina .card'], titulo: 'Contas a Pagar', texto: 'Lance as despesas do colégio. Conta que se repete (mensal, trimestral, anual) lança a próxima sozinha ao ser paga.' },
+      { alvo: '.pagina [data-action="categorias"]', titulo: 'Categorias', texto: 'Cadastre as categorias de despesa do colégio e renomeie quando quiser: as contas que usam a categoria acompanham o novo nome.' }
     ],
     fluxo: [
       { g: 1, alvo: ['.pagina svg', '.pagina .card'], titulo: 'Fluxo de Caixa', texto: 'Entradas e saídas mês a mês: o realizado (pagamentos) e o previsto (o que está em aberto).' }
