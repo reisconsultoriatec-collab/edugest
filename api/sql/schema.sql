@@ -86,6 +86,7 @@ CREATE TABLE IF NOT EXISTS config_colegio (
   dia_vencimento      TINYINT UNSIGNED  NOT NULL DEFAULT 10,
   media_aprovacao     DECIMAL(4,2)      NOT NULL DEFAULT 6.00,
   frequencia_minima   TINYINT UNSIGNED  NOT NULL DEFAULT 75 COMMENT 'Percentual mínimo de presença',
+  alerta_presenca     TINYINT UNSIGNED  NOT NULL DEFAULT 60 COMMENT 'Painel da Direção: turma abaixo deste % de presença no dia fica em alerta',
   timeout_sessao_min  SMALLINT UNSIGNED NOT NULL DEFAULT 15 COMMENT '0 = desativado',
   pix_tipo            VARCHAR(10)       NULL     COMMENT 'cpf, cnpj, celular, email ou aleatoria',
   pix_chave           VARCHAR(80)       NULL,

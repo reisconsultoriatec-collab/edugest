@@ -227,7 +227,7 @@
         ['h', 'O que tem na tela'],
         ['tabela', [
           ['Parte', 'O que mostra'],
-          ['Presença em sala (topo)', 'Cada turma, com a sala e o turno: quantos alunos estão presentes hoje (pela chamada do Diário) e os últimos 5 dias letivos. Abaixo de 60% a turma fica em vermelho **piscando**, e um aviso no alto lista as turmas em alerta. Aluno presente em pelo menos uma aula do dia conta como presente.'],
+          ['Presença em sala (topo)', 'Cada turma, com a sala e o turno: quantos alunos estão presentes hoje (pela chamada do Diário) e os últimos 5 dias letivos. Abaixo do percentual de alerta (padrão 60%) a turma fica em vermelho **piscando**, e um aviso no alto lista as turmas em alerta. Aluno presente em pelo menos uma aula do dia conta como presente.'],
           ['Indicadores', 'Alunos ativos (ocupação, vagas e variação desde janeiro), receita do mês, inadimplência do ano, frequência média, média geral e conversão da captação.'],
           ['Receita das mensalidades', 'Por mês de vencimento: recebido, vencido e não pago, e a vencer.'],
           ['Fluxo de caixa', 'Entradas (mensalidades pagas) e saídas (contas pagas) pelo mês do pagamento, com o saldo do ano.'],
@@ -239,6 +239,11 @@
           ['Atenção e agenda', 'Quantos alunos precisam de atenção (a lista fica no Dashboard) e os próximos eventos do calendário.']
         ]],
         ['dica', 'Passe o mouse (ou use a tecla Tab) sobre uma coluna ou barra para ver os valores exatos. O ícone de tabela, no canto de cada gráfico, mostra os mesmos números em forma de tabela.'],
+        ['h', 'Ajustes na barra do painel'],
+        ['lista', [
+          '**Alerta de presença abaixo de … %**: a direção define o percentual (de 1 a 100). Vale para todos que veem o painel deste colégio, inclusive a TV, e a mudança fica no Log de segurança.',
+          '**Rolagem automática** e **Velocidade** (lenta, normal, rápida ou muito rápida): ficam guardadas no navegador em que foram escolhidas. Ajuste no computador da TV antes de clicar em {{Modo TV}}; no modo TV a velocidade também aparece no cabeçalho.'
+        ]],
         ['h', 'Modo TV'],
         ['passos', [
           'Abra o Painel da Direção no computador ligado à TV.',
@@ -1732,9 +1737,10 @@
     ],
     direcao: [
       { g: 1, alvo: '.pagina .dir-cab', titulo: 'Painel da Direção', texto: 'Os números do colégio todo em gráficos, para a alta direção. Atualiza sozinho a cada 5 minutos; **Atualizar** busca na hora.' },
-      { g: 1, alvo: ['.pagina .dir-presenca', '.pagina .dir-cab'], titulo: 'Presença em sala', texto: 'No topo, a presença de hoje em cada turma (pela chamada do Diário) e os últimos 5 dias letivos. **Abaixo de 60%** a turma fica em vermelho piscando.' },
+      { g: 1, alvo: ['.pagina .dir-presenca', '.pagina .dir-cab'], titulo: 'Presença em sala', texto: 'No topo, a presença de hoje em cada turma (pela chamada do Diário) e os últimos 5 dias letivos. **Abaixo do alerta** (padrão 60%) a turma fica em vermelho piscando.' },
       { alvo: '.pagina .dir-kpis', titulo: 'Indicadores', texto: 'Alunos ativos, receita do mês, inadimplência, frequência, média geral e conversão da captação.' },
       { alvo: '.pagina .dir-grade', titulo: 'Gráficos', texto: 'Passe o mouse numa coluna ou barra para ver os valores. O ícone de tabela mostra os mesmos números em tabela.' },
+      { alvo: ['.pagina .dir-cab-acoes', '.pagina .dir-cab'], titulo: 'Ajustes', texto: 'Defina o **percentual de alerta** da presença (vale para o colégio) e a **velocidade da rolagem** (fica neste navegador) antes de abrir o modo TV.' },
       { g: 1, alvo: '.pagina [data-acao="tv"]', titulo: 'Modo TV', texto: 'Tela cheia, tema escuro, relógio e **rolagem automática** que desce e sobe sozinha. Com o painel aberto a sessão não encerra por inatividade.' }
     ],
     alunos: [

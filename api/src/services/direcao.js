@@ -22,7 +22,7 @@ const painel = require('./painel');
 const { somarDias } = require('./calendario');
 
 const CACHE_MS = 60 * 1000;
-const ALERTA_PRESENCA = 60; // %: turma com presença abaixo disso no dia fica em alerta (pisca no painel)
+const ALERTA_PRESENCA = 60; // % padrão: turma com presença abaixo disso no dia fica em alerta (a direção muda no painel)
 const DIAS_PRESENCA = 5;    // dias letivos mostrados por turma (o último é o dia principal)
 const cache = new Map();
 
@@ -229,9 +229,9 @@ function montarPresenca({ turmas, dias, linhas, hoje, alerta = ALERTA_PRESENCA }
 /* ---------------- Consultas ---------------- */
 async function carregar(colegioId) {
   const hoje = hojeSP();
-  const cfg = await queryUm(
-    `SELECT c.nome, cfg.ano_letivo, cfg.media_aprovacao, cfg.frequencia_minima FROM colegios c
-       LEFT JOIN config_colegio cfg ON cfg.colegio_id = c.id WHERE c.id = ?`, [colegioId]);
+  // cfg.*: funciona também antes da migração 016 (sem alerta_presenca vale o padrão)
+  const cfg = await queryUm('SELECT c.nome, cfg.* FROM colegios c LEFT JOIN config_colegio cfg ON cfg.colegio_id = c.id WHERE c.id = ?', [colegioId]);
+  const alerta = cfg && cfg.alerta_presenca !== null && cfg.alerta_presenca !== undefined ? Number(cfg.alerta_presenca) : ALERTA_PRESENCA;
   const ano = cfg && cfg.ano_letivo ? Number(cfg.ano_letivo) : Number(hoje.slice(0, 4));
   const mediaAprov = Number(cfg && cfg.media_aprovacao !== null && cfg.media_aprovacao !== undefined ? cfg.media_aprovacao : 6);
   const freqMin = Number(cfg && cfg.frequencia_minima !== null && cfg.frequencia_minima !== undefined ? cfg.frequencia_minima : 75);
@@ -272,14 +272,14 @@ async function carregar(colegioId) {
             GROUP BY d.turma_id, d.data, f.aluno_id`, [colegioId, ids, iniPresenca, hoje])
   ]);
   const diasLet = painel.diasLetivos(iniPresenca, hoje, painel.periodosDoAno(periodos, ano), naoLetivos.map((e) => ({ ...e, data: dia10(e.data), data_fim: dia10(e.data_fim) })));
-  const presenca = montarPresenca({ turmas, dias: diasLet, linhas: chamadas, hoje });
+  const presenca = montarPresenca({ turmas, dias: diasLet, linhas: chamadas, hoje, alerta });
   const fin = montarFinanceiro({ ano, hoje, mensalidades, contas });
   const al = montarAlunos({ ano, hoje, alunos, turmas });
   const ped = montarPedagogico({ turmas, freq, notas, mediaAprov });
   const cap = F.indicadores(leads, hoje);
   return {
     geradoEm: agoraSP(), hoje, anoLetivo: ano, colegio: cfg ? cfg.nome : null,
-    criterios: { mediaAprovacao: mediaAprov, frequenciaMinima: freqMin, alertaPresenca: ALERTA_PRESENCA },
+    criterios: { mediaAprovacao: mediaAprov, frequenciaMinima: freqMin, alertaPresenca: alerta },
     presenca,
     kpis: {
       ...al.alunos, turmas: turmas.length, professores: num(professores && professores.n),
@@ -297,6 +297,15 @@ async function carregar(colegioId) {
   };
 }
 
+/** Percentual de alerta da presença em sala, definido pela direção (1 a 100). */
+async function salvarAlertaPresenca(colegioId, valor) {
+  const tem = await queryUm('SELECT colegio_id, alerta_presenca FROM config_colegio WHERE colegio_id = ?', [colegioId]);
+  if (tem) await query('UPDATE config_colegio SET alerta_presenca = ? WHERE colegio_id = ?', [valor, colegioId]);
+  else await query('INSERT INTO config_colegio (colegio_id, ano_letivo, alerta_presenca) VALUES (?, ?, ?)', [colegioId, Number(hojeSP().slice(0, 4)), valor]);
+  cache.delete(colegioId); // o painel recalcula com o novo limite
+  return { antes: tem ? Number(tem.alerta_presenca) : ALERTA_PRESENCA, alertaPresenca: valor };
+}
+
 async function painelDirecao(colegioId, { atualizar } = {}) {
   const c = cache.get(colegioId);
   if (!atualizar && c && Date.now() - c.em < CACHE_MS) return c.dados;
@@ -305,4 +314,4 @@ async function painelDirecao(colegioId, { atualizar } = {}) {
   return dados;
 }
 
-module.exports = { podeVerDirecao, painelDirecao, montarFinanceiro, montarAlunos, montarPedagogico, montarPresenca, ALERTA_PRESENCA, DIAS_PRESENCA, CACHE_MS, _cache: cache };
+module.exports = { podeVerDirecao, painelDirecao, salvarAlertaPresenca, montarFinanceiro, montarAlunos, montarPedagogico, montarPresenca, ALERTA_PRESENCA, DIAS_PRESENCA, CACHE_MS, _cache: cache };

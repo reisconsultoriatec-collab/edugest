@@ -11,7 +11,10 @@
 (function (EG) {
   const ATUALIZA_MS = 5 * 60 * 1000;
   const CHAVE_ROLAGEM = 'edugest_direcao_rolagem';
-  const est = { dados: null, el: null, timers: [], tv: false, temaAntes: null, rolagem: false, tabela: {}, obs: null };
+  const CHAVE_VELOCIDADE = 'edugest_direcao_velocidade';
+  // Velocidade da rolagem: segundos para passar uma tela inteira (fica guardada neste navegador, ex.: o da TV)
+  const VELOCIDADES = { lenta: { nome: 'Lenta', s: 40 }, normal: { nome: 'Normal', s: 22 }, rapida: { nome: 'Rápida', s: 12 }, 'muito-rapida': { nome: 'Muito rápida', s: 7 } };
+  const est = { dados: null, el: null, timers: [], tv: false, temaAntes: null, rolagem: false, velocidade: 'normal', tabela: {}, obs: null };
   const esc = (s) => EG.esc(s);
   const moeda0 = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
   const moedaCurta = (v) => (Math.abs(v) >= 100000 ? `R$ ${EG.compacto(v)}` : moeda0(v));
@@ -24,6 +27,9 @@
   const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
   const lerPref = () => { try { return localStorage.getItem(CHAVE_ROLAGEM) === '1'; } catch (e) { return false; } };
   const salvarPref = (v) => { try { localStorage.setItem(CHAVE_ROLAGEM, v ? '1' : '0'); } catch (e) { /* sem armazenamento */ } };
+  const lerVelocidade = () => { try { const v = localStorage.getItem(CHAVE_VELOCIDADE); return VELOCIDADES[v] ? v : 'normal'; } catch (e) { return 'normal'; } };
+  const salvarVelocidade = (v) => { try { localStorage.setItem(CHAVE_VELOCIDADE, v); } catch (e) { /* sem armazenamento */ } };
+  const opcoesVelocidade = () => Object.entries(VELOCIDADES).map(([k, x]) => `<option value="${k}" ${est.velocidade === k ? 'selected' : ''}>${x.nome}</option>`).join('');
   const TIPOS_EVENTO = { evento: 'Evento', prova: 'Prova', reuniao: 'Reunião', conselho: 'Conselho de classe', feriado: 'Feriado', recesso: 'Recesso', letivo: 'Dia letivo extra' };
   /** A tela ainda está aberta (e a pessoa conectada)? */
   const vivo = () => !!(est.el && est.el.isConnected && !EG.$('#app').hidden);
@@ -289,6 +295,7 @@
           <span data-data>${dataLonga(hora)}</span></div>
         <div class="dir-tv-acoes">
           <span class="dir-tv-status" data-status-rolagem></span>
+          <select class="select dir-tv-velocidade" data-acao="velocidade" aria-label="Velocidade da rolagem" title="Velocidade da rolagem">${opcoesVelocidade()}</select>
           <button class="btn btn-secundario btn-pequeno" data-acao="rolagem"><i class="ti ti-player-pause"></i> Pausar rolagem</button>
           <button class="btn btn-secundario btn-pequeno" data-acao="sair-tv"><i class="ti ti-x"></i> Sair do modo TV</button>
         </div>
@@ -296,7 +303,14 @@
       <div class="dir-cab card">
         <div><h2>Painel da Direção</h2><p class="sub" data-atualizado>${esc(d.colegio || '')} · ano letivo ${d.anoLetivo} · atualizado às ${esc(String(d.geradoEm).slice(11, 16))} · atualiza sozinho a cada 5 minutos</p></div>
         <div class="dir-cab-acoes">
+          <label class="dir-campo" title="Turma com presença em sala abaixo deste percentual no dia fica em alerta (pisca). Vale para todos que veem o painel deste colégio.">
+            <i class="ti ti-alert-triangle"></i> Alerta de presença abaixo de
+            <input class="input" type="number" min="1" max="100" step="1" inputmode="numeric" data-acao="alerta" value="${esc(d.criterios.alertaPresenca)}" aria-label="Percentual de alerta da presença em sala"> %</label>
+          <span class="dir-cab-sep" aria-hidden="true"></span>
           <label class="dir-alterna"><input type="checkbox" data-acao="rolagem-auto" ${est.rolagem ? 'checked' : ''}> Rolagem automática</label>
+          <label class="dir-campo" title="Velocidade da rolagem automática, aqui e no modo TV (fica guardada neste navegador)">Velocidade
+            <select class="select" data-acao="velocidade" aria-label="Velocidade da rolagem">${opcoesVelocidade()}</select></label>
+          <span class="dir-cab-sep" aria-hidden="true"></span>
           <button class="btn btn-secundario btn-pequeno" data-acao="atualizar"><i class="ti ti-refresh"></i> Atualizar</button>
           <button class="btn btn-primario btn-pequeno" data-acao="tv"><i class="ti ti-device-tv"></i> Modo TV</button>
         </div>
@@ -331,7 +345,7 @@
       const atTv = est.el.querySelector('[data-atualizado-tv]');
       if (atTv) atTv.textContent = `${d.colegio || ''} · ano letivo ${d.anoLetivo} · atualizado às ${String(d.geradoEm).slice(11, 16)}`;
       window.scrollTo(0, y);
-      if (forcar) EG.toast('Painel atualizado');
+      if (forcar === true) EG.toast('Painel atualizado');
     } catch (e) {
       if (e.status === 403) { limpar(); EG.navegar('dashboard'); EG.toast(e.message, 'erro'); }
     }
@@ -378,7 +392,7 @@
   /* =================== Rolagem automática (desce, pausa, sobe) =================== */
   const rol = { ligada: false, dir: 1, pos: 0, pausaAte: 0, raf: 0, t0: 0, pausaUsuario: 0 };
   const PAUSA_TOPO = 12000, PAUSA_FIM = 8000, PAUSA_USUARIO = 30000;
-  function velocidade() { return Math.max(25, window.innerHeight / 22); } // px/s: a tela inteira em ~22 s
+  function velocidade() { return Math.max(15, window.innerHeight / (VELOCIDADES[est.velocidade] || VELOCIDADES.normal).s); } // px/s
   function ligarRolagem(ligar, semSalvar) {
     rol.ligada = !!ligar;
     if (!semSalvar && !est.tv) salvarPref(rol.ligada);
@@ -441,11 +455,45 @@
     EG.graf.esconderDica();
   }
 
+  /* =================== Configurações da barra =================== */
+  function mudarVelocidade(v) {
+    if (!VELOCIDADES[v]) return;
+    est.velocidade = v; salvarVelocidade(v);
+    rol.pausaUsuario = 0; // mexer na velocidade não conta como "mexeu na tela": já roda na nova
+    if (est.el) est.el.querySelectorAll('[data-acao="velocidade"]').forEach((s) => { s.value = v; });
+    EG.toast(`Velocidade da rolagem: ${VELOCIDADES[v].nome.toLowerCase()}`);
+  }
+  // Percentual de alerta: grava no colégio (vale para todos que veem o painel) e recalcula
+  let tAlerta = null;
+  function agendarAlerta(input) {
+    clearTimeout(tAlerta);
+    tAlerta = setTimeout(() => salvarAlerta(input), 600); // as setinhas do campo disparam várias mudanças seguidas
+  }
+  async function salvarAlerta(input) {
+    const atual = est.dados ? est.dados.criterios.alertaPresenca : 60;
+    const n = Number(input.value);
+    if (!Number.isInteger(n) || n < 1 || n > 100) {
+      input.classList.add('invalido'); EG.toast('Informe um percentual inteiro de 1 a 100', 'erro');
+      setTimeout(() => { input.value = atual; input.classList.remove('invalido'); }, 1500);
+      return;
+    }
+    if (n === atual) return;
+    input.disabled = true;
+    try {
+      await EG.api('PUT', '/direcao/config', { alertaPresenca: n });
+      await recarregar('silencioso');
+      EG.toast(`Alerta de presença: abaixo de ${n}%`);
+    } catch (e) {
+      EG.toast(e.message, 'erro'); input.value = atual;
+    } finally { input.disabled = false; }
+  }
+
   EG.registrarModulo('direcao', {
     async render(el) {
       limpar();
       est.el = el;
       est.rolagem = lerPref();
+      est.velocidade = lerVelocidade();
       const d = await EG.api('GET', '/direcao/painel');
       est.dados = d;
       desenhar(el, d);
@@ -473,7 +521,12 @@
           const corpo = el.querySelector('[data-corpo]'); corpo.innerHTML = montar(est.dados); graficos(el, est.dados);
         }
       };
-      el.onchange = (ev) => { if (ev.target.matches('[data-acao="rolagem-auto"]')) ligarRolagem(ev.target.checked, false); };
+      el.onchange = (ev) => {
+        const alvo = ev.target;
+        if (alvo.matches('[data-acao="rolagem-auto"]')) ligarRolagem(alvo.checked, false);
+        else if (alvo.matches('[data-acao="velocidade"]')) mudarVelocidade(alvo.value);
+        else if (alvo.matches('[data-acao="alerta"]')) agendarAlerta(alvo);
+      };
     },
     /** Saindo da tela: para tudo e devolve o encerramento por inatividade do colégio. */
     sair() {
