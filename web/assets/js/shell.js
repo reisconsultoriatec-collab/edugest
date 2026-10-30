@@ -46,6 +46,7 @@
     { secao: 'Sistema', itens: [
       { id: 'config', rotulo: 'Configurações', icone: 'ti-settings', pronto: true },
       { id: 'usuarios', rotulo: 'Usuários', icone: 'ti-users-group', pronto: true },
+      { id: 'online', rotulo: 'Usuários online', icone: 'ti-access-point', pronto: true, soAdmin: true },
       { id: 'virada', rotulo: 'Virada do ano letivo', icone: 'ti-calendar-repeat', pronto: true, soAdmin: true },
       { id: 'seguranca', rotulo: 'Log de Segurança', icone: 'ti-shield-lock', pronto: true, soAdmin: true },
       { id: 'lgpd', rotulo: 'Privacidade (LGPD)', icone: 'ti-user-shield', pronto: true, soAdmin: true },
@@ -95,6 +96,7 @@
     EG.$('#telaAuth').hidden = true;
     EG.$('#app').hidden = false;
     iniciarSessao(col.config ? col.config.timeoutSessaoMin : 15);
+    if (EG.iniciarPresenca) EG.iniciarPresenca(); // "estou online" a cada minuto (Sistema › Usuários online)
     if (EG.iniciarTopo) EG.iniciarTopo(); // conexão, tempo conectado e aviso de nova versão
     if (EG.iniciarPwa) EG.iniciarPwa();   // "Instalar o aplicativo" no menu do usuário
     // A tela de carregamento só sai quando a primeira página estiver pronta (no máximo 6 s)
@@ -313,7 +315,10 @@
   EG.$('#seletorColegio').addEventListener('change', (e) => EG.trocarColegio(Number(e.target.value)));
 
   /* ---------- Timeout de sessão ---------- */
-  const EVENTOS = ['mousedown', 'keydown', 'scroll', 'touchstart'];
+  // Só gestos da pessoa contam como uso. "scroll" ficou de fora: a página também rola sozinha
+  // (telas que se atualizam, rolagem automática) e isso não pode manter a sessão aberta.
+  // Rolar com a roda, o dedo, o teclado ou a barra de rolagem continua contando.
+  const EVENTOS = ['mousedown', 'keydown', 'touchstart', 'touchmove', 'wheel'];
   const AVISO_SEG = 60;
   let limiteMs = 0, tAviso = null, tContagem = null, modalAviso = null;
 
@@ -368,6 +373,7 @@
   /* ---------- Sair ---------- */
   async function sair(motivo) {
     EG.pararSessao();
+    if (EG.pararPresenca) await EG.pararPresenca(true); // sai da lista de online na hora
     try { await EG.api('POST', '/conta/evento', { tipo: motivo === 'timeout' ? 'timeout' : 'logout' }); } catch (e) { /* segue */ }
     await EG.auth.signOut();
     history.replaceState(null, '', location.pathname);

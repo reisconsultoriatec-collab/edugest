@@ -1291,6 +1291,35 @@
       ]
     },
     {
+      id: 'usuarios-online', titulo: 'Usuários online: quem está conectado agora', tela: 'online', perfis: ['admin'],
+      resumo: 'A equipe conectada neste momento, ativa ou ausente, há quanto tempo e em qual aparelho; as famílias só como número.',
+      palavras: ['online', 'conectados', 'quem esta usando', 'sessao', 'derrubar', 'encerrar sessao', 'deslogar', 'visto por ultimo'],
+      corpo: [
+        ['onde', 'Sistema › Usuários online (ou clique no contador **online** no topo da tela)'],
+        ['p', 'Cada aba aberta do EduGest avisa o sistema uma vez por minuto. Quem avisou nos últimos 2 minutos está **online**; quem fecha o sistema ou clica em Sair some da lista na hora. A tela se atualiza sozinha a cada 30 segundos.'],
+        ['tabela', [
+          ['Coluna', 'O que mostra'],
+          ['Situação', '**Ativa**: mexeu na tela (mouse, teclado ou toque) nos últimos 5 minutos. **Ausente**: o EduGest está aberto, mas parado ou em outra aba.'],
+          ['Conectada há', 'Desde quando a pessoa está no sistema sem sair (a aba mais antiga, se houver várias).'],
+          ['Aparelho', 'Computador, celular ou tablet, com o navegador e o sistema. Aparece também quantas abas a pessoa tem abertas.']
+        ]],
+        ['lista', [
+          'Os indicadores do alto mostram o total online, a equipe ativa e ausente, as **famílias no portal** (só o número, sem nomes) e a divisão por perfil.',
+          '**Equipe fora do sistema** lista quem não está conectado, com o dia e a hora em que foi visto por último.',
+          'O sistema **não registra a tela** que cada pessoa está usando nem o IP; isso fica só no Log de segurança, nas entradas e saídas.'
+        ]],
+        ['h', 'Encerrar a sessão de alguém'],
+        ['passos', [
+          'Na linha da pessoa, clique em {{Encerrar sessão}} e confirme.',
+          'Em até 1 minuto ela sai do EduGest em todas as abas e aparelhos conectados a este colégio, com o aviso de que o administrador encerrou a sessão.',
+          'Ela pode entrar de novo com a senha. Para **impedir** o acesso, bloqueie a pessoa em Sistema › Usuários.'
+        ]],
+        ['atencao', 'Você não encerra a própria sessão (use **Sair**). A sessão de outro administrador só o proprietário do sistema encerra. Cada encerramento fica no Log de segurança.'],
+        ['dica', 'O tempo para encerrar a sessão por inatividade continua valendo: o aviso de "estou online" não conta como uso. Só mexer na tela conta.']
+      ],
+      relacionados: ['usuarios-gerenciar', 'seguranca-log']
+    },
+    {
       id: 'seguranca-log', titulo: 'Log de segurança', tela: 'seguranca', perfis: ['admin'],
       resumo: 'Registro permanente de entradas, senhas erradas, saídas, inatividade, cadastros e ações administrativas.',
       palavras: ['auditoria', 'log', 'quem acessou', 'tentativa de acesso', 'ip'],
@@ -1846,6 +1875,11 @@
       { g: 1, alvo: ['.pagina [data-action="vincular"]', '.pagina .card'], titulo: 'Usuários', texto: 'Aprove os cadastros, escolha o perfil e os módulos de cada pessoa e bloqueie quem saiu.' },
       { alvo: '.pagina .tabela-wrap', titulo: 'Equipe e responsáveis', texto: 'Perfil, situação, o que cada um acessa e o último acesso.' }
     ],
+    online: [
+      { g: 1, alvo: ['.pagina .grade-kpi', '.pagina .card'], titulo: 'Usuários online', texto: 'Quantas pessoas estão no sistema agora: a equipe ativa ou ausente e as famílias no portal (só o número). Atualiza sozinho a cada 30 segundos; o contador do topo leva até aqui.' },
+      { alvo: '.pagina .on-tabela', titulo: 'Equipe conectada', texto: 'Há quanto tempo cada pessoa está conectada e em qual aparelho. {{Encerrar sessão}} tira a pessoa do sistema em até 1 minuto.' },
+      { alvo: '.pagina .on-fora', titulo: 'Fora do sistema', texto: 'Quem da equipe não está conectado e quando foi visto por último.' }
+    ],
     virada: [
       { g: 1, alvo: ['.pagina .virada-anos', '.pagina .card'], titulo: 'Virada do ano letivo', texto: 'No fim do ano: cria as turmas do ano novo, passa os alunos, gera as mensalidades e muda o ano letivo. Nada é gravado antes da conferência e dá para desfazer.' },
       { alvo: '.pagina .virada-passos', titulo: 'Quatro passos', texto: 'Turmas, Alunos, Mensalidades e Conferir.' }
@@ -1910,7 +1944,7 @@
     { alvo: '[data-action="ajuda"]', celular: '.usuario-botao', titulo: 'Central de ajuda', texto: ['Pronto! Quando tiver dúvida, use o botão **?**: ele abre o manual já na tela em que você está.', 'Na Central de ajuda há o passo a passo de cada tela, as perguntas frequentes, o manual em PDF e este tour para rever quando quiser.'] }
   ];
   const ordemEquipe = ['dashboard', 'direcao', 'alunos', 'professores', 'turmas', 'diario', 'notas', 'boletim', 'calendario', 'grade', 'documentos',
-    'mensalidades', 'contas', 'fluxo', 'bolsas', 'relatorios', 'conciliacao', 'funil', 'comunicados', 'config', 'usuarios', 'virada', 'seguranca', 'lgpd', 'colegios'];
+    'mensalidades', 'contas', 'fluxo', 'bolsas', 'relatorios', 'conciliacao', 'funil', 'comunicados', 'config', 'usuarios', 'online', 'virada', 'seguranca', 'lgpd', 'colegios'];
   const ordemPortal = ['portal', 'portal-boletim', 'portal-frequencia', 'portal-financeiro', 'portal-comunicados', 'portal-calendario', 'portal-privacidade'];
 
   /* "Comece por aqui": o essencial de cada perfil, na ordem de uso */

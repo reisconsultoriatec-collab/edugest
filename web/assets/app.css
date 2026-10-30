@@ -1502,3 +1502,42 @@ body.modo-tv.cursor-oculto, body.modo-tv.cursor-oculto * { cursor: none !importa
 .cat-linha.confirmando > span { overflow-wrap: anywhere; }
 .cat-aviso { grid-column: 1 / -1; font-size: 12px; color: var(--text-2); }
 @media (max-width: 520px) { .cat-linha { grid-template-columns: minmax(0, 1fr) 76px; } .cat-uso { grid-column: 1; grid-row: 2; } .cat-acoes { grid-row: 1 / span 2; grid-column: 2; } }
+
+/* ---------- Usuários online (administrador) ---------- */
+.online-contador { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px 0 10px; border-radius: 17px;
+  border: 1px solid var(--border); background: var(--card); color: var(--text-2); font: inherit; font-size: 12.5px; white-space: nowrap; cursor: pointer;
+  font-variant-numeric: tabular-nums; }
+.online-contador i { color: var(--ok); font-size: 15px; }
+.online-contador [data-online-n] { color: var(--text); font-weight: 600; }
+.online-contador:hover { border-color: var(--amber); }
+.online-contador:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.on-cab { padding: 16px 20px; }
+.on-pessoa { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.on-pessoa > span:last-child { display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
+.on-avatar { width: 32px; height: 32px; font-size: 13px; }
+.on-avatar.apagado { background: var(--bg); color: var(--text-2); border: 1px solid var(--border); }
+.on-situacao { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+.on-situacao i { font-size: 10px; }
+.on-situacao.ativa { color: var(--ok-tx); }
+.on-situacao.ausente { color: var(--text-2); }
+.on-situacao.ausente i { font-size: 13px; }
+.on-num { display: block; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.on-aparelho { font-size: 12.5px; white-space: nowrap; }
+.on-aparelho i { color: var(--text-2); }
+.on-tabela td { vertical-align: middle; }
+.on-encerrar:hover:not(:disabled) { border-color: var(--erro); color: var(--erro-tx); }
+.on-nota { font-size: 12px; color: var(--text-2); margin-top: 12px; line-height: 1.5; }
+.on-fora { list-style: none; margin: 0 0 12px; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0 24px; }
+.on-fora li { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px dashed var(--border); font-size: 13px; min-width: 0; }
+.on-fora-nome { display: flex; flex-direction: column; min-width: 0; flex: 1; overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+  .online-contador .online-rotulo { display: none; }
+  .on-tabela thead { display: none; }
+  .on-tabela, .on-tabela tbody { display: block; }
+  .on-tabela tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .on-tabela td { display: block; padding: 0; border: 0; }
+  .on-tabela td:first-child { grid-column: 1 / -1; }
+  .on-tabela td.acoes { grid-column: 1 / -1; text-align: left; }
+  .on-tabela td[data-rotulo="Aparelho"] { grid-column: 1 / -1; }
+  .on-fora { grid-template-columns: minmax(0, 1fr); }
+}

@@ -63,3 +63,11 @@ Se essa opção não aparecer no seu plano, não tem problema: o cadastro do Edu
 - Com o painel aberto, a sessão **não encerra por inatividade** e os números se atualizam a cada 5 minutos. Por isso: TV só em sala da direção (não na recepção), conta de quem é da direção, e **Sair** ao desligar.
 - Se a marcação for retirada com o painel aberto, a pessoa sai do painel na próxima atualização.
 - No topo fica a **presença em sala** de cada turma (chamada do Diário). Turma abaixo do percentual de alerta no dia pisca em vermelho. O percentual é definido pela direção na barra do painel (coluna `config_colegio.alerta_presenca`, migração 016; padrão 60%). A velocidade da rolagem fica guardada no navegador da TV. Quem configurou o computador para "reduzir movimento" vê o alerta em vermelho, sem piscar.
+
+## 6. Usuários online
+
+- Tela do administrador em Sistema › Usuários online, com o contador **online** no topo. Tabela `sessoes_online` (migração 018): uma linha por aba aberta, com o perfil, o aparelho (tipo, navegador e sistema), se mexeu na tela nos últimos 5 minutos e a hora do último sinal. **Não guarda a tela em uso nem o IP.**
+- Cada aba manda um sinal por minuto; sem sinal há mais de 2 minutos = fora do sistema. Fechar a aba ou clicar em Sair apaga a linha na hora. Linhas com mais de 2 dias são apagadas sozinhas.
+- O sinal **não conta como uso**: o encerramento por inatividade continua valendo. Só gestos da pessoa contam (mouse, teclado, toque, roda do mouse); a página rolar sozinha não conta.
+- **Encerrar sessão** marca as abas da pessoa naquele colégio; no próximo sinal (até 1 minuto) ela sai com um aviso e pode entrar de novo com a senha. Para impedir o acesso, bloqueie em Sistema › Usuários. Não vale para a própria sessão; a de outro administrador, só o proprietário. Cada encerramento fica no Log de Segurança.
+- Os sinais (`/api/presenca/sinal` e `/saida`) ficam fora do limite de requisições da API, como o `/api/health`.

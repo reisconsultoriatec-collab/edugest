@@ -53,8 +53,9 @@ app.use('/api', rateLimit({
   standardHeaders: 'draft-7',
   legacyHeaders: false,
   keyGenerator: ipCliente,
-  // O monitor de disponibilidade (UptimeRobot) e o indicador de conexão do topo não contam
-  skip: (req) => req.path === '/health',
+  // Não contam: o monitor de disponibilidade (UptimeRobot), o indicador de conexão do topo
+  // e o sinal de "estou online" (1 por minuto por aba aberta — uma escola inteira no mesmo IP)
+  skip: (req) => req.path === '/health' || req.path === '/presenca/sinal' || req.path === '/presenca/saida',
   validate: false,
   message: { erro: 'Muitas requisições. Aguarde alguns minutos.' }
 }));
@@ -72,6 +73,8 @@ app.use('/api/colegios', autenticar, carregarUsuario, exigirUsuario, require('./
 app.use('/api/proprietario', autenticar, carregarUsuario, exigirUsuario, exigirProprietario, require('./src/routes/proprietario'));
 app.use('/api/usuarios', autenticar, carregarUsuario, exigirColegio, exigirPerfil('admin'), require('./src/routes/usuarios'));
 app.use('/api/seguranca', autenticar, carregarUsuario, exigirColegio, exigirPerfil('admin'), require('./src/routes/seguranca'));
+// Usuários online: sinal de cada aba aberta (todos) e a lista (só administrador)
+app.use('/api/presenca', autenticar, carregarUsuario, exigirColegio, require('./src/routes/presenca'));
 
 // Pedagógico — só equipe; cada rota confere o módulo
 const equipe = [autenticar, carregarUsuario, exigirColegio, exigirPerfil('admin', 'professor', 'financeiro')];
