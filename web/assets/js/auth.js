@@ -37,13 +37,142 @@
     ['ti-file-certificate', 'Secretaria digital', 'Declarações, histórico escolar e contrato com QR Code de validação.'],
     ['ti-home-heart', 'Família por perto', 'Portal do responsável com boletim, comunicados e cobranças.']
   ];
+  /* ---------- Frase do painel, escrita a lápis ----------
+   * Cada letra é traçada (contorno dourado) no ritmo do lápis e depois se preenche de branco;
+   * no fim o lápis sublinha "completa" e sai. Leitores de tela leem a frase inteira (so-leitor).
+   * Celular (painel escondido) e "reduzir movimento": a frase aparece pronta, sem lápis. */
+  const FRASE = 'Gestão escolar completa para a secretaria, a sala de aula, o financeiro e as famílias.';
+  const DESTAQUE = 'completa';
+  const LAPIS = `<svg viewBox="0 0 120 22" aria-hidden="true">
+      <path d="M7 8.2 22 3v16L7 13.8z" fill="#F3D2A6"/><path d="M0 11 7 8.2v5.6z" fill="#1E293B"/>
+      <rect x="22" y="3" width="72" height="16" fill="#F59E0B"/><rect x="22" y="3" width="72" height="5" fill="#FCD34D"/>
+      <rect x="22" y="14" width="72" height="5" fill="#D97706"/>
+      <rect x="94" y="2.5" width="11" height="17" fill="#CBD5E1"/><path d="M97.5 2.5v17M101 2.5v17" stroke="#94A3B8" stroke-width="1"/>
+      <path d="M105 2.5h7a5 5 0 0 1 5 5v7a5 5 0 0 1-5 5h-7z" fill="#F9A8B8"/></svg>`;
+  function fraseHtml() {
+    return FRASE.split(' ').map((p) => {
+      const letras = [...p].map((c) => `<span class="esc-l">${EG.esc(c)}</span>`).join('');
+      return p === DESTAQUE
+        ? `<span class="esc-p esc-destaque">${letras}<svg class="esc-risco" viewBox="0 0 200 14" preserveAspectRatio="none"><path d="M3 9C45 5 90 4 130 6S185 9 197 5" pathLength="1"/></svg></span>`
+        : `<span class="esc-p">${letras}</span>`;
+    }).join(' ');
+  }
+
+  let escrita = { quadro: 0, espera: 0 };
+  function escreverFrase(t) {
+    cancelAnimationFrame(escrita.quadro); clearTimeout(escrita.espera);
+    const h1 = EG.$('.auth-titulo', t), caixa = EG.$('.auth-lado-texto', t), lapis = EG.$('.lapis', t);
+    if (!h1 || !caixa || !lapis) return;
+    const letras = [...h1.querySelectorAll('.esc-l')];
+    const risco = EG.$('.esc-risco', h1), traco = risco && risco.querySelector('path');
+    const mov = lapis.firstElementChild;
+    const terminar = () => {
+      cancelAnimationFrame(escrita.quadro); clearTimeout(escrita.espera);
+      letras.forEach((l) => { l.style.clipPath = ''; });
+      if (traco) traco.style.strokeDashoffset = '';
+      h1.classList.add('escrito'); lapis.classList.remove('visivel');
+    };
+    let reduzir = false;
+    try { reduzir = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { /* segue */ }
+    if (reduzir || !caixa.offsetParent || !letras.length) return terminar();
+
+    // Roteiro (montado já com a fonte carregada): em cada letra o lápis primeiro se desloca
+    // (espaço, vírgula, troca de linha) e depois escreve
+    let passos = [];
+    const roteiro = () => {
+      const r0 = letras.map((l) => l.getBoundingClientRect());
+      passos = letras.map((l, i) => {
+        const anterior = i ? letras[i - 1].textContent : '';
+        const novaLinha = i > 0 && r0[i].top - r0[i - 1].top > 4;
+        const novaPalavra = i > 0 && !l.previousElementSibling;
+        let desloca = i === 0 || novaLinha ? 420 : novaPalavra ? 70 : 0;
+        if (novaPalavra && anterior === ',') desloca += 200;
+        return { desloca, escreve: 12 + r0[i].width * 0.95 + Math.random() * 10, novaLinha, novaPalavra };
+      });
+    };
+    const suave = (f) => (f < 0.5 ? 2 * f * f : 1 - Math.pow(-2 * f + 2, 2) / 2);
+    const ponta = (r, b, direita) => ({ x: (direita ? r.right : r.left) - b.left, y: r.top + r.height * 0.8 - b.top });
+    const por = (p, sobe = 0, gira = 0) => {
+      lapis.style.transform = `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px)`;
+      mov.style.transform = `translateY(${(-sobe).toFixed(1)}px) rotate(${gira.toFixed(2)}deg)`;
+    };
+    const entre = (a, c, f) => ({ x: a.x + (c.x - a.x) * f, y: a.y + (c.y - a.y) * f });
+    const noRisco = (b, f) => {
+      const rr = risco.getBoundingClientRect(); const pt = traco.getPointAtLength(f * traco.getTotalLength());
+      return { x: rr.left + (pt.x / 200) * rr.width - b.left, y: rr.top + (pt.y / 14) * rr.height - b.top };
+    };
+    let i = 0, tempo = 0, fase = 'letras', ultimo = null, deOnde = null;
+    const DURA = { chega: 380, risca: 520, sai: 480 };
+
+    function quadro(agora) {
+      if (!h1.isConnected || t.hidden) return terminar();
+      tempo += ultimo === null ? 0 : Math.min(agora - ultimo, 50); // aba escondida: continua de onde parou
+      ultimo = agora;
+      const b = caixa.getBoundingClientRect();
+      if (fase === 'letras') {
+        for (;;) {
+          const p = passos[i], r = letras[i].getBoundingClientRect();
+          const ini = ponta(r, b, false), fim = ponta(r, b, true);
+          if (tempo < p.desloca) { // indo até o começo da letra
+            const f = tempo / p.desloca;
+            const de = i ? ponta(letras[i - 1].getBoundingClientRect(), b, true) : { x: ini.x + 34, y: ini.y - 40 };
+            por(entre(de, ini, i === 0 || p.novaLinha ? suave(f) : f), (p.novaLinha ? 12 : p.novaPalavra ? 4 : 0) * Math.sin(f * Math.PI));
+            break;
+          }
+          const g = (tempo - p.desloca) / p.escreve;
+          if (g < 1) { // escrevendo a letra, da esquerda para a direita
+            letras[i].classList.add('traco');
+            letras[i].style.clipPath = `inset(-35% ${((1 - g) * 100).toFixed(1)}% -35% -12%)`;
+            por(entre(ini, fim, g), 2.5 * Math.sin(g * Math.PI), -2 * Math.sin(g * Math.PI));
+            break;
+          }
+          letras[i].style.clipPath = ''; letras[i].classList.add('traco', 'feito'); // computador lento: a letra pode passar inteira num quadro só
+          tempo -= p.desloca + p.escreve; i += 1;
+          if (i >= letras.length) { fase = risco ? 'chega' : 'sai'; deOnde = fim; break; }
+        }
+      }
+      if (fase === 'chega') { // vai até o começo do sublinhado
+        const f = Math.min(1, tempo / DURA.chega);
+        por(entre(deOnde, noRisco(b, 0), suave(f)), 10 * Math.sin(f * Math.PI));
+        if (f >= 1) { tempo -= DURA.chega; fase = 'risca'; }
+      }
+      if (fase === 'risca') { // sublinha "completa"
+        const f = Math.min(1, tempo / DURA.risca);
+        traco.style.strokeDashoffset = String(1 - f);
+        por(noRisco(b, f), 0, -1.5 * Math.sin(f * Math.PI));
+        if (f >= 1) { tempo -= DURA.risca; fase = 'sai'; deOnde = noRisco(b, 1); }
+      }
+      if (fase === 'sai') { // levanta e some
+        const f = Math.min(1, tempo / DURA.sai);
+        if (!lapis.classList.contains('saindo')) { lapis.classList.add('saindo'); lapis.classList.remove('visivel'); }
+        por(entre(deOnde, { x: deOnde.x + 30, y: deOnde.y - 38 }, suave(f)));
+        if (f >= 1) return terminar();
+      }
+      escrita.quadro = requestAnimationFrame(quadro);
+    }
+
+    h1.classList.remove('escrito'); lapis.classList.remove('saindo');
+    // espera a fonte e a entrada da tela; começa no máximo em 1,5 s
+    const fontes = document.fonts && document.fonts.ready ? Promise.race([document.fonts.ready, new Promise((ok) => setTimeout(ok, 1500))]) : Promise.resolve();
+    const comeco = Date.now();
+    fontes.then(() => {
+      escrita.espera = setTimeout(() => {
+        if (!h1.isConnected) return;
+        if (!caixa.offsetParent) return terminar();
+        roteiro();
+        lapis.classList.add('visivel');
+        escrita.quadro = requestAnimationFrame(quadro);
+      }, Math.max(0, 650 - (Date.now() - comeco)));
+    });
+  }
+
   function estrutura() {
     return `
       <section class="auth-lado">
         <div class="auth-lado-marca">${EG.logo('clara')}<span>EduGest</span></div>
         <div class="auth-lado-texto">
-          <h1>Seu colégio organizado, da matrícula ao boletim.</h1>
-          <p>Gestão escolar completa para a secretaria, a sala de aula, o financeiro e as famílias.</p>
+          <h1 class="auth-titulo"><span class="so-leitor">${FRASE}</span><span class="esc" aria-hidden="true">${fraseHtml()}</span></h1>
+          <div class="lapis" aria-hidden="true"><div class="lapis-mov">${LAPIS}</div></div>
           <ul class="auth-recursos">${RECURSOS.map(([i, t, d]) => `
             <li><span class="auth-recurso-icone"><i class="ti ${i}"></i></span><div><strong>${t}</strong><small>${d}</small></div></li>`).join('')}
           </ul>
@@ -74,6 +203,7 @@
       clearTimeout(preencher._t);
       preencher._t = setTimeout(() => t.classList.remove('entrando'), 1400);
       card = EG.$('#authCard', t);
+      escreverFrase(t);
     } else {
       card.classList.remove('troca'); void card.offsetWidth; card.classList.add('troca');
     }

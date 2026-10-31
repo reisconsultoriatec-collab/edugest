@@ -96,9 +96,25 @@ h1, h2, h3, .fonte-titulo { font-family: 'Space Grotesk', 'Inter', sans-serif; }
 .auth-lado::before { content: ''; position: absolute; top: 0; bottom: 0; left: calc(clamp(32px, 6vw, 96px) - 24px); width: 1px;
   background: linear-gradient(transparent, rgba(245, 158, 11, .5) 18%, rgba(245, 158, 11, .5) 82%, transparent); }
 .auth-lado-marca { display: flex; align-items: center; gap: 12px; font-family: 'Space Grotesk', sans-serif; font-size: 22px; font-weight: 700; }
-.auth-lado-texto { max-width: 540px; }
-.auth-lado h1 { font-size: clamp(32px, 3.3vw, 46px); line-height: 1.1; letter-spacing: -.022em; font-weight: 700; margin-bottom: 18px; text-wrap: balance; }
-.auth-lado-texto > p { font-size: 16.5px; line-height: 1.6; color: rgba(255, 255, 255, .74); max-width: 44ch; margin-bottom: 38px; }
+.auth-lado-texto { max-width: 600px; position: relative; }
+.auth-lado h1 { font-size: clamp(30px, 2.8vw, 40px); line-height: 1.2; letter-spacing: -.02em; font-weight: 700; margin-bottom: 42px; text-wrap: balance; }
+/* Frase escrita a lápis (auth.js → escreverFrase): contorno dourado no traço, depois preenche de branco */
+.so-leitor { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.esc-p { white-space: nowrap; }
+.esc-l { color: transparent; -webkit-text-stroke: 1.1px transparent; }
+.esc-l.traco { -webkit-text-stroke-color: #FCD34D; }
+.esc-l.traco.feito { color: #fff; -webkit-text-stroke-color: rgba(252, 211, 77, 0);
+  transition: color .6s ease .12s, -webkit-text-stroke-color .5s ease .3s; }
+.esc-destaque { position: relative; }
+.esc-risco { position: absolute; left: -3%; width: 106%; bottom: -.12em; height: .34em; overflow: visible; pointer-events: none; }
+.esc-risco path { fill: none; stroke: var(--amber); stroke-width: 3.2; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; }
+.auth-titulo.escrito .esc-l { color: #fff; -webkit-text-stroke-color: transparent; clip-path: none; }
+.auth-titulo.escrito .esc-risco path { stroke-dashoffset: 0; }
+.lapis { position: absolute; left: 0; top: 0; width: 0; height: 0; z-index: 2; pointer-events: none; opacity: 0; transition: opacity .35s ease; }
+.lapis.visivel { opacity: 1; }
+.lapis-mov { position: absolute; left: 0; top: 0; }
+.lapis svg { position: absolute; left: 0; top: -11px; width: 112px; height: 22px; transform-origin: 0 11px; transform: rotate(-38deg);
+  filter: drop-shadow(-3px 9px 7px rgba(2, 6, 23, .5)); }
 .auth-recursos { list-style: none; display: grid; gap: 20px; }
 .auth-recursos li { display: flex; gap: 14px; align-items: flex-start; }
 .auth-recurso-icone { width: 42px; height: 42px; border-radius: 11px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
@@ -144,10 +160,7 @@ h1, h2, h3, .fonte-titulo { font-family: 'Space Grotesk', 'Inter', sans-serif; }
 .caps-lock[hidden] { display: none !important; }
 /* Entrada da tela (uma vez) e troca de aba */
 .tela-auth.entrando .auth-card { animation: subir-cartao .6s cubic-bezier(.2, .8, .2, 1) both; }
-.tela-auth.entrando .auth-lado-marca, .tela-auth.entrando .auth-lado h1, .tela-auth.entrando .auth-lado-texto > p,
-.tela-auth.entrando .auth-recursos li { animation: surgir .6s cubic-bezier(.2, .8, .2, 1) both; }
-.tela-auth.entrando .auth-lado h1 { animation-delay: .08s; }
-.tela-auth.entrando .auth-lado-texto > p { animation-delay: .16s; }
+.tela-auth.entrando .auth-lado-marca, .tela-auth.entrando .auth-recursos li { animation: surgir .6s cubic-bezier(.2, .8, .2, 1) both; }
 .tela-auth.entrando .auth-recursos li:nth-child(1) { animation-delay: .26s; }
 .tela-auth.entrando .auth-recursos li:nth-child(2) { animation-delay: .34s; }
 .tela-auth.entrando .auth-recursos li:nth-child(3) { animation-delay: .42s; }
@@ -903,7 +916,7 @@ a.btn { text-decoration: none; }
 /* Telas baixas (notebook 1366×768 com barra do navegador): painel mais compacto */
 @media (min-width: 961px) and (max-height: 760px) {
   .auth-lado { padding-top: 32px; padding-bottom: 28px; }
-  .auth-lado-texto > p { margin-bottom: 24px; }
+  .auth-lado h1 { margin-bottom: 26px; }
   .auth-recursos { gap: 13px; }
 }
 @media (min-width: 961px) and (max-height: 640px) { .auth-recursos small { display: none; } }
