@@ -105,6 +105,7 @@ h1, h2, h3, .fonte-titulo { font-family: 'Space Grotesk', 'Inter', sans-serif; }
 .esc-l.traco { -webkit-text-stroke-color: #FCD34D; }
 .esc-l.traco.feito { color: #fff; -webkit-text-stroke-color: rgba(252, 211, 77, 0);
   transition: color .6s ease .12s, -webkit-text-stroke-color .5s ease .3s; }
+.auth-titulo.apagando .esc-l { color: transparent; -webkit-text-stroke-color: transparent; transition: color .45s ease, -webkit-text-stroke-color .45s ease; }
 .esc-destaque { position: relative; }
 .esc-risco { position: absolute; left: -3%; width: 106%; bottom: -.12em; height: .34em; overflow: visible; pointer-events: none; }
 .esc-risco path { fill: none; stroke: var(--amber); stroke-width: 3.2; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; }

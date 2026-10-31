@@ -37,12 +37,15 @@
     ['ti-file-certificate', 'Secretaria digital', 'Declarações, histórico escolar e contrato com QR Code de validação.'],
     ['ti-home-heart', 'Família por perto', 'Portal do responsável com boletim, comunicados e cobranças.']
   ];
-  /* ---------- Frase do painel, escrita a lápis ----------
-   * Cada letra é traçada (contorno dourado) no ritmo do lápis e depois se preenche de branco;
-   * no fim o lápis sublinha "completa" e sai. Leitores de tela leem a frase inteira (so-leitor).
-   * Celular (painel escondido) e "reduzir movimento": a frase aparece pronta, sem lápis. */
-  const FRASE = 'Gestão escolar completa para a secretaria, a sala de aula, o financeiro e as famílias.';
+  /* ---------- Frase do painel, escrita a lápis (sem parar) ----------
+   * O lápis traça cada letra (contorno dourado que se preenche de branco) e sublinha "completa";
+   * a frase fica parada para leitura, se apaga devagar e o lápis escreve de novo, em ciclo.
+   * Só gasta processamento enquanto o lápis se mexe; com a aba escondida o navegador pausa.
+   * Leitores de tela leem a frase inteira, uma vez (so-leitor).
+   * Celular (painel escondido) e "reduzir movimento": a frase aparece pronta e parada. */
+  const FRASE = 'Gestão escolar completa que integra secretaria, sala\u00a0de\u00a0aula, financeiro e famílias.'; // "sala de aula" sempre na mesma linha
   const DESTAQUE = 'completa';
+  const TEMPO = { inicio: 650, chega: 380, risca: 520, sai: 480, parada: 7000, apaga: 450, onda: 7, respiro: 600 };
   const LAPIS = `<svg viewBox="0 0 120 22" aria-hidden="true">
       <path d="M7 8.2 22 3v16L7 13.8z" fill="#F3D2A6"/><path d="M0 11 7 8.2v5.6z" fill="#1E293B"/>
       <rect x="22" y="3" width="72" height="16" fill="#F59E0B"/><rect x="22" y="3" width="72" height="5" fill="#FCD34D"/>
@@ -58,7 +61,7 @@
     }).join(' ');
   }
 
-  let escrita = { quadro: 0, espera: 0 };
+  const escrita = { quadro: 0, espera: 0 };
   function escreverFrase(t) {
     cancelAnimationFrame(escrita.quadro); clearTimeout(escrita.espera);
     const h1 = EG.$('.auth-titulo', t), caixa = EG.$('.auth-lado-texto', t), lapis = EG.$('.lapis', t);
@@ -66,18 +69,20 @@
     const letras = [...h1.querySelectorAll('.esc-l')];
     const risco = EG.$('.esc-risco', h1), traco = risco && risco.querySelector('path');
     const mov = lapis.firstElementChild;
-    const terminar = () => {
+    const naTela = () => h1.isConnected && !t.hidden && !!caixa.offsetParent;
+    /** Frase pronta e parada (celular, "reduzir movimento", saiu da tela de entrada). */
+    const parar = () => {
       cancelAnimationFrame(escrita.quadro); clearTimeout(escrita.espera);
-      letras.forEach((l) => { l.style.clipPath = ''; });
-      if (traco) traco.style.strokeDashoffset = '';
-      h1.classList.add('escrito'); lapis.classList.remove('visivel');
+      letras.forEach((l) => { l.style.clipPath = ''; l.style.transitionDelay = ''; });
+      if (traco) { traco.style.strokeDashoffset = ''; traco.style.transition = ''; }
+      h1.classList.remove('apagando'); h1.classList.add('escrito'); lapis.classList.remove('visivel', 'saindo');
     };
     let reduzir = false;
     try { reduzir = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { /* segue */ }
-    if (reduzir || !caixa.offsetParent || !letras.length) return terminar();
+    if (reduzir || !caixa.offsetParent || !letras.length) return parar();
 
-    // Roteiro (montado já com a fonte carregada): em cada letra o lápis primeiro se desloca
-    // (espaço, vírgula, troca de linha) e depois escreve
+    // Roteiro (refeito a cada volta, com a fonte carregada e a largura atual): em cada letra
+    // o lápis primeiro se desloca (espaço, vírgula, troca de linha) e depois escreve
     let passos = [];
     const roteiro = () => {
       const r0 = letras.map((l) => l.getBoundingClientRect());
@@ -102,10 +107,9 @@
       return { x: rr.left + (pt.x / 200) * rr.width - b.left, y: rr.top + (pt.y / 14) * rr.height - b.top };
     };
     let i = 0, tempo = 0, fase = 'letras', ultimo = null, deOnde = null;
-    const DURA = { chega: 380, risca: 520, sai: 480 };
 
     function quadro(agora) {
-      if (!h1.isConnected || t.hidden) return terminar();
+      if (!naTela()) return parar();
       tempo += ultimo === null ? 0 : Math.min(agora - ultimo, 50); // aba escondida: continua de onde parou
       ultimo = agora;
       const b = caixa.getBoundingClientRect();
@@ -132,38 +136,52 @@
         }
       }
       if (fase === 'chega') { // vai até o começo do sublinhado
-        const f = Math.min(1, tempo / DURA.chega);
+        const f = Math.min(1, tempo / TEMPO.chega);
         por(entre(deOnde, noRisco(b, 0), suave(f)), 10 * Math.sin(f * Math.PI));
-        if (f >= 1) { tempo -= DURA.chega; fase = 'risca'; }
+        if (f >= 1) { tempo -= TEMPO.chega; fase = 'risca'; }
       }
       if (fase === 'risca') { // sublinha "completa"
-        const f = Math.min(1, tempo / DURA.risca);
+        const f = Math.min(1, tempo / TEMPO.risca);
         traco.style.strokeDashoffset = String(1 - f);
         por(noRisco(b, f), 0, -1.5 * Math.sin(f * Math.PI));
-        if (f >= 1) { tempo -= DURA.risca; fase = 'sai'; deOnde = noRisco(b, 1); }
+        if (f >= 1) { tempo -= TEMPO.risca; fase = 'sai'; deOnde = noRisco(b, 1); }
       }
-      if (fase === 'sai') { // levanta e some
-        const f = Math.min(1, tempo / DURA.sai);
+      if (fase === 'sai') { // levanta e some; a frase fica parada para leitura
+        const f = Math.min(1, tempo / TEMPO.sai);
         if (!lapis.classList.contains('saindo')) { lapis.classList.add('saindo'); lapis.classList.remove('visivel'); }
         por(entre(deOnde, { x: deOnde.x + 30, y: deOnde.y - 38 }, suave(f)));
-        if (f >= 1) return terminar();
+        if (f >= 1) { escrita.espera = setTimeout(apagar, TEMPO.parada); return; }
       }
       escrita.quadro = requestAnimationFrame(quadro);
     }
 
-    h1.classList.remove('escrito'); lapis.classList.remove('saindo');
+    /** Apaga a frase numa onda da esquerda para a direita, recolhe o sublinhado e recomeça. */
+    function apagar() {
+      if (!naTela()) return parar();
+      letras.forEach((l, k) => { l.style.transitionDelay = `${k * TEMPO.onda}ms`; });
+      h1.classList.add('apagando');
+      if (traco) { traco.style.transition = 'stroke-dashoffset .6s ease'; traco.style.strokeDashoffset = '1'; }
+      escrita.espera = setTimeout(() => {
+        letras.forEach((l) => { l.classList.remove('traco', 'feito'); l.style.transitionDelay = ''; });
+        h1.classList.remove('apagando');
+        if (traco) traco.style.transition = '';
+        escrita.espera = setTimeout(escrever, TEMPO.respiro);
+      }, TEMPO.apaga + letras.length * TEMPO.onda);
+    }
+
+    function escrever() {
+      if (!naTela()) return parar();
+      roteiro();
+      i = 0; tempo = 0; fase = 'letras'; ultimo = null; deOnde = null;
+      lapis.classList.remove('saindo'); lapis.classList.add('visivel');
+      escrita.quadro = requestAnimationFrame(quadro);
+    }
+
+    h1.classList.remove('escrito', 'apagando');
     // espera a fonte e a entrada da tela; começa no máximo em 1,5 s
     const fontes = document.fonts && document.fonts.ready ? Promise.race([document.fonts.ready, new Promise((ok) => setTimeout(ok, 1500))]) : Promise.resolve();
     const comeco = Date.now();
-    fontes.then(() => {
-      escrita.espera = setTimeout(() => {
-        if (!h1.isConnected) return;
-        if (!caixa.offsetParent) return terminar();
-        roteiro();
-        lapis.classList.add('visivel');
-        escrita.quadro = requestAnimationFrame(quadro);
-      }, Math.max(0, 650 - (Date.now() - comeco)));
-    });
+    fontes.then(() => { escrita.espera = setTimeout(escrever, Math.max(0, TEMPO.inicio - (Date.now() - comeco))); });
   }
 
   function estrutura() {
